@@ -6,7 +6,7 @@ on:
       - publish
 defaults:
   run:
-    working-directory: "./repos"
+    working-directory: "repos"
 jobs:
   get_repos:
     runs-on: ubuntu-latest
