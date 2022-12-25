@@ -24,8 +24,8 @@ jobs:
       - name: List them
         run: |
           ls -l
-          tree
+          tree -L 2
           echo "FINISHED"
-        working-directory: "/"
+        working-directory: "repos"
     
 
