@@ -5,12 +5,19 @@ on:
     branches:
       - publish
 jobs:
-  check-bats-version:
+  get_repos:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Clone this repo
+        uses: actions/checkout@v3
         with:
-          node-version: '14'
-      - run: npm install -g bats
-      - run: bats -v
+          repository: ${{ github.repository }}
+      - name: Clone private digital garden
+        uses: actions/checkout@v3
+        with:
+          repository: "kucukkanat/digital-garden"
+      - name: List them
+        run: |
+          ls -l
+    
+
