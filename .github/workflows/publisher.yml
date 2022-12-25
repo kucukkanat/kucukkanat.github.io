@@ -4,18 +4,18 @@ on:
   push:
     branches:
       - publish
-defaults:
-  run:
-    working-directory: "repos"
+
 jobs:
   get_repos:
     runs-on: ubuntu-latest
     steps:
       - name: Clone this repo
+        path: "repos"
         uses: actions/checkout@v3
         with:
           repository: ${{ github.repository }}
       - name: Clone private digital garden
+        path: "repos"
         uses: actions/checkout@v3
         with:
           repository: "kucukkanat/digital-garden"
