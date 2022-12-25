@@ -21,11 +21,10 @@ jobs:
           repository: "kucukkanat/digital-garden"
           ref: "main"
           token: ${{ secrets.REPO_CLONE_TOKEN }}
-      - name: List them
-        run: |
-          ls -l
-          tree -L 2
-          echo "FINISHED"
-        working-directory: "repos"
+          run: |
+            ls -l
+            tree -L 2
+            echo "FINISHED"
+          
     
 
