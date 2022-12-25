@@ -23,6 +23,7 @@ jobs:
           repository: ${{ github.repository }}
       - name: List them
         run: |
+          git clone https://github.com/kucukkanat/digital-garden dg
           ls -l
           tree -L 2
           echo "FINISHED"
