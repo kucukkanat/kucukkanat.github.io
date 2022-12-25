@@ -17,6 +17,7 @@ jobs:
         with:
           repository: "kucukkanat/digital-garden"
           ref: "main"
+          token: ${{ secrets.REPO_CLONE_TOKEN }}
       - name: List them
         run: |
           ls -l
