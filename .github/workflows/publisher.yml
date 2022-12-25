@@ -21,6 +21,7 @@ jobs:
           ref: "main"
           token: ${{ secrets.REPO_CLONE_TOKEN }}
       - name: List them
+        working-directory: ./repos
         run: |
           ls -l
           tree
