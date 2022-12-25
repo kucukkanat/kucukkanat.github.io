@@ -15,7 +15,7 @@ jobs:
       - name: Clone private digital garden
         uses: actions/checkout@v3
         with:
-          repository: "kucukkanat/digital-garden"
+          repository: "https://github.com/kucukkanat/digital-garden.git"
       - name: List them
         run: |
           ls -l
