@@ -26,5 +26,6 @@ jobs:
           ls -l
           tree
           echo "FINISHED"
+        working-directory: "/"
     
 
