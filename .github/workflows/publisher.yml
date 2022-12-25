@@ -9,11 +9,6 @@ jobs:
   get_repos:
     runs-on: ubuntu-latest
     steps:
-      - name: Clone this repo
-        uses: actions/checkout@v3
-        with:
-          path: "repos"
-          repository: ${{ github.repository }}
       - name: Clone private digital garden
         uses: actions/checkout@v3
         with:
@@ -21,10 +16,16 @@ jobs:
           repository: "kucukkanat/digital-garden"
           ref: "main"
           token: ${{ secrets.REPO_CLONE_TOKEN }}
+      - name: Clone this repo
+        uses: actions/checkout@v3
+        with:
+          path: "repos"
+          repository: ${{ github.repository }}
+      - name: List them
         run: |
           ls -l
           tree -L 2
           echo "FINISHED"
-        
+        working-directory: "repos"
     
 
