@@ -9,10 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone this repo
+        working-directory: ./repos
         uses: actions/checkout@v3
         with:
           repository: ${{ github.repository }}
       - name: Clone private digital garden
+        working-directory: ./repos
         uses: actions/checkout@v3
         with:
           repository: "kucukkanat/digital-garden"
