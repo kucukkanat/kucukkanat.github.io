@@ -1,0 +1,12 @@
+{
+  "out": "art/sky",
+  "aspect": "16:9",
+  "style": "A wide painted sky backdrop for a stylised 3D game, seen through the stern windows of an airship cruising high above the clouds. Hand-painted cosy indie-game style matching a warm storybook airship world: soft brush strokes, smooth gradients, rich but gentle colours, no photographic detail. Composition: a vast soft sea of rolling cumulus clouds stretching to a distant flat horizon placed about 40% up from the bottom of the image; open sky fills the upper 60%. The view is empty: absolutely no floating islands, no rocks, no land, no ships, no airships, no balloons, no birds, no buildings, no window frames, no people. No text, letters, numbers, signatures or logos. Fill the entire frame edge to edge, no border.",
+  "jobs": [
+    {
+      "id": "storm",
+      "ref": "art/sky/sunset.png",
+      "prompt": "Use the reference image only for composition: keep the same camera, the same flat horizon about 40% up from the bottom and the same rolling cloud sea, but repaint it as a brooding storm. Dark slate-blue and charcoal storm clouds fill the sky, heavy and layered; grey rain curtains slant down from the clouds into the cloud sea in a few places; one faint, soft, distant lightning glow lights a cloud bank from inside near the horizon, left of centre (a glow, not a bright bolt). The cloud sea below is cool slate, steel blue and dusky teal with darker shadows. No sun. Moody but readable, same hand-painted brushwork as the reference."
+    }
+  ]
+}

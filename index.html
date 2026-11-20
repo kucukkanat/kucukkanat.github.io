@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hilmi Tolga Şahin — kucukkanat</title>
+  <meta name="description" content="The airship cabin of Hilmi Tolga Şahin (HT): engineering manager and game maker. Pull a cartridge from the map chest and play it on the KANAT·1 handheld, read the books, follow the career voyage on the sky map." />
+  <meta name="theme-color" content="#2a1712" />
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="canonical" href="https://kucukkanat.com/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://kucukkanat.com/" />
+  <meta property="og:title" content="Hilmi Tolga Şahin — kucukkanat" />
+  <meta property="og:description" content="Curious, engineer, maker, mathematician. A captain's cabin of an airship at sunset, full of playable projects." />
+  <meta property="og:site_name" content="kucukkanat" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Hilmi Tolga Şahin — kucukkanat" />
+  <meta name="twitter:description" content="Curious, engineer, maker, mathematician. Projects you can play, in an airship cabin at sunset." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=DM+Sans:wght@400;500;700&display=swap" />
+  <script>
+    // No WebGL → the plain HTML site.
+    (function () {
+      try {
+        var c = document.createElement('canvas');
+        if (!(c.getContext('webgl2') || c.getContext('webgl'))) location.replace('/plain/');
+      } catch (e) { location.replace('/plain/'); }
+    })();
+  </script>
+</head>
+<body>
+  <noscript><p class="noscript">This site is a 3D cabin that needs JavaScript. <a href="/plain/">Read the plain version</a>.</p></noscript>
+  <div id="loader" role="status" aria-live="polite">
+    <svg class="wing" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M8 40c10-2 22-10 30-22 3-5 8-9 14-10-2 6-5 11-9 15 4 0 8-1 11-3-3 6-9 10-16 12 3 1 6 1 9 0-6 5-14 7-22 7-7 0-13 1-17 1z" fill="#F07A2A"/>
+    </svg>
+    <div class="loader-title">kucukkanat</div>
+    <div class="loader-bar"><span id="loader-fill"></span></div>
+    <div class="loader-text" id="loader-text">Boarding the airship…</div>
+    <a class="loader-plain" href="/plain/">Plain version</a>
+  </div>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

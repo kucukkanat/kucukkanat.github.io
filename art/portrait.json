@@ -1,0 +1,11 @@
+{
+  "out": "art/portrait",
+  "aspect": "4:5",
+  "style": "A hand-painted portrait in the warm style of a cosy storybook airship cabin from an indie game: soft visible brush strokes, chunky stylised shapes, rich warm colours, golden lamplight from one side, deep wood-brown and amber background with a soft vignette. Painted, never photographic. Full bleed, no frame, no border, no text, letters, numbers, signatures or logos.",
+  "jobs": [
+    {
+      "id": "placeholder",
+      "prompt": "A painted still life, no person anywhere: a dark navy captain's coat with brass buttons hangs on a brass wall hook against warm wooden cabin planks, a worn captain's cap hangs on the same hook above it. On the coat's lapel a small brass pin shaped like a single little bird wing. Warm oil-lamp light from the left, a hint of a round porthole glowing pink-gold at the edge. Calm, cosy, quiet. Vertical 4:5 composition, the coat and cap centred like a portrait."
+    }
+  ]
+}

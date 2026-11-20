@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Galleon preview</title>
+<style>
+  :root { --ink:#f6ead8; --dim:#c9b79f; --panel:rgba(38,22,18,.78); --line:rgba(255,220,180,.16); --accent:#e8702a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#2a1a1c; color:var(--ink);
+    font:14px/1.35 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  canvas { display:block; width:100vw; height:100vh; touch-action:none; }
+  #top { position:fixed; left:16px; top:14px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; max-width:calc(100vw - 32px); }
+  #top h1 { font-size:16px; margin:0 10px 0 0; letter-spacing:.02em; text-shadow:0 1px 6px rgba(0,0,0,.5); }
+  button { font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:999px;
+    padding:6px 12px; cursor:pointer; backdrop-filter:blur(8px); }
+  button:hover { border-color:var(--accent); }
+  button.on { background:var(--accent); border-color:var(--accent); color:#2a1208; font-weight:600; }
+  #panel { position:fixed; right:12px; top:12px; bottom:12px; width:292px; overflow:auto; background:var(--panel);
+    border:1px solid var(--line); border-radius:14px; padding:6px 12px 12px; backdrop-filter:blur(10px); }
+  #panel.hidden { display:none; }
+  details { border-bottom:1px solid var(--line); padding:6px 0; }
+  summary { cursor:pointer; font-weight:600; padding:4px 0; }
+  .row { display:grid; grid-template-columns:1fr 46px; gap:2px 8px; align-items:center; margin:7px 0; }
+  .row label { grid-column:1 / span 2; color:var(--dim); font-size:12.5px; }
+  .row output { font-variant-numeric:tabular-nums; text-align:right; font-size:12px; color:var(--dim); }
+  input[type=range] { width:100%; accent-color:var(--accent); margin:0; }
+  .chk { display:flex; gap:8px; align-items:center; margin:7px 0; color:var(--dim); font-size:12.5px; }
+  .chk input { accent-color:var(--accent); }
+  #tip { position:fixed; left:16px; bottom:14px; max-width:min(560px, calc(100vw - 32px)); background:var(--panel);
+    border:1px solid var(--line); border-radius:12px; padding:9px 13px; backdrop-filter:blur(8px); font-size:13px; }
+  #tip b { color:#ffd9a8; }
+  #tip small { color:var(--dim); display:block; margin-top:2px; }
+  #load { position:fixed; inset:0; display:grid; place-items:center; background:#2a1a1c; font-size:15px; }
+  @media (max-width:760px) { #panel { top:auto; left:8px; right:8px; bottom:8px; width:auto; height:44vh; } #tip { bottom:calc(44vh + 16px); } }
+</style>
+</head>
+<body>
+<div id="load">Rigging the ship…</div>
+<div id="top">
+  <h1>Sky Galleon</h1>
+  <button data-view="quarter">Quarter</button><button data-view="side">Side</button><button data-view="stern">Stern gallery</button>
+  <button data-view="deck">Deck</button><button data-view="below">Below</button>
+  <button id="night">Night</button><button id="bob" class="on">Motion</button><button id="toggle">Controls</button>
+</div>
+<div id="panel"></div>
+<div id="tip"><b>Drag</b> to orbit, scroll to zoom, right-drag to pan. <b>Click a part</b> (door, hatch, gun port, fin, sail…) to work it.</div>
+<script type="application/octet-stream" id="glb">__GLB__</script>
+__SCRIPT__
+</body>
+</html>

@@ -1,0 +1,191 @@
+$ /Applications/Blender.app/Contents/MacOS/Blender --background --python blender/build.py && bun scripts/compress-glb.ts
+addon_utils.disable: bl_ext.lab_blender_org.mcp not enabled
+INFO Draco is available, use library at /Applications/Blender.app/Contents/Resources/lib/libbf_intern_draco_bridge.dylib
+INFO MeshOptimizer is available, use library at /Applications/Blender.app/Contents/Resources/lib/libbf_intern_meshopt_bridge.dylib
+17:29:31 | INFO: Starting glTF 2.0 export
+17:29:31 | INFO: Extracting primitive: TPL_book
+17:29:31 | INFO: Primitives created: 3
+17:29:31 | INFO: Extracting primitive: TPL_cartridge
+17:29:31 | INFO: Primitives created: 2
+17:29:31 | INFO: Extracting primitive: TPL_island
+17:29:31 | INFO: Primitives created: 7
+17:29:31 | INFO: Extracting primitive: Island_flag
+17:29:31 | INFO: Primitives created: 1
+17:29:31 | INFO: Extracting primitive: TPL_memcard
+17:29:31 | INFO: Primitives created: 3
+17:29:31 | INFO: Extracting primitive: TPL_notebook
+17:29:31 | INFO: Primitives created: 3
+17:29:31 | INFO: Finished glTF 2.0 export in 0.01948380470275879 s
+
+[build] collectibles.glb 156952 bytes 3137 tris ['TPL_book', 'TPL_cartridge', 'Island_flag', 'TPL_island', 'TPL_memcard', 'TPL_notebook']
+17:29:31 | INFO: Starting glTF 2.0 export
+17:29:31 | INFO: Extracting primitive: SKY_airship
+17:29:31 | INFO: Primitives created: 7
+17:29:31 | INFO: Extracting primitive: SKY_island_1
+17:29:31 | INFO: Primitives created: 1
+17:29:31 | INFO: Extracting primitive: SKY_island_2
+17:29:31 | INFO: Primitives created: 1
+17:29:31 | INFO: Extracting primitive: SKY_island_3
+17:29:31 | INFO: Primitives created: 1
+17:29:31 | INFO: Extracting primitive: SKY_island_4
+17:29:31 | INFO: Primitives created: 1
+17:29:31 | INFO: Finished glTF 2.0 export in 0.012367725372314453 s
+
+[build] sky.glb 320360 bytes 5607 tris ['SKY_airship', 'SKY_island_1', 'SKY_island_2', 'SKY_island_3', 'SKY_island_4']
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+[bake] sunset: 36s coverage 0.50 lum p50 0.105 p95 2.754 p99.5 12.648
+[bake] wrote /Users/hilmitolga.sahin/Developer/personal_website/public/assets/lightmap_sunset.webp 293 KB (q=82)
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+Info: Baking map saved to internal image, save it externally or pack it
+[bake] night: 29s coverage 0.50 lum p50 0.016 p95 0.521 p99.5 2.353
+[bake] wrote /Users/hilmitolga.sahin/Developer/personal_website/public/assets/lightmap_night.webp 260 KB (q=82)
+Info: Saved as "cabin.blend"
+17:30:38 | INFO: Starting glTF 2.0 export
+17:30:38 | INFO: Extracting primitive: Bell_body
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Bell_chain
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Bell_clapper_mesh
+17:30:38 | INFO: Primitives created: 2
+17:30:38 | INFO: Extracting primitive: Bottle_cork
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Bottle_glass
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Bottle_note
+17:30:38 | INFO: Primitives created: 2
+17:30:38 | INFO: Extracting primitive: Clock_face
+17:30:38 | INFO: Primitives created: 2
+17:30:38 | INFO: Extracting primitive: Clock_hour_mesh
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Clock_minute_mesh
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Clock_second_mesh
+17:30:38 | INFO: Primitives created: 2
+17:30:38 | INFO: Extracting primitive: Handheld_body
+17:30:38 | INFO: Primitives created: 5
+17:30:38 | INFO: Extracting primitive: Handheld_screen
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Hanging_lamp_body
+17:30:38 | INFO: Primitives created: 2
+17:30:38 | INFO: Extracting primitive: Hanging_lamp_glass
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_bell
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_bottle
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_chest
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_clock
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_handheld
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_lantern
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_letter
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_portrait
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_rack
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_shelf
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_slate
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_table
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_tengwar
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: HIT_wheel
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Lantern_body
+17:30:38 | INFO: Primitives created: 4
+17:30:38 | INFO: Extracting primitive: Lantern_glass
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Letter_paper
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Letter_seal
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Portrait_canvas
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: ROPE_bight_a
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: ROPE_bight_b
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: ROPE_cleat_tail
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: ROPE_fg_main
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: ROPE_fg_tail
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: ROPE_pulley_fall
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: ROPE_pulley_span
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Rigging
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Rope_fg_mesh
+17:30:38 | INFO: Primitives created: 2
+17:30:38 | INFO: Extracting primitive: Slate_board
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Slate_frame
+17:30:38 | INFO: Primitives created: 4
+17:30:38 | INFO: Extracting primitive: STATIC_ceiling
+17:30:38 | INFO: Primitives created: 4
+17:30:38 | INFO: Extracting primitive: STATIC_chest
+17:30:38 | INFO: Primitives created: 9
+17:30:38 | INFO: Extracting primitive: STATIC_floor
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: STATIC_props
+17:30:38 | INFO: Primitives created: 9
+17:30:38 | INFO: Extracting primitive: STATIC_rack
+17:30:38 | INFO: Primitives created: 4
+17:30:38 | INFO: Extracting primitive: STATIC_shell
+17:30:38 | INFO: Primitives created: 3
+17:30:38 | INFO: Extracting primitive: STATIC_table
+17:30:38 | INFO: Primitives created: 9
+17:30:38 | INFO: Extracting primitive: STATIC_windows
+17:30:38 | INFO: Primitives created: 3
+17:30:38 | INFO: Extracting primitive: Fg_block
+17:30:38 | INFO: Primitives created: 3
+17:30:38 | INFO: Extracting primitive: Pulley_block
+17:30:38 | INFO: Primitives created: 3
+17:30:38 | INFO: Extracting primitive: Tengwar_paper
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Tengwar_tack
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Extracting primitive: Wheel_mesh
+17:30:38 | INFO: Primitives created: 2
+17:30:38 | INFO: Extracting primitive: Window_glass
+17:30:38 | INFO: Primitives created: 1
+17:30:38 | INFO: Finished glTF 2.0 export in 0.4340949058532715 s
+
+[build] cabin.glb 2495420 bytes 39638 tris
+[build] uv1: ['STATIC_ceiling', 'STATIC_chest', 'STATIC_floor', 'STATIC_props', 'STATIC_rack', 'STATIC_shell', 'STATIC_table', 'STATIC_windows']
+[build] rope {'name': 'ROPE_fg_main', 'top': (-0.73, 2.71, 1.508), 'end': (-0.75, 0.149, 1.632), 'length': 2.654, 'bones': 12, 'pinned_end': 1, 'r': 0.024}
+[build] rope {'name': 'ROPE_fg_tail', 'top': (-0.86, 2.97, 1.52), 'end': (-0.864, 0.99, 1.59), 'length': 1.982, 'bones': 10, 'pinned_end': 0, 'r': 0.016}
+[build] rope {'name': 'ROPE_pulley_fall', 'top': (1.555, 2.55, -1.25), 'end': (1.559, 1.93, -1.239), 'length': 0.62, 'bones': 6, 'pinned_end': 0, 'r': 0.011}
+[build] rope {'name': 'ROPE_pulley_span', 'top': (1.645, 2.53, -1.25), 'end': (1.732, 2.38, -2.001), 'length': 0.791, 'bones': 10, 'pinned_end': 1, 'r': 0.0095}
+[build] rope {'name': 'ROPE_cleat_tail', 'top': (1.75, 2.32, -1.991), 'end': (1.743, 2.12, -1.995), 'length': 0.201, 'bones': 6, 'pinned_end': 0, 'r': 0.0095}
+[build] rope {'name': 'ROPE_bight_a', 'top': (-0.4, 2.8, -0.38), 'end': (-0.4, 2.82, -1.17), 'length': 1.059, 'bones': 8, 'pinned_end': 1, 'r': 0.01}
+[build] rope {'name': 'ROPE_bight_b', 'top': (-0.25, 2.8, -0.36), 'end': (-0.12, 2.82, -1.17), 'length': 0.958, 'bones': 8, 'pinned_end': 1, 'r': 0.008}
+[build] swing {'name': 'SWING_fg_block', 'pivot': (-0.73, 2.95, 1.508), 'length': 0.16, 'mass': 2.5}
+[build] swing {'name': 'SWING_pulley', 'pivot': (1.6, 2.774, -1.25), 'length': 0.2, 'mass': 3.0}
+[build] done in 66.9s
+Blender 5.3.0 (hash 02f0899d78e3 built 2026-11-10 01:31:21)
+
+Blender quit
+cabin.glb: 2437 KB → 1188 KB
+bun run blender  468.28s user 14.18s system 707% cpu 1:08.15 total

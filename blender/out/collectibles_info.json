@@ -1,0 +1,31 @@
+{
+ "path": "/Users/hilmitolga.sahin/Developer/personal_website/public/assets/collectibles.glb",
+ "bytes": 156952,
+ "tris": 3137,
+ "nodes": [
+  "TPL_book",
+  "TPL_cartridge",
+  "Island_flag",
+  "TPL_island",
+  "TPL_memcard",
+  "TPL_notebook"
+ ],
+ "materials": [
+  "Pages",
+  "Cover",
+  "SpineLabel",
+  "Plastic",
+  "Label",
+  "IslandFlag",
+  "Grass",
+  "GrassDark",
+  "RockDark",
+  "Rock",
+  "RockMid",
+  "Wood",
+  "Leaves",
+  "Contacts"
+ ],
+ "uv1_nodes": [],
+ "images": 0
+}

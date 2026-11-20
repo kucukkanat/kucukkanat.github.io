@@ -1,0 +1,112 @@
+{
+ "files": [
+  {
+   "path": "/Users/hilmitolga.sahin/Developer/personal_website/public/assets/sky.glb",
+   "bytes": 238844,
+   "tris": 12471,
+   "nodes": [
+    "SKY_island_1",
+    "SKY_island_2",
+    "SKY_island_3",
+    "SKY_island_4",
+    "SKY_island_5",
+    "SKY_island_6",
+    "SKY_airship",
+    "SKY_balloon_1",
+    "SKY_balloon_2",
+    "SKY_clouds"
+   ],
+   "per": {
+    "SKY_island_1": {
+     "tris": 1282,
+     "verts": 961,
+     "bytes": 19224
+    },
+    "SKY_island_2": {
+     "tris": 1009,
+     "verts": 856,
+     "bytes": 16326
+    },
+    "SKY_island_3": {
+     "tris": 1681,
+     "verts": 1259,
+     "bytes": 25194
+    },
+    "SKY_island_4": {
+     "tris": 843,
+     "verts": 688,
+     "bytes": 13314
+    },
+    "SKY_island_5": {
+     "tris": 3054,
+     "verts": 2496,
+     "bytes": 48276
+    },
+    "SKY_island_6": {
+     "tris": 3474,
+     "verts": 2682,
+     "bytes": 53028
+    },
+    "SKY_airship": {
+     "tris": 504,
+     "verts": 466,
+     "bytes": 8616
+    },
+    "SKY_balloon_1": {
+     "tris": 312,
+     "verts": 295,
+     "bytes": 5412
+    },
+    "SKY_balloon_2": {
+     "tris": 312,
+     "verts": 259,
+     "bytes": 4980
+    },
+    "SKY_clouds": {
+     "tris": 2,
+     "verts": 4,
+     "bytes": 35580
+    }
+   }
+  },
+  {
+   "path": "/Users/hilmitolga.sahin/Developer/personal_website/public/assets/sky_full.glb",
+   "bytes": 74128,
+   "tris": 4252,
+   "nodes": [
+    "SKY_island_7",
+    "SKY_rocks_1",
+    "SKY_airship_2",
+    "SKY_balloon_3",
+    "SKY_balloon_4"
+   ],
+   "per": {
+    "SKY_island_7": {
+     "tris": 1816,
+     "verts": 1529,
+     "bytes": 29244
+    },
+    "SKY_rocks_1": {
+     "tris": 1124,
+     "verts": 956,
+     "bytes": 18216
+    },
+    "SKY_airship_2": {
+     "tris": 688,
+     "verts": 660,
+     "bytes": 12048
+    },
+    "SKY_balloon_3": {
+     "tris": 312,
+     "verts": 290,
+     "bytes": 5352
+    },
+    "SKY_balloon_4": {
+     "tris": 312,
+     "verts": 259,
+     "bytes": 4980
+    }
+   }
+  }
+ ]
+}

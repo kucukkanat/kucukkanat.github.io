@@ -1,0 +1,50 @@
+name: Hilmi Tolga Şahin
+handle: kucukkanat
+tagline: Curious, engineer, maker, mathematician — in that order.
+bio: >-
+  I'm HT. I lead engineering teams at IKEA in Amsterdam and build small, finished things at night:
+  games for my kids, tools that run AI on your own device, and toys that make the web a little stranger.
+  Küçük kanat means “little wing”. Life is too short for hype-hopping — build a foundation.
+links:
+  - { label: GitHub, url: "https://github.com/kucukkanat" }
+  - { label: LinkedIn, url: "https://www.linkedin.com/in/htx" }
+  - { label: X, url: "https://x.com/hackdonaldsx" }
+  - { label: Hugging Face, url: "https://huggingface.co/kucukkanat" }
+welcome:
+  title: Welcome aboard
+  body: |-
+    I'm HT — Hilmi Tolga Şahin. By day I lead engineering teams at IKEA in Amsterdam. By night I build small things: games for my kids, AI that runs on your own device, and odd little toys for the web.
+
+    Make yourself at home. Open the chest and slot a cartridge into the handheld to play. The chart on the table shows the voyage so far. And if you'd like to say hi, the message bottle will carry a note to me.
+  signoff: Fair winds — HT
+about:
+  title: The captain
+  body: |-
+    I'm HT. Curious, engineer, maker, mathematician — in that order.
+
+    I've been on GitHub since 2011 and leading teams since 2014. Today I'm an engineering manager at IKEA (Ingka) in Amsterdam: three teams and ten direct reports on the global supply-chain planning platform. The ports before that are on the chart.
+
+    I like async work, docs as artefacts and meeting-free Fridays, and I'd rather cut 80% than add more. Off duty it's games (Godot, three.js, tabletop RPGs), Tolkien and Tengwar, aviation, Nostr, and AI that runs on your own device.
+
+    *Küçük kanat* means “little wing”.
+story:
+  title: √−1
+  body: |-
+    My father was ex-military and, in his spare time, a bit of a mad scientist. One night he woke me at 2 AM with a question: what is the square root of minus one?
+
+    It's a strange thing to ask a sleepy kid. No ordinary number squares to minus one. So mathematicians gave it a name, *i*, and a whole new world of numbers opened up.
+
+    That question stayed with me. Maths is the root of my love of software: start from something solid, and you can build almost anything on it.
+
+    Life is too short for hype-hopping. Build a foundation.
+tengwar:
+  latin: Life is too short for hype-hopping. Build a foundation.
+  # Glaemscribe 1.3.1, mode english-tengwar-espeak, charset tengwar_freemono (CSUR private-use code points).
+  # Render with public/fonts/FreeMonoTengwar.ttf; its OpenType tables place the tehtar.
+  glyphs: "\uE022\uE016\uE040\uE009 \uE027\uE044 \uE000\uE02E\uE04F \uE00A\uE014\uE04E\uE000 \uE009\uE014\uE04E \uE028\uE016\uE040\uE001\uE028\uE001\uE04A\uE013\uE044 : \uE005\uE022\uE044\uE004 \uE02E\uE045 \uE009\uE015\uE040\uE004\uE050\uE016\uE046\uE00A\uE010\uE045 :"
+  font: FreeMonoTengwar.ttf
+nostr:
+  # Placeholder npub: replace with HT's real one and set placeholder: false.
+  npub: npub1placeholderplaceholderplaceholderplaceholderplaceholderxx
+  relays: ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net"]
+  placeholder: true

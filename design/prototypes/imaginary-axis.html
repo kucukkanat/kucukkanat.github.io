@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HT Şahin — The Imaginary Axis</title>
+<meta name="description" content="Hilmi Tolga (HT) Şahin, kucukkanat: engineering manager, maker, game maker, mathematician. Everything I do, plotted on the complex plane.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F2EA; --paper-2:#ECE7DA; --ink:#16181D; --ink-2:#5C5F68; --grid:rgba(22,24,29,.07); --grid-major:rgba(22,24,29,.14);
+  --re:#2348D6; --im:#E0492A; --mix:#7A3FC4; --neg:#8A8D96;
+  --card:rgba(255,255,255,.82); --card-line:rgba(22,24,29,.12); --shadow:0 8px 30px rgba(22,24,29,.10);
+  --u:120px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1115; --paper-2:#171A21; --ink:#ECE8DF; --ink-2:#9A9DA6; --grid:rgba(236,232,223,.05); --grid-major:rgba(236,232,223,.11);
+    --re:#7F96FF; --im:#FF8B5E; --mix:#B98BFF; --neg:#6C6F78;
+    --card:rgba(23,26,33,.86); --card-line:rgba(236,232,223,.12); --shadow:0 8px 30px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1115; --paper-2:#171A21; --ink:#ECE8DF; --ink-2:#9A9DA6; --grid:rgba(236,232,223,.05); --grid-major:rgba(236,232,223,.11);
+  --re:#7F96FF; --im:#FF8B5E; --mix:#B98BFF; --neg:#6C6F78;
+  --card:rgba(23,26,33,.86); --card-line:rgba(236,232,223,.12); --shadow:0 8px 30px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.i{font-family:Fraunces,serif;font-style:italic;font-weight:500}
+
+/* ---------- viewport + plane ---------- */
+#viewport{position:fixed;inset:0;cursor:grab;touch-action:none;user-select:none}
+#viewport.dragging{cursor:grabbing}
+#plane{position:absolute;left:50%;top:50%;width:0;height:0;transform-origin:0 0;will-change:transform}
+#plane.anim{transition:transform 1.1s cubic-bezier(.65,0,.25,1)}
+.grid{position:absolute;left:calc(var(--u) * -30);top:calc(var(--u) * -30);width:calc(var(--u) * 60);height:calc(var(--u) * 60);
+  background-image:
+    linear-gradient(var(--grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--grid-major) 1px,transparent 1px),
+    linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:var(--u) var(--u),var(--u) var(--u),calc(var(--u)/4) calc(var(--u)/4),calc(var(--u)/4) calc(var(--u)/4);
+  background-position:-.5px -.5px}
+.axis{position:absolute;background:var(--ink)}
+.axis.x{left:calc(var(--u) * -30);width:calc(var(--u) * 60);top:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--re) 20%,var(--re) 80%,transparent)}
+.axis.y{top:calc(var(--u) * -30);height:calc(var(--u) * 60);left:-1px;width:2px;background:linear-gradient(180deg,transparent,var(--im) 20%,var(--im) 80%,transparent)}
+.tick{position:absolute;font:11px "JetBrains Mono",monospace;color:var(--ink-2);transform:translate(-50%,6px);white-space:nowrap}
+.tick.y{transform:translate(8px,-50%)}
+.axis-name{position:absolute;font-family:Fraunces,serif;font-style:italic;font-size:44px;font-weight:400;white-space:nowrap}
+.axis-name small{display:block;font:12px/1.3 "IBM Plex Sans",sans-serif;font-style:normal;color:var(--ink-2);letter-spacing:.02em;max-width:220px;white-space:normal}
+.quad{position:absolute;font-family:Fraunces,serif;font-weight:300;font-size:30px;line-height:1.1;color:var(--ink);opacity:.16;white-space:nowrap;pointer-events:none}
+.quad em{display:block;font:500 12px "JetBrains Mono",monospace;font-style:normal;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+
+.upright{position:absolute;left:0;top:0;transition:transform 1.1s cubic-bezier(.65,0,.25,1)}
+.pt{position:absolute;transform:translate(-8px,-8px)}
+.pt .dot{width:16px;height:16px;border-radius:50%;background:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 18%,transparent);transition:transform .2s}
+.pt.mix .dot{background:conic-gradient(var(--re) 0 50%,var(--im) 0 100%)}
+.pt .lbl{position:absolute;left:24px;top:-10px;background:var(--card);border:1px solid var(--card-line);border-radius:10px;padding:6px 10px 7px;white-space:nowrap;box-shadow:var(--shadow);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:pointer;transition:transform .2s,border-color .2s}
+.pt .lbl b{display:block;font-weight:600;font-size:14px;line-height:1.2}
+.pt .lbl span{font:11px "JetBrains Mono",monospace;color:var(--ink-2)}
+.pt.left .lbl{left:auto;right:24px}
+.pt:hover .dot,.pt:focus-within .dot{transform:scale(1.35)}
+.pt:hover .lbl,.pt:focus-within .lbl{border-color:var(--c);transform:translateY(-2px)}
+.pt .lbl:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+.pt.hero .dot{width:22px;height:22px;transform:translate(-3px,-3px)}
+.pt.hero .lbl b{font-family:Fraunces,serif;font-size:22px;font-weight:500}
+.vector{position:absolute;left:0;top:0;height:2px;transform-origin:0 50%;background:var(--ink);opacity:0;transition:opacity .25s;pointer-events:none}
+.vector::after{content:"";position:absolute;right:-2px;top:-4px;border:5px solid transparent;border-left:8px solid var(--ink);border-right:0}
+.vector.on{opacity:.55}
+
+/* ---------- HUD ---------- */
+.hud{position:fixed;z-index:5;pointer-events:none}
+.hud > *{pointer-events:auto}
+.brand{top:16px;left:16px;background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.brand h1{margin:0;font-family:Fraunces,serif;font-weight:500;font-size:28px;letter-spacing:-.01em;line-height:1}
+.brand p{margin:6px 0 0;color:var(--ink-2);font-size:13px;max-width:330px}
+.brand .state{margin-top:10px;display:inline-flex;gap:8px;align-items:center;font:12px "JetBrains Mono",monospace;background:var(--card);border:1px solid var(--card-line);padding:5px 10px;border-radius:999px}
+.brand .state i{width:8px;height:8px;border-radius:50%;background:var(--re);display:inline-block;transition:background .4s}
+.controls{top:20px;right:24px;display:flex;gap:8px}
+.btn{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:9px 14px;cursor:pointer;box-shadow:var(--shadow);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px);border-color:var(--ink-2)}
+.btn:focus-visible{outline:2px solid var(--re);outline-offset:2px}
+.btn.times{font-family:Fraunces,serif;font-size:20px;line-height:1;padding:8px 16px;background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.times .i{font-size:24px}
+.readout{bottom:20px;left:24px;font:12px/1.6 "JetBrains Mono",monospace;background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);min-width:230px}
+.readout .z{font-family:Fraunces,serif;font-size:20px;font-weight:500}
+.readout .muted{color:var(--ink-2)}
+.zoom{bottom:20px;right:24px;display:flex;gap:6px}
+.zoom .btn{width:40px;padding:8px 0;text-align:center}
+.toast{position:fixed;left:50%;top:84px;transform:translate(-50%,-10px);opacity:0;z-index:9;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:12px;font-size:14px;transition:all .35s;pointer-events:none;max-width:calc(100vw - 32px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- drawer ---------- */
+#drawer{position:fixed;z-index:8;top:16px;right:16px;bottom:16px;width:min(400px,calc(100vw - 32px));background:var(--paper-2);border:1px solid var(--card-line);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:28px;overflow:auto;transform:translateX(calc(100% + 40px));transition:transform .45s cubic-bezier(.3,.7,.2,1)}
+#drawer.open{transform:none}
+#drawer .close{position:absolute;top:14px;right:14px}
+#drawer .kind{font:600 11px "JetBrains Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--c)}
+#drawer h2{font-family:Fraunces,serif;font-weight:500;font-size:34px;line-height:1.05;margin:8px 0 6px;letter-spacing:-.01em}
+#drawer .zbig{font:16px "JetBrains Mono",monospace;color:var(--ink-2)}
+#drawer .polar{display:flex;gap:16px;margin:14px 0 18px;font:12px "JetBrains Mono",monospace;color:var(--ink-2)}
+#drawer .polar b{display:block;color:var(--ink);font-size:16px}
+#drawer p{margin:0 0 12px}
+#drawer ul{padding-left:18px;margin:0 0 16px}
+#drawer .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+#drawer .links a{color:var(--ink);text-decoration:none;border:1px solid var(--card-line);background:var(--card);padding:8px 12px;border-radius:10px;font-weight:500}
+#drawer .links a.primary{background:var(--c);border-color:var(--c);color:#fff}
+#drawer .links a:hover{border-color:var(--c)}
+
+/* ---------- list view ---------- */
+#list{position:fixed;inset:0;z-index:7;background:var(--paper);overflow:auto;padding:96px 24px 60px;display:none}
+#list.open{display:block}
+#list .wrap{max-width:820px;margin:0 auto}
+#list h2{font-family:Fraunces,serif;font-weight:500;font-size:40px;margin:0 0 4px}
+#list h3{font:600 12px "JetBrains Mono",monospace;letter-spacing:.14em;text-transform:uppercase;margin:40px 0 10px;color:var(--ink-2)}
+#list .row{display:grid;grid-template-columns:110px 1fr;gap:16px;padding:12px 0;border-top:1px solid var(--card-line)}
+#list .row .zc{font:13px "JetBrains Mono",monospace;color:var(--ink-2)}
+#list .row b{font-weight:600}
+#list .row a{color:var(--re)}
+
+/* ---------- intro ---------- */
+#intro{position:fixed;inset:0;z-index:20;background:#07080B;color:#E9E5DA;display:grid;place-items:center;padding:24px;transition:opacity .9s,visibility .9s}
+#intro.gone{opacity:0;visibility:hidden}
+#intro .inner{max-width:620px}
+#intro .clock{font:600 14px "JetBrains Mono",monospace;letter-spacing:.2em;color:#FF8B5E;opacity:0;animation:fade .8s .3s forwards}
+#intro .line{font-family:Fraunces,serif;font-weight:300;font-size:clamp(24px,4.4vw,40px);line-height:1.25;margin:18px 0 0;opacity:0;animation:fade 1s forwards}
+#intro .line:nth-of-type(2){animation-delay:1.1s}
+#intro .line:nth-of-type(3){animation-delay:2.6s}
+#intro .line:nth-of-type(4){animation-delay:4.2s;font-size:clamp(18px,2.6vw,22px);color:#9A9DA6;font-family:"IBM Plex Sans",sans-serif}
+#intro .go{margin-top:34px;display:flex;gap:12px;align-items:center;opacity:0;animation:fade .8s 5.2s forwards}
+#intro .go button{background:#E9E5DA;color:#07080B;border:0;border-radius:14px;padding:14px 22px;font-size:16px;font-weight:600;cursor:pointer}
+#intro .go button.ghost{background:transparent;color:#9A9DA6;font-weight:500}
+#intro .sqrt{font-family:Fraunces,serif;font-style:italic}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+@media (max-width:700px){
+  :root{--u:92px}
+  .brand p{display:none}
+  .brand h1{font-size:22px}
+  .controls{top:auto;bottom:20px;right:16px;left:16px;justify-content:space-between}
+  .readout,.zoom{display:none}
+  .brand{left:12px;top:12px;right:12px}
+}
+@media (prefers-reduced-motion: reduce){
+  #plane.anim,.upright,#drawer{transition:none}
+  #intro .clock,#intro .line,#intro .go{animation:none;opacity:1}
+}
+</style>
+</head>
+<body>
+
+<div id="intro" role="dialog" aria-label="Introduction">
+  <div class="inner">
+    <div class="clock">02:00 · A LONG TIME AGO</div>
+    <p class="line">My father wakes me up in the middle of the night.</p>
+    <p class="line">“What is the square root of minus one?”</p>
+    <p class="line">I didn’t know. It took me years to see that <span class="sqrt">i</span> is not a number on the line. It is a turn off it.</p>
+    <p class="line">This site is plotted on that turn. The real axis is the work. The imaginary axis is everything else.</p>
+    <div class="go">
+      <button id="enter">Turn off the line →</button>
+      <button class="ghost" id="skip">Just show me the CV</button>
+    </div>
+  </div>
+</div>
+
+<div id="viewport" aria-label="The complex plane of HT Şahin. Drag to pan, scroll to zoom.">
+  <div id="plane"></div>
+</div>
+
+<header class="hud brand">
+  <h1>HT Şahin <span class="i" style="color:var(--im)">i</span></h1>
+  <p>Engineering manager at IKEA, maker of games and small tools. Curious, engineer, maker, mathematician — in that order.</p>
+  <div class="state"><i id="stateDot"></i><span id="stateText">z · i⁰ — the engineer’s view</span></div>
+</header>
+
+<nav class="hud controls">
+  <button class="btn times" id="times" title="Multiply the plane by i (key: i)" aria-label="Multiply by i: rotate the plane 90 degrees">× <span class="i">i</span></button>
+  <button class="btn" id="listBtn">Plain list</button>
+  <button class="btn" id="themeBtn" aria-label="Toggle theme">◐</button>
+</nav>
+
+<aside class="hud readout" aria-live="polite">
+  <div class="muted">hover a point</div>
+  <div class="z" id="rz">z = 0</div>
+  <div id="rp" class="muted">|z| = 0 · arg z = 0°</div>
+</aside>
+
+<div class="hud zoom">
+  <button class="btn" id="zin" aria-label="Zoom in">+</button>
+  <button class="btn" id="zout" aria-label="Zoom out">−</button>
+  <button class="btn" id="home" aria-label="Back to origin">0</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<aside id="drawer" aria-hidden="true">
+  <button class="btn close" id="closeDrawer" aria-label="Close">✕</button>
+  <div id="drawerBody"></div>
+</aside>
+
+<section id="list" aria-label="Plain list">
+  <div class="wrap" id="listBody"></div>
+</section>
+
+<script>
+/* ---------- data: everything is a complex number a + bi ---------- */
+/* Re = it pays the bills / it ships to production. Im = it keeps me up at 2 AM. */
+const GH='https://github.com/', HD='https://hackdonalds.github.io/', KK='https://kucukkanat.github.io/';
+const P=[
+  {id:'origin',a:0,b:0,t:'HT',k:'origin',hero:true,sub:'Amsterdam · since 2011 on GitHub',
+   d:'Hilmi Tolga Şahin. Everyone calls me HT; the internet calls me kucukkanat (“little wing” in Turkish). I lead engineering teams at IKEA and build small, finished things at night.',
+   l:[['LinkedIn','https://www.linkedin.com/in/htx'],['GitHub',GH+'kucukkanat'],['X','https://x.com/hackdonaldsx']]},
+  {id:'i',a:0,b:1,t:'i',k:'the question',hero:true,sub:'√−1, asked at 2 AM',
+   d:'My father, ex-military and a part-time mad scientist, woke me at 2 AM to ask for the square root of minus one. That question is the root of everything here: maths first, then software. Life is too short for hype-hopping. Build a foundation.'},
+
+  // the real axis: career, left to right in time
+  {a:1,b:0,t:'Ximmio',k:'career',y:'2014–16',sub:'team lead',d:'Led a remote team of nine. First time I learned that writing things down is a leadership tool.'},
+  {a:2,b:0,t:'Emakina',k:'career',y:'2016',sub:'frontend',d:'Agency speed: many clients, many deadlines, many frameworks.'},
+  {a:3,b:0,t:'Franx · ABN AMRO',k:'career',y:'2017–18',sub:'FX platform',d:'Built the trading front-end for a foreign-exchange platform. Numbers that must be right.'},
+  {a:4,b:0,t:'Primephonic',k:'career',y:'2018',sub:'classical streaming',d:'A streaming service for classical music, where the metadata is the hard part.'},
+  {a:5,b:0,t:'PVH',k:'career',y:'2018–23',sub:'Tommy Hilfiger · Calvin Klein',d:'Senior engineer → lead → engineering manager.',
+   li:['Rebuilt the storefront as headless Next.js','Unified both brands on one platform in 20 countries','Onboarding from 2 weeks to 2 days']},
+  {a:6,b:0,t:'ING',k:'career',y:'2021',sub:'micro-frontends, Lit',d:'Lead engineer on micro-frontends with web components.'},
+  {a:7,b:0,t:'VirtualMetric',k:'career',y:'2023–24',sub:'engineering manager',d:'Security telemetry at scale; managing while building.'},
+  {a:8,b:0,t:'IKEA (Ingka)',k:'career',y:'2023–',sub:'engineering manager',d:'Global supply-chain planning platform. Three teams, ten direct reports, a lot of very large numbers.'},
+  {a:9,b:0,t:'Laicalasse · Succefy',k:'career',y:'2025–',sub:'consulting',d:'Laicalasse is my consultancy: sharp systems, stronger teams, zero waste. Partner at Succefy, an AI career platform.',l:[['laicalasse.com','https://laicalasse.com']]},
+
+  // the imaginary axis: pure play
+  {a:0,b:2,t:'Tengwar',k:'tolkien',y:'forever',sub:'glaemscribe · tengwarjs forks',d:'I write in Tolkien’s Elvish script for fun, maintain forks of the transcribers, and built an Obsidian plugin for it. My consultancy is named in Quenya: laica lasse, green leaf.',l:[['Obsidian plugin',GH+'kucukkanat/obsidian-tengwar-plugin']]},
+  {a:0,b:3,t:'js13k entry',k:'game',y:'2018',sub:'a game in 13 kilobytes',d:'My first proper game jam: a tiny engine and a game that fit into 13 KB.',l:[['Source',GH+'kucukkanat/js13k']]},
+  {a:0,b:4,t:'Hearthside',k:'game',y:'2026',sub:'the family Christmas RPG',d:'A co-op tabletop RPG for my two kids, on a 3D browser table. Flick the dice, play on phones over Nostr. I am the game master; a 14 MB on-device model helps.',l:[['Play',HD+'familyrpg/'],['Source',GH+'hackdonalds/familyrpg']]},
+  {a:0,b:5,t:'Tilt Town',k:'game',y:'2026',sub:'painterly city builder',d:'Build a crooked riverside town of leaning houses and watch its people live: they blink, sip coffee, read the paper.',l:[['Play',HD+'tilttown/'],['Source',GH+'hackdonalds/tilttown']]},
+  {a:0,b:6,t:'INKWAKE',k:'game',y:'2026',sub:'issue #1: the unprinted wood',d:'A pulp comic that hasn’t been printed yet. Your crystal sheds ink, not light: wherever it shines, the page gets drawn.',l:[['Play',HD+'inkwake/'],['Source',GH+'hackdonalds/inkwake']]},
+  {a:0,b:7,t:'game0',k:'game',y:'concept',sub:'a sky-island MMORPG',d:'Floating isles, winds, ships and peoples. A world bible first, a game later.',l:[['Handbook',HD+'mmo/'],['Source',GH+'hackdonalds/mmo']]},
+
+  // quadrant I: useful and joyful
+  {a:2,b:1.5,t:'LocalDB',k:'tool',y:'2015',sub:'MongoDB in localStorage · 74★',d:'My oldest hit: a tiny document database for the browser.',l:[['Source',GH+'kucukkanat/LocalDB']]},
+  {a:4.4,b:3,t:'edgewise',k:'tool',y:'2026',sub:'six verbs for on-device AI',d:'Language, vision, speech, embeddings and forecasting models that run where your code runs: WebGPU in the browser, ONNX in Bun.',l:[['Demo',KK+'edgewise/'],['Source',GH+'kucukkanat/edgewise']]},
+  {a:2.2,b:4.2,t:'bots',k:'tool',y:'2026',sub:'plush avatars for AI agents',d:'Fourteen squishy shapes and nine creatures that look around, hop while they work and doze off between tasks.',l:[['Studio',HD+'bots/'],['Source',GH+'hackdonalds/bots']]},
+  {a:3.4,b:5.4,t:'liquid-glass',k:'tool',y:'2026',sub:'real refraction for the web',d:'React components where the edges genuinely bend the light behind them, built on SVG displacement maps.',l:[['Demo',KK+'liquid-glass/'],['Source',GH+'kucukkanat/liquid-glass']]},
+  {a:6.2,b:1.8,t:'bunker',k:'tool',y:'2026',sub:'your own private app cloud',d:'Drop in a folder or describe an app, get a private web app you can share. One Go binary.',l:[['Site',KK+'bunker/'],['Source',GH+'kucukkanat/bunker']]},
+  {a:7.4,b:1.2,t:'beambox',k:'tool',y:'2026',sub:'a microVM for every agent',d:'A desktop app and CLI that give each AI agent its own sandboxed computer.',l:[['Source',GH+'kucukkanat/beambox']]},
+  {a:3.6,b:2.4,t:'speech',k:'tool',y:'2026',sub:'voice cloning in the browser',d:'On-device TTS and streaming STT over WebGPU. No server, no key.',l:[['Demo',KK+'speech/']]},
+  {a:5.4,b:4.2,t:'nostrschool',k:'tool',y:'2026',sub:'an explorable Nostr course',d:'Learn the Nostr protocol by poking at it. I like protocols that nobody owns.',l:[['Source',GH+'kucukkanat/nostrschool']]},
+  {a:6.6,b:3.2,t:'Fast Is Not Enough',k:'writing',y:'2026',sub:'research · talk at ACCELER8IT',d:'What AI really does to team size and delivery time. Spoke about it in Gdańsk, 2026.',l:[['Read','https://fastnotenough.com']]},
+
+  // quadrant II: all joy, no ROI
+  {a:-1.6,b:4.6,t:'Dice roller',k:'game',y:'2026',sub:'Godot',d:'A tiny RPG dice app, mostly an excuse to learn Godot.',l:[['Source',GH+'kucukkanat/dice-roller-godot']]},
+  {a:-3,b:2.2,t:'Our wedding site',k:'personal',y:'2023',sub:'Vue',d:'Of course I built our own wedding website.'},
+  {a:-3.2,b:5.4,t:'motivashell',k:'toy',y:'2026',sub:'“Bad AI!”',d:'A shell that motivates you. Badly. On purpose.',l:[['Source',GH+'kucukkanat/motivashell']]},
+  {a:-1.8,b:1.6,t:'Aviation',k:'personal',y:'always',sub:'ask me about it',d:'I will happily talk about planes for longer than you planned.'},
+
+  // quadrant IV: boring on purpose
+  {a:2,b:-1.6,t:'ALE manifesto',k:'writing',y:'2016',sub:'Accessible · Living · Easy to contribute',d:'Three principles for documentation that people actually use. Outdated docs are worse than none.',l:[['alemanifesto.com','https://alemanifesto.com']]},
+  {a:4,b:-2.4,t:'How to work with me',k:'writing',y:'living',sub:'my user manual',d:'If it’s not documented, it doesn’t exist. Async first, artifacts with URLs, meeting-free Fridays. Ask me anything — literally anything.',l:[['Read',GH+'kucukkanat/kucukkanat/blob/master/howtowork.md']]},
+  {a:6,b:-1.4,t:'Meeting-free Fridays',k:'practice',y:'weekly',sub:'finish, then unwind',d:'One day a week to finish things. It is the most productive habit I have.'},
+
+  // quadrant III: things I subtract
+  {a:-2.4,b:-1.6,t:'Hype-hopping',k:'subtracted',sub:'life is too short',d:'New framework every month? No. Build a foundation.',neg:true},
+  {a:-1.4,b:-3,t:'“Hi.” (and nothing else)',k:'subtracted',sub:'nohello.net',d:'Just ask the question. I promise I’ll answer.',neg:true},
+  {a:-4,b:-2.6,t:'Undocumented decisions',k:'subtracted',sub:'they do not exist',d:'If it isn’t written down with a link, it didn’t happen.',neg:true},
+  {a:-3.2,b:-4.2,t:'80% of the backlog',k:'subtracted',sub:'precision by subtraction',d:'Cutting is the fastest way to ship.',neg:true},
+];
+
+/* ---------- build the plane ---------- */
+const plane=document.getElementById('plane');
+const U=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u'));
+function fmt(a,b){
+  const r=n=>Math.round(n*10)/10;
+  a=r(a);b=r(b);
+  if(b===0) return `${a}`;
+  const bi = Math.abs(b)===1 ? 'i' : `${Math.abs(b)}i`;
+  if(a===0) return (b<0?'−':'')+bi;
+  return `${a<0?'−':''}${Math.abs(a)} ${b<0?'−':'+'} ${bi}`;
+}
+function colorOf(p){ if(p.neg) return 'var(--neg)'; if(p.hero) return 'var(--ink)'; if(p.b===0) return 'var(--re)'; if(p.a===0) return 'var(--im)'; return 'var(--mix)'; }
+
+function build(){
+  const u=U();
+  plane.innerHTML='';
+  const g=document.createElement('div');g.className='grid';plane.appendChild(g);
+  ['x','y'].forEach(c=>{const a=document.createElement('div');a.className='axis '+c;plane.appendChild(a)});
+  // upright layer holds everything that should counter-rotate
+  const add=(html,x,y,cls='')=>{const w=document.createElement('div');w.className='upright '+cls;w.style.left=x+'px';w.style.top=y+'px';w.innerHTML=html;plane.appendChild(w);return w};
+  for(let n=-10;n<=12;n++){ if(n===0) continue;
+    add(`<div class="tick">${n}</div>`,n*u,0);
+    add(`<div class="tick y">${n===1?'i':n===-1?'−i':(n<0?'−':'')+Math.abs(n)+'i'}</div>`,0,-n*u);
+  }
+  add(`<div class="axis-name" style="color:var(--re);transform:translate(0,14px)">Re<small>The real axis. Work that ships, teams that grow, things that pay the bills.</small></div>`,10.2*u,0);
+  add(`<div class="axis-name" style="color:var(--im);transform:translate(14px,-100%)">Im<small>The imaginary axis. Games, Elvish, and whatever kept me up at 2 AM.</small></div>`,0,-8.2*u);
+  add(`<div class="quad"><em>Quadrant I</em>Useful and joyful</div>`,5.2*u,-6.6*u);
+  add(`<div class="quad" style="transform:translateX(-100%)"><em>Quadrant II</em>All joy, no ROI</div>`,-1.2*u,-6.6*u);
+  add(`<div class="quad" style="transform:translateX(-100%)"><em>Quadrant III</em>Things I subtract</div>`,-1.2*u,1.0*u);
+  add(`<div class="quad"><em>Quadrant IV</em>Boring on purpose</div>`,4.6*u,3.4*u);
+
+  vec=document.createElement('div');vec.className='vector';plane.appendChild(vec);
+
+  P.forEach((p,idx)=>{
+    const c=colorOf(p), mix=!p.hero&&!p.neg&&p.a!==0&&p.b!==0;
+    const left = p.a<0 || (p.b===0 && p.a>0 && idx%2===1);
+    const el=add(`<div class="pt ${mix?'mix':''} ${p.hero?'hero':''} ${p.a<0?'left':''}" style="--c:${c}">
+      <div class="dot"></div>
+      <button class="lbl" data-i="${idx}" style="${p.b===0&&!p.hero?(idx%2? 'top:16px':'top:-46px'):''};${p.b===0&&!p.hero?'left:-12px':''}"><b>${p.t}</b><span>${p.hero&&p.id==='i'?'0 + 1i':fmt(p.a,p.b)}${p.y?' · '+p.y:''}</span></button>
+    </div>`,p.a*u,-p.b*u);
+    p.el=el;
+  });
+  applyUpright(false);
+}
+let vec;
+
+/* ---------- view state ---------- */
+let k=0, s=1, px=0, py=0;   // rotation count, scale, pan
+const state=[
+  ['var(--re)','z · i⁰ — the engineer’s view'],
+  ['var(--im)','z · i¹ — now the play is real'],
+  ['var(--neg)','z · i² = −z — everything I subtract faces you'],
+  ['var(--mix)','z · i³ — work, seen from the other side'],
+];
+function apply(anim=true){
+  plane.classList.toggle('anim',anim);
+  plane.style.transform=`translate(${px}px,${py}px) scale(${s}) rotate(${-90*k}deg)`;
+}
+function applyUpright(){ document.querySelectorAll('.upright').forEach(e=>e.style.transform=`rotate(${90*k}deg)`); }
+function center(a,b,anim=true){
+  // put complex point (a,b) at screen center, accounting for rotation
+  const u=U(); const th=-Math.PI/2*k; let x=a*u, y=-b*u;
+  const rx=x*Math.cos(th)-y*Math.sin(th), ry=x*Math.sin(th)+y*Math.cos(th);
+  px=-rx*s; py=-ry*s; apply(anim);
+}
+function centerComplex(){
+  // which complex point sits at the middle of the screen right now
+  const u=U(), th=Math.PI/2*k; const x0=-px/s, y0=-py/s;
+  const x=x0*Math.cos(th)-y0*Math.sin(th), y=x0*Math.sin(th)+y0*Math.cos(th);
+  return [x/u,-y/u];
+}
+function timesI(){
+  const [ca,cb]=centerComplex();
+  k++;
+  // multiplying by i moves the centre point to i·z; follow it so the content stays in view
+    const keep=()=>center(ca,cb,true);
+  if(k===4){ // i^4 = 1: snap back silently after the turn completes
+    applyUpright(); keep();
+    toast('i⁴ = 1. Four turns and you’re home. That’s the whole trick of i.');
+    setTimeout(()=>{k=0;plane.classList.remove('anim');document.querySelectorAll('.upright').forEach(e=>{e.style.transition='none'});applyUpright();apply(false);
+      requestAnimationFrame(()=>document.querySelectorAll('.upright').forEach(e=>e.style.transition=''));},1150);
+  } else {
+    applyUpright(); keep();
+    toast(['','Multiplied by i. The games are on the real line now — they count too.','i² = −1. The things I cut out are facing you. Subtraction is a feature.','i³ = −i. One more turn and we’re back.'][k]);
+  }
+  const st=state[k%4];
+  document.getElementById('stateDot').style.background=st[0];
+  document.getElementById('stateText').textContent=st[1];
+}
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
+
+/* ---------- pointer: pan + zoom ---------- */
+const vp=document.getElementById('viewport');
+let drag=null, moved=false;
+vp.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,px,py};moved=false;vp.setPointerCapture(e.pointerId);vp.classList.add('dragging')});
+vp.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>4)moved=true;px=drag.px+dx;py=drag.py+dy;apply(false)});
+vp.addEventListener('pointerup',e=>{drag=null;vp.classList.remove('dragging');
+  if(!moved){const b=document.elementFromPoint(e.clientX,e.clientY)?.closest('.lbl');if(b)open(+b.dataset.i)}});
+vp.addEventListener('click',e=>{if(e.detail===0){const b=e.target.closest('.lbl');if(b)open(+b.dataset.i)}});
+vp.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX,e.clientY)},{passive:false});
+function zoomAt(f,cx=innerWidth/2,cy=innerHeight/2){
+  const ns=Math.min(2.4,Math.max(.35,s*f)); f=ns/s;
+  const ox=cx-innerWidth/2, oy=cy-innerHeight/2;
+  px=ox-(ox-px)*f; py=oy-(oy-py)*f; s=ns; apply(false);
+}
+document.getElementById('zin').onclick=()=>zoomAt(1.25);
+document.getElementById('zout').onclick=()=>zoomAt(.8);
+document.getElementById('home').onclick=()=>{s=1;center(0,0)};
+document.getElementById('times').onclick=timesI;
+
+/* hover readout + vector from origin */
+vp.addEventListener('pointerover',e=>{const b=e.target.closest('.lbl');if(!b)return;hover(P[+b.dataset.i])});
+vp.addEventListener('focusin',e=>{const b=e.target.closest('.lbl');if(b)hover(P[+b.dataset.i])});
+vp.addEventListener('pointerout',e=>{if(e.target.closest('.lbl'))vec.classList.remove('on')});
+function hover(p){
+  // show coordinates as multiplied by i^k
+  const [a,b]=rot(p.a,p.b,k%4);
+  const r=Math.hypot(p.a,p.b), ang=Math.round(Math.atan2(b,a)*180/Math.PI);
+  document.getElementById('rz').textContent=`z = ${fmt(a,b)}`;
+  document.getElementById('rp').textContent=`|z| = ${r.toFixed(2)} · arg z = ${ang}° · ${p.t}`;
+  const u=U(); vec.style.width=(r*u-10)+'px'; vec.style.transform=`rotate(${-Math.atan2(p.b,p.a)}rad)`; vec.classList.toggle('on',r>0);
+}
+function rot(a,b,n){for(let j=0;j<n;j++){[a,b]=[-b,a]}return[a,b]}
+
+/* ---------- drawer ---------- */
+const drawer=document.getElementById('drawer');
+function open(i){
+  const p=P[i], c=colorOf(p);
+  const r=Math.hypot(p.a,p.b), ang=Math.round(Math.atan2(p.b,p.a)*180/Math.PI);
+  drawer.style.setProperty('--c',c==='var(--ink)'?'var(--re)':c);
+  document.getElementById('drawerBody').innerHTML=`
+    <div class="kind">${p.k}${p.y?' · '+p.y:''}</div>
+    <h2>${p.t}</h2>
+    <div class="zbig">${p.id==='i'?'z = i = √−1':'z = '+fmt(p.a,p.b)}</div>
+    <div class="polar"><div><b>${r.toFixed(2)}</b>|z| · magnitude</div><div><b>${ang}°</b>arg z · how far off the line</div></div>
+    ${p.sub?`<p><b>${p.sub}</b></p>`:''}
+    <p>${p.d||''}</p>
+    ${p.li?`<ul>${p.li.map(x=>`<li>${x}</li>`).join('')}</ul>`:''}
+    ${p.l?`<div class="links">${p.l.map((x,j)=>`<a class="${j===0?'primary':''}" href="${x[1]}" target="_blank" rel="noopener">${x[0]} ↗</a>`).join('')}</div>`:''}`;
+  drawer.classList.add('open');drawer.setAttribute('aria-hidden','false');
+  document.getElementById('closeDrawer').focus({preventScroll:true});
+  // nudge the point into view left of the drawer
+  if(innerWidth>700){ const u=U(); s=Math.max(s,1); center(p.a,p.b); px-=200; apply(true); }
+}
+document.getElementById('closeDrawer').onclick=()=>{drawer.classList.remove('open');drawer.setAttribute('aria-hidden','true')};
+
+/* ---------- list view ---------- */
+function buildList(){
+  const groups=[
+    ['The real axis — career',p=>p.b===0&&!p.hero],
+    ['The imaginary axis — games & Elvish',p=>p.a===0&&!p.hero],
+    ['Quadrant I — useful and joyful',p=>p.a>0&&p.b>0],
+    ['Quadrant II — all joy, no ROI',p=>p.a<0&&p.b>0],
+    ['Quadrant IV — boring on purpose',p=>p.a>0&&p.b<0],
+    ['Quadrant III — things I subtract',p=>p.a<0&&p.b<0],
+  ];
+  document.getElementById('listBody').innerHTML=`<h2>HT Şahin</h2>
+    <p>Engineering manager at IKEA (Ingka) in Amsterdam. Maker of games and small tools. ${P[0].d}</p>
+    <p><a href="https://www.linkedin.com/in/htx">LinkedIn</a> · <a href="${GH}kucukkanat">GitHub</a> · <a href="https://x.com/hackdonaldsx">X</a></p>`+
+    groups.map(([h,f])=>`<h3>${h}</h3>`+P.filter(f).map(p=>`<div class="row"><div class="zc">${fmt(p.a,p.b)}<br>${p.y||''}</div><div><b>${p.t}</b> — ${p.sub||''}<br>${p.d}${p.li?' '+p.li.join('. ')+'.':''} ${(p.l||[]).map(x=>`<a href="${x[1]}">${x[0]}</a>`).join(' · ')}</div></div>`).join('')).join('');
+}
+const list=document.getElementById('list'), listBtn=document.getElementById('listBtn');
+listBtn.onclick=()=>{const o=list.classList.toggle('open');listBtn.textContent=o?'The plane':'Plain list'};
+
+/* ---------- theme ---------- */
+document.getElementById('themeBtn').onclick=()=>{
+  const r=document.documentElement, dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+};
+
+/* ---------- keys ---------- */
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key==='i'||e.key==='I'){timesI()}
+  else if(e.key==='Escape'){document.getElementById('closeDrawer').click();if(list.classList.contains('open'))listBtn.click()}
+  else if(e.key==='+'||e.key==='=')zoomAt(1.2); else if(e.key==='-')zoomAt(1/1.2);
+  else if(e.key.startsWith('Arrow')&&!drawer.classList.contains('open')){const d=60;px+=e.key==='ArrowLeft'?d:e.key==='ArrowRight'?-d:0;py+=e.key==='ArrowUp'?d:e.key==='ArrowDown'?-d:0;apply(true)}
+});
+
+/* ---------- intro ---------- */
+const intro=document.getElementById('intro');
+function enter(list=false){intro.classList.add('gone');try{sessionStorage.setItem('ht-intro','1')}catch(e){}
+  s=.82; center(0,0,false); setTimeout(()=>{center(3.2,2.4,true)},150); if(list&&!document.getElementById('list').classList.contains('open'))listBtn.click()}
+document.getElementById('enter').onclick=()=>enter(false);
+document.getElementById('skip').onclick=()=>enter(true);
+
+build(); buildList(); center(3.2,2.4,false);
+try{ if(sessionStorage.getItem('ht-intro')) intro.classList.add('gone') }catch(e){}
+addEventListener('resize',()=>{build();apply(false)});
+</script>
+</body>
+</html>

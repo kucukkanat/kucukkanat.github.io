@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F3EEE6;--ink:#1E1A17;--ink2:#6B6157;--card:#FFFDF9;--line:rgba(30,26,23,.12);--accent:#E2552B}
+@media (prefers-color-scheme:dark){:root{--bg:#16141A;--ink:#F1EADF;--ink2:#A69C92;--card:#211E26;--line:rgba(241,234,223,.12);--accent:#FF7A4D}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Bricolage Grotesque",system-ui,sans-serif}
+header{max-width:1200px;margin:0 auto;padding:40px 16px 8px}
+h1{font-size:clamp(32px,5vw,52px);line-height:1;margin:0 0 10px;letter-spacing:-.02em}
+header p{color:var(--ink2);max-width:680px;margin:0}
+main{max-width:1200px;margin:0 auto;padding:24px 16px 80px;display:grid;gap:28px}
+article{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:grid;grid-template-columns:1.6fr 1fr}
+article img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.txt{padding:24px 26px}
+.letter{font:600 12px "IBM Plex Mono",monospace;color:var(--accent);letter-spacing:.12em}
+h2{margin:6px 0 8px;font-size:28px;line-height:1.05;letter-spacing:-.01em}
+.idea{margin:0 0 14px}
+h3{font:600 11px "IBM Plex Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);margin:16px 0 6px}
+ul{margin:0;padding-left:18px}
+li{margin:3px 0}
+.flag{margin-top:14px;font-size:14px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--accent) 12%,transparent)}
+dialog{border:0;padding:0;background:none;max-width:96vw}
+dialog::backdrop{background:rgba(0,0,0,.85)}
+dialog img{max-width:96vw;max-height:92vh;display:block;border-radius:8px}
+@media (max-width:820px){article{grid-template-columns:1fr}}
+
+.round{max-width:1200px;margin:0 auto;padding:8px 16px 0}
+.round h2.r{font-size:clamp(26px,3.6vw,38px);margin:24px 0 4px;letter-spacing:-.02em}
+.round p.r{color:var(--ink2);margin:0 0 8px;max-width:700px}
+.concept{max-width:1200px;margin:0 auto 34px;padding:0 16px;display:grid;grid-template-columns:1fr 2fr;gap:18px;align-items:start}
+.concept .head{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px}
+.concept .hero{margin:0}
+.concept figure img{width:100%;display:block;border-radius:14px;cursor:zoom-in}
+.concept figcaption{font:12px "IBM Plex Mono",monospace;color:var(--ink2);margin-top:6px}
+.concept .views{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.concept .views figure{margin:0}
+.divider{max-width:1200px;margin:20px auto 0;padding:0 16px;border-top:1px solid var(--line)}
+@media (max-width:820px){.concept{grid-template-columns:1fr}.concept .views{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Cartridge library — 3D scene options</h1>
+  <p>Four directions for the 3D homepage. Each has the same four collectibles: cartridges (projects), books and notebooks (writing), memory cards (career save files) and the orange KANAT·1 handheld. Click an image to see it full size.</p>
+</header>
+<div class="round"><h2 class="r">Round 2 — the study meets the sky</h2><p class="r">Four new directions that mix A’s 2 AM study with B’s floating world. Each has an overview plus three views of a visitor interacting with it.</p></div>
+<section class="concept">
+  <div class="head"><div class="letter">OPTION E</div><h2>The Observatory Study</h2><p class="idea">The 2 AM study moved to the top of a stone observatory tower above the clouds. Night sky, maths, and floating islands outside.</p>
+  <ul><li>The 2 AM question gets its own room: telescope, star charts, geometric sketches.</li><li>Floating islands out of the arched windows bring in the game world.</li><li>The card cabinet of drawers is a natural home for the career save cards.</li></ul></div>
+  <figure class="hero"><img src="round2/e-observatory-0-overview.png" alt="The Observatory Study overview"><figcaption>Overview — the landing view</figcaption></figure>
+  <div class="views"><figure><img src="round2/e-observatory-1-browse.png" alt="The Observatory Study: Browsing: a cartridge pulls out with an info panel"><figcaption>Browsing: a cartridge pulls out with an info panel</figcaption></figure><figure><img src="round2/e-observatory-2-play.png" alt="The Observatory Study: Playing: cartridge in, the game runs on the handheld"><figcaption>Playing: cartridge in, the game runs on the handheld</figcaption></figure><figure><img src="round2/e-observatory-3-read.png" alt="The Observatory Study: Reading & career: open book, save cards as a timeline"><figcaption>Reading & career: open book, save cards as a timeline</figcaption></figure></div>
+</section>
+<section class="concept">
+  <div class="head"><div class="letter">OPTION F</div><h2>The Airship Cabin</h2><p class="idea">The captain's cabin of a sky airship. The career is a voyage; islands drift past the windows as you scroll.</p>
+  <ul><li>Career as a voyage: the sky map on the chart table, and islands drift past as you scroll.</li><li>Ties in your love of aviation.</li><li>The memory-card rack on the wall reads like a ship’s logbook.</li></ul></div>
+  <figure class="hero"><img src="round2/f-airship-0-overview.png" alt="The Airship Cabin overview"><figcaption>Overview — the landing view</figcaption></figure>
+  <div class="views"><figure><img src="round2/f-airship-1-browse.png" alt="The Airship Cabin: Browsing: a cartridge pulls out with an info panel"><figcaption>Browsing: a cartridge pulls out with an info panel</figcaption></figure><figure><img src="round2/f-airship-2-play.png" alt="The Airship Cabin: Playing: cartridge in, the game runs on the handheld"><figcaption>Playing: cartridge in, the game runs on the handheld</figcaption></figure><figure><img src="round2/f-airship-3-read.png" alt="The Airship Cabin: Reading & career: open book, save cards as a timeline"><figcaption>Reading & career: open book, save cards as a timeline</figcaption></figure></div>
+</section>
+<section class="concept">
+  <div class="head"><div class="letter">OPTION G</div><h2>The Treehouse Workshop</h2><p class="idea">A lantern-lit treehouse on a floating island at dusk. Each platform is a section, joined by rope bridges.</p>
+  <ul><li>The most explorable: each platform is a section, joined by rope bridges.</li><li>The most “game world”; very close to game0 and Tilt Town.</li><li>Heaviest to build and to make work on phones.</li></ul></div>
+  <figure class="hero"><img src="round2/g-treehouse-0-overview.png" alt="The Treehouse Workshop overview"><figcaption>Overview — the landing view</figcaption></figure>
+  <div class="views"><figure><img src="round2/g-treehouse-1-browse.png" alt="The Treehouse Workshop: Browsing: a cartridge pulls out with an info panel"><figcaption>Browsing: a cartridge pulls out with an info panel</figcaption></figure><figure><img src="round2/g-treehouse-2-play.png" alt="The Treehouse Workshop: Playing: cartridge in, the game runs on the handheld"><figcaption>Playing: cartridge in, the game runs on the handheld</figcaption></figure><figure><img src="round2/g-treehouse-3-read.png" alt="The Treehouse Workshop: Reading & career: open book, save cards as a timeline"><figcaption>Reading & career: open book, save cards as a timeline</figcaption></figure></div>
+</section>
+<section class="concept">
+  <div class="head"><div class="letter">OPTION H</div><h2>The Pocket World</h2><p class="idea">The night study, but on the desk sits a glass dome holding a tiny floating island. Click it and you dive into the imaginary world.</p>
+  <ul><li>Option A almost as-is, plus a glass dome with a tiny floating island on the desk.</li><li>Real study = the professional you; the island in the dome = the imaginary side. Click it to dive in.</li><li>Easiest of the four to build; pairs naturally with the Imaginary Axis idea.</li></ul></div>
+  <figure class="hero"><img src="round2/h-pocket-world-0-overview.png" alt="The Pocket World overview"><figcaption>Overview — the landing view</figcaption></figure>
+  <div class="views"><figure><img src="round2/h-pocket-world-1-browse.png" alt="The Pocket World: Browsing: a cartridge pulls out with an info panel"><figcaption>Browsing: a cartridge pulls out with an info panel</figcaption></figure><figure><img src="round2/h-pocket-world-2-play.png" alt="The Pocket World: Playing: cartridge in, the game runs on the handheld"><figcaption>Playing: cartridge in, the game runs on the handheld</figcaption></figure><figure><img src="round2/h-pocket-world-3-read.png" alt="The Pocket World: Reading & career: open book, save cards as a timeline"><figcaption>Reading & career: open book, save cards as a timeline</figcaption></figure></div>
+</section>
+<div class="divider"></div><div class="round"><h2 class="r">Round 1</h2></div>
+<main>
+  <article>
+    <img src="a-night-study.png" alt="A lamp-lit study at night with a three-tier wooden shelf of cartridges, books and memory cards, an orange handheld on the desk">
+    <div class="txt">
+      <div class="letter">OPTION A</div>
+      <h2>The Night Study</h2>
+      <p class="idea">The 2 AM room. One big wall shelf is the whole site, and the camera slides along it.</p>
+      <h3>How it works in 3D</h3>
+      <ul><li>Each shelf tier is one section: cartridges on top, writing in the middle, career cards in the tray</li><li>Hover pulls an object forward; click brings it to the desk under the lamp</li><li>Inserting a cartridge into the handheld plays the project on its screen</li></ul>
+      <h3>Strengths</h3>
+      <ul><li>Simplest to build and to read; works well on phones as a vertical scroll</li><li>Most personal: the √−1 night, the d20, graph-paper sketches</li><li>The handheld is landscape and looks the most original</li></ul>
+    </div>
+  </article>
+  <article>
+    <img src="b-sky-island.png" alt="A floating island with a cut-away library tower, cartridges, books and memory card pedestals, an airship and a waterfall">
+    <div class="txt">
+      <div class="letter">OPTION B</div>
+      <h2>The Sky-Island Library</h2>
+      <p class="idea">A floating island with a crooked tower; each floor holds one kind of collectible.</p>
+      <h3>How it works in 3D</h3>
+      <ul><li>Orbit the island; click a floor to fly the camera inside</li><li>Arcade on the ground floor, reading nook in the middle, save-card vault on top</li><li>The airship could carry the contact links</li></ul>
+      <h3>Strengths</h3>
+      <ul><li>Ties straight into game0 and Tilt Town’s world</li><li>The most “game maker” of the four</li></ul>
+      <div class="flag">⚠ The handheld here is portrait and close to a famous existing console. We’d redesign it to match A’s landscape shape.</div>
+    </div>
+  </article>
+  <article>
+    <img src="c-toybox-diorama.png" alt="A miniature isometric cut-away game and book shop with spinner racks of cartridges, a bookcase, a glass counter of memory cards and a sleeping cat">
+    <div class="txt">
+      <div class="letter">OPTION C</div>
+      <h2>The Toybox Diorama</h2>
+      <p class="idea">A tiny secondhand game-and-book shop you can spin in your hand.</p>
+      <h3>How it works in 3D</h3>
+      <ul><li>Drag to turn the diorama; it’s small enough to fit one screen</li><li>Spinner rack = games, crates = tools, bookcase = writing, glass counter = career cards</li><li>The bell rings for contact; the cat is an easter egg</li></ul>
+      <h3>Strengths</h3>
+      <ul><li>Brightest and friendliest; a strong design statement</li><li>Lightest 3D scene, so the fastest to load</li></ul>
+    </div>
+  </article>
+  <article>
+    <img src="d-curio-gallery.png" alt="A dark museum gallery with spotlit glass cases holding a cartridge, notebooks, memory cards, an orange handheld and a row of cartridges">
+    <div class="txt">
+      <div class="letter">OPTION D</div>
+      <h2>The Curio Gallery</h2>
+      <p class="idea">A quiet design-museum hall where every object is an exhibit.</p>
+      <h3>How it works in 3D</h3>
+      <ul><li>Walk the curved row of cases; each case is a section</li><li>Click a case: the glass lifts and the object turns on its plinth</li><li>The blank plaques become the text panels</li></ul>
+      <h3>Strengths</h3>
+      <ul><li>Most refined and “senior”; flatters the work</li><li>Strong lighting does a lot with few objects</li></ul>
+      <div class="flag">⚠ Same as B: the handheld is portrait and too close to a real console; we’d swap in our own shape.</div>
+    </div>
+  </article>
+</main>
+<dialog id="zoom"><img alt=""></dialog>
+<script>
+const d=document.getElementById('zoom'),zi=d.querySelector('img');
+document.querySelectorAll('article img, .concept img').forEach(i=>i.onclick=()=>{zi.src=i.src;zi.alt=i.alt;d.showModal()});
+d.onclick=()=>d.close();
+</script>
+</body>
+</html>

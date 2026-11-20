@@ -1,0 +1,34 @@
+{
+  "name": "kucukkanat-com",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "content": "bun scripts/build-content.ts",
+    "notes": "PLAIN_OUT=public bun scripts/build-notes.ts",
+    "dev": "bun run content && bun run notes && PLAIN_OUT=public bun scripts/build-plain.ts && vite",
+    "build": "bun run content && tsc --noEmit && vite build && bun scripts/build-notes.ts && bun scripts/build-plain.ts",
+    "preview": "vite preview",
+    "blender": "/Applications/Blender.app/Contents/MacOS/Blender --background --python blender/build.py && bun scripts/compress-glb.ts",
+    "labels": "bun scripts/gen-labels.ts",
+    "portrait": "bun scripts/gen-portrait.ts",
+    "lan": "bun run content && bun run notes && PLAIN_OUT=public bun scripts/build-plain.ts && portless kucukkanat --lan vite",
+    "lan:proxy": "portless proxy start --lan --unprivileged"
+  },
+  "dependencies": {
+    "nostr-tools": "^2.26.1",
+    "three": "^0.187.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
+    "@types/three": "^0.187.0",
+    "bun-types": "^1.4.5",
+    "marked": "^18.2.1",
+    "marked-footnote": "^1.4.0",
+    "pagefind": "^1.6.0",
+    "portless": "0.18.1",
+    "sharp": "^0.35.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

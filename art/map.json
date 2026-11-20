@@ -1,0 +1,8 @@
+{
+  "out": "art/textures",
+  "aspect": "3:2",
+  "style": "One single unique illustration, not a repeating pattern, not tileable. Hand-painted, cosy indie-game style matching a warm airship-cabin scene. Seen from directly above, flat, evenly lit, filling the whole image edge to edge, no border, no table, no objects around it.",
+  "jobs": [
+    { "id": "sky_map", "prompt": "An old sky-sailing chart on cream parchment: about a dozen small floating islands of varied shapes spread across the chart, drawn in ink with soft green and ochre watercolour, swirling wind currents as curly ink lines, soft blue watercolour cloud banks, faint grid lines, exactly one compass rose in the bottom-left corner, a few tiny cloud doodles. Keep a clear meandering open band of plain parchment running from the left edge to the right edge through the middle, where a route will be drawn later. Absolutely no letters, words or numbers." }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "shared": "A single wide 16:9 concept render for an interactive 3D personal website built in three.js. Stylised real-time 3D look: soft global illumination, gentle ambient occlusion, slightly chunky low-poly forms with bevelled edges, hand-painted textures, warm and inviting, like a cosy indie game. The scene must clearly contain four kinds of collectible object that the visitor can pick up: (1) chunky plastic game cartridges in many colours with small illustrated labels, standing upright side by side like books; (2) hardcover books and small stitched notebooks; (3) small square memory cards with gold contact strips, like save-game cards; (4) an original orange handheld game console with a dark screen, a cross-shaped d-pad and three square cream buttons (not resembling any real product). No readable text, no letters, no logos, no brand names anywhere. No people.",
+  "options": [
+    {
+      "id": "a-night-study",
+      "name": "The Night Study",
+      "idea": "A lamp-lit maker's study at 2 AM. One big wooden wall shelf is the whole site; camera dollies along it.",
+      "prompt": "Setting: a cosy maker's study at 2 AM, seen straight on. One large wooden wall shelf with three tiers fills the frame: the top tier holds the row of colourful game cartridges, the middle tier holds hardcover books and notebooks, the bottom tier holds an open wooden tray of memory cards like a card index. A desk in the foreground with the orange handheld console, a twenty-sided die, a mug, scattered graph-paper sketches. A brass desk lamp casts a warm pool of light; a tall window behind shows a deep blue night sky with stars and a crescent moon. Palette: honey wood, warm amber light, deep navy shadows, pops of saturated cartridge colours."
+    },
+    {
+      "id": "b-sky-island",
+      "name": "The Sky-Island Library",
+      "idea": "A small floating island in the clouds with a crooked library tower; each floor holds one kind of object.",
+      "prompt": "Setting: a small floating rock island drifting above soft clouds at golden hour, seen from a three-quarter isometric angle. On it stands a crooked, slightly leaning three-storey library tower with a red tiled roof and a cutaway front wall so the interior floors are visible: the ground floor is a cartridge arcade with shelves of colourful game cartridges, the first floor is a book-lined reading nook with notebooks on a desk, the top floor is a small vault with memory cards glowing on pedestals. The orange handheld console sits on a bench outside next to a little waterfall spilling off the island edge. A tiny airship with a cloth sail floats nearby. Palette: peach and lavender sky, mossy greens, terracotta, sunlit cream."
+    },
+    {
+      "id": "c-toybox-diorama",
+      "name": "The Toybox Diorama",
+      "idea": "A tiny isometric cutaway room, like a toy you hold in your palm. Bright, tactile, clay-like.",
+      "prompt": "Setting: a miniature isometric cutaway room floating on a plain soft pastel background, like a handmade diorama or a tiny tabletop toy. The room is a little secondhand game-and-book shop: wooden crates and spinner racks full of colourful game cartridges, a short bookcase of fat hardcover books and notebooks, a glass counter displaying memory cards in neat rows, and the orange handheld console resting on the counter beside a small cash bell. A cat sleeps on a rug. Materials look like soft matte clay and painted wood, rounded and tactile. Bright daylight from a window, crisp soft shadows. Palette: cream walls, mint, coral, butter yellow, cobalt accents."
+    },
+    {
+      "id": "d-curio-gallery",
+      "name": "The Curio Gallery",
+      "idea": "A quiet, dark museum hall. Every object sits in its own glass vitrine under a spotlight, like an artefact.",
+      "prompt": "Setting: a quiet, elegant museum gallery at night with deep charcoal walls and a polished dark floor reflecting light. A curving row of glass vitrines on slim pedestals, each lit by a narrow warm spotlight from above. The vitrines hold, in order: a single game cartridge floating at a slight angle, a stack of notebooks with one lying open, a fanned arrangement of memory cards on velvet, and in the centre, larger than the rest, the orange handheld console on a turning plinth. Thin brass rails and small blank plaques. Soft volumetric light beams, a few dust motes, refined and minimal like a design museum. Palette: charcoal, brass, warm white spotlights, the console's orange as the only strong colour."
+    }
+  ]
+}

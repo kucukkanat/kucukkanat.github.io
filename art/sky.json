@@ -1,0 +1,9 @@
+{
+  "out": "art/sky",
+  "aspect": "16:9",
+  "style": "A wide painted sky backdrop for a stylised 3D game, seen through the stern windows of an airship cruising high above the clouds. Hand-painted cosy indie-game style matching a warm storybook airship world: soft brush strokes, smooth gradients, rich but gentle colours, no photographic detail. Composition: a vast soft sea of rolling cumulus clouds stretching to a distant flat horizon placed about 40% up from the bottom of the image; open sky fills the upper 60%. The view is empty: absolutely no floating islands, no rocks, no land, no ships, no airships, no balloons, no birds, no buildings, no window frames, no people. No text, letters, numbers, signatures or logos. Fill the entire frame edge to edge, no border.",
+  "jobs": [
+    { "id": "sunset", "prompt": "Golden-hour sunset: the sun sits low just above the horizon, slightly right of centre, a soft glowing disc with a warm halo. Sky graded from soft lavender and dusty violet at the top through rose and peach to bright gold near the sun. The cloud sea below is lit peach, apricot and gold on its tops with lavender and mauve shadows, a few wispy high clouds catching pink light." },
+    { "id": "night", "prompt": "Calm night: deep indigo and midnight-blue sky full of small soft stars and a faint milky band, a thin glowing crescent moon high in the sky slightly right of centre. The cloud sea below is lit silvery blue on its tops by the moonlight with deep indigo shadows, a faint cool glow along the horizon. Peaceful and dark but readable." }
+  ]
+}

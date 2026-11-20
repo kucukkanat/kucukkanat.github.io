@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.DS_Store
+*.blend1
+blender/out/tmp/
+public/plain/
+public/notes.json
+public/notes/
+public/writing/
+public/pagefind/
+public/sitemap.xml
+public/robots.txt
+public/CNAME
+art/portrait-source.*
+
+# raw lightmap bakes (25 MB each, rewritten by every `bun run blender`)
+blender/out/*.npy

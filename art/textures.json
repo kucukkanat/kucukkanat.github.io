@@ -1,0 +1,16 @@
+{
+  "out": "art/textures",
+  "aspect": "1:1",
+  "style": "A seamless, tileable, flat top-down texture swatch for a stylised low-poly 3D game, hand-painted look like a cosy indie game: soft brush strokes, gentle colour variation, no harsh photographic detail, no strong directional lighting or shadows baked in (evenly lit, albedo only), no perspective, no objects, no text, no borders. The pattern must tile seamlessly at all four edges and fill the entire square.",
+  "jobs": [
+    { "id": "wood_planks", "prompt": "Warm honey-brown wooden floor planks running vertically, about six planks across, subtle grain, a few small knots and nail dots, slightly worn." },
+    { "id": "mahogany", "prompt": "Rich reddish-brown polished mahogany wood grain for furniture, smooth long grain running vertically, warm and saturated." },
+    { "id": "dark_wood", "prompt": "Dark weathered ship timber for beams and wall panels, deep chocolate brown, long vertical grain, subtle wear." },
+    { "id": "brass", "prompt": "Aged brushed brass metal surface, warm golden yellow with soft darker patina patches and faint brush strokes." },
+    { "id": "parchment", "prompt": "Old cream parchment paper, warm beige with soft mottled stains and faint fibres." },
+    { "id": "leather", "prompt": "Worn brown leather, soft pebbled texture with lighter scuffs, warm saddle brown." },
+    { "id": "cloth", "prompt": "Woven deep red canvas cloth, visible coarse weave, slightly faded." },
+    { "id": "rope", "prompt": "Coiled hemp rope fibres seen up close, twisted strands running diagonally, warm straw colour." },
+    { "id": "sky_map", "aspect": "3:2", "prompt": "NOT tileable for this one: a hand-drawn old sky-sailing chart on parchment seen from directly above, filling the whole image: ink outlines of many small floating islands of different shapes scattered across, swirling wind currents drawn as curly lines, a compass rose in one corner, faint grid lines, soft watercolour washes of blue and green, a few cloud doodles. Leave a clear meandering empty corridor from the left edge to the right edge for a route to be drawn later. Absolutely no letters, words or numbers." }
+  ]
+}

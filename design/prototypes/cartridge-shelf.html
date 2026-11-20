@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HT Şahin — Cartridge Library</title>
+<meta name="description" content="Hilmi Tolga (HT) Şahin, kucukkanat: engineering manager and maker. Every project is a cartridge on the shelf, and most of them play right here.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Silkscreen&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wall:#E9E0D0; --wall-2:#DCCFB9; --ink:#1E1A17; --ink-2:#6B6157; --lamp:rgba(255,214,150,.0);
+  --wood:#B07B4F; --wood-hi:#C99467; --wood-lo:#7E5233; --brass:#B8923F;
+  --panel:#FBF7EF; --panel-line:rgba(30,26,23,.12); --accent:#E2552B; --ok:#2F8F5B;
+  --screen:#0C1210; --screen-ink:#9CF2B8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --wall:#1B1820; --wall-2:#141218; --ink:#F1EADF; --ink-2:#A69C92; --lamp:rgba(255,190,110,.16);
+    --wood:#6E4A31; --wood-hi:#8B6142; --wood-lo:#43291A; --brass:#C9A24E;
+    --panel:#221E26; --panel-line:rgba(241,234,223,.12); --accent:#FF7A4D; --ok:#5CCB8C;
+  }
+}
+:root[data-theme="dark"]{
+  --wall:#1B1820; --wall-2:#141218; --ink:#F1EADF; --ink-2:#A69C92; --lamp:rgba(255,190,110,.16);
+  --wood:#6E4A31; --wood-hi:#8B6142; --wood-lo:#43291A; --brass:#C9A24E;
+  --panel:#221E26; --panel-line:rgba(241,234,223,.12); --accent:#FF7A4D; --ok:#5CCB8C;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif;
+  background:radial-gradient(1200px 600px at 70% -10%,var(--lamp),transparent 70%),
+    repeating-linear-gradient(90deg,transparent 0 118px,rgba(0,0,0,.025) 118px 120px),var(--wall);
+  min-height:100vh;overflow-x:hidden}
+a{color:inherit}
+button{font:inherit;color:inherit}
+.pix{font-family:Silkscreen,monospace;letter-spacing:.02em}
+.mono{font-family:"IBM Plex Mono",monospace}
+
+/* ---------- top ---------- */
+.top{display:flex;justify-content:space-between;align-items:center;padding:18px clamp(16px,4vw,48px)}
+.logo{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px;text-decoration:none}
+.logo svg{width:34px;height:34px}
+.top nav{display:flex;gap:8px}
+.chip{border:1px solid var(--panel-line);background:var(--panel);padding:8px 14px;border-radius:999px;cursor:pointer;text-decoration:none;font-size:14px}
+.chip:hover{border-color:var(--ink-2)}
+.chip:focus-visible,.item:focus-visible,.btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* ---------- hero with console ---------- */
+.hero{display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(24px,5vw,72px);align-items:center;padding:24px clamp(16px,4vw,48px) 40px;max-width:1280px;margin:0 auto}
+.hero h1{font-size:clamp(40px,6.4vw,84px);line-height:.95;margin:0 0 18px;letter-spacing:-.03em;font-weight:800}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{font-size:clamp(17px,1.6vw,20px);max-width:520px;margin:0 0 14px;color:var(--ink-2)}
+.hero p b{color:var(--ink)}
+.stats{display:flex;gap:28px;margin-top:22px;flex-wrap:wrap}
+.stats div{font-size:13px;color:var(--ink-2)}
+.stats b{display:block;font-family:Silkscreen,monospace;font-size:26px;color:var(--ink);font-weight:400}
+
+.console{position:relative;justify-self:center;width:min(440px,100%);aspect-ratio:1.18;background:linear-gradient(160deg,#F07A4F,#C9482A);border-radius:40px 40px 64px 64px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.7),inset 0 -6px 0 rgba(0,0,0,.12),0 30px 60px rgba(0,0,0,.28);padding:7% 8% 0}
+.console .slot{position:absolute;top:-10px;left:22%;right:22%;height:22px;background:#2a2623;border-radius:8px 8px 4px 4px;box-shadow:inset 0 3px 6px rgba(0,0,0,.6)}
+.console .slot .in{position:absolute;left:8%;right:8%;bottom:6px;height:0;background:var(--c,#555);border-radius:6px 6px 0 0;transition:height .5s cubic-bezier(.5,0,.3,1)}
+.console.loaded .slot .in{height:58px}
+.console .bezel{background:#1F1D26;border-radius:22px;padding:7% 8% 9%;position:relative}
+.console .bezel::after{content:"KANAT·1  ◆  COLOUR";position:absolute;left:8%;bottom:3%;font:9px Silkscreen,monospace;color:#8E8AA0;letter-spacing:.12em}
+.console .led{position:absolute;left:3%;top:40%;width:8px;height:8px;border-radius:50%;background:#e33;box-shadow:0 0 8px #f44;animation:led 3s infinite}
+@keyframes led{0%,100%{opacity:1}50%{opacity:.5}}
+.console .scr{aspect-ratio:1.45;background:var(--screen);border-radius:6px;color:var(--screen-ink);font:11px/1.5 Silkscreen,monospace;padding:9% 8%;overflow:hidden;position:relative;
+  background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
+.console .scr .blink{animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.console .pad{display:flex;justify-content:space-between;align-items:center;padding:7% 6% 0}
+.dpad{width:76px;height:76px;position:relative}
+.dpad::before,.dpad::after{content:"";position:absolute;background:#1F1D26;border-radius:5px;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.dpad::before{left:26px;top:0;width:24px;height:76px}.dpad::after{top:26px;left:0;height:24px;width:76px}
+.ab{display:flex;gap:10px}
+.ab span{width:38px;height:38px;border-radius:12px;background:#F6E7C8;box-shadow:0 4px 0 #9b6a2c;display:grid;place-items:center;font:10px Silkscreen,monospace;color:#7a4a1a}
+
+/* ---------- shelves ---------- */
+main{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px) 80px}
+.shelf{margin-top:56px}
+.shelf-head{display:flex;align-items:baseline;gap:16px;margin-bottom:10px}
+.plate{font:12px Silkscreen,monospace;letter-spacing:.1em;padding:6px 12px;background:linear-gradient(180deg,#E6C67A,var(--brass));color:#3A2A0C;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 4px rgba(0,0,0,.2)}
+.shelf-head p{margin:0;color:var(--ink-2);font-size:15px}
+.row{display:flex;gap:22px;align-items:flex-end;padding:22px 18px 0;overflow-x:auto;scroll-snap-type:x proximity;min-height:240px;scrollbar-width:thin}
+.board{height:22px;border-radius:3px;background:linear-gradient(180deg,var(--wood-hi),var(--wood) 40%,var(--wood-lo));box-shadow:0 14px 24px rgba(0,0,0,.25);position:relative}
+.board::after{content:"";position:absolute;left:0;right:0;top:100%;height:16px;background:linear-gradient(180deg,rgba(0,0,0,.18),transparent)}
+
+.item{flex:none;scroll-snap-align:start;border:0;background:none;padding:0;cursor:pointer;transition:transform .25s cubic-bezier(.3,1.4,.5,1);text-align:left}
+.item:hover,.item:focus-visible{transform:translateY(-14px) rotate(-1.5deg)}
+
+/* cartridge */
+.cart{width:150px;height:184px;position:relative;border-radius:10px 10px 6px 6px;background:var(--plastic);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset -6px 0 0 rgba(0,0,0,.10),inset 0 -4px 0 rgba(0,0,0,.18),0 6px 0 rgba(0,0,0,.22);padding:26px 12px 14px}
+.cart.clear{background:linear-gradient(160deg,color-mix(in srgb,var(--plastic) 70%,transparent),color-mix(in srgb,var(--plastic) 92%,#000 8%));backdrop-filter:blur(2px)}
+.cart::before{content:"";position:absolute;top:7px;left:14px;right:14px;height:10px;background:repeating-linear-gradient(90deg,rgba(0,0,0,.18) 0 3px,transparent 3px 7px);border-radius:3px}
+.cart::after{content:"";position:absolute;bottom:0;left:50%;width:46px;height:8px;transform:translateX(-50%);background:rgba(0,0,0,.22);border-radius:4px 4px 0 0}
+.label{background:#fff;border-radius:5px;overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.2)}
+.label svg{display:block;width:100%;height:auto}
+.label .name{background:#111;color:#fff;font:10px/1 Silkscreen,monospace;padding:6px 7px 6px;display:flex;justify-content:space-between;gap:6px;letter-spacing:.03em}
+.label .name span{color:#9a9;white-space:nowrap}
+.tag{position:absolute;right:-6px;top:-10px;font:9px Silkscreen,monospace;background:var(--ok);color:#fff;padding:4px 6px;border-radius:4px;transform:rotate(6deg);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.tag.src{background:#555}
+
+/* memory cards (career) */
+.save{width:132px;height:160px;border-radius:8px;background:var(--plastic);position:relative;padding:14px 12px;color:#fff;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.25),inset 0 -4px 0 rgba(0,0,0,.2),0 6px 0 rgba(0,0,0,.22)}
+.save::after{content:"";position:absolute;left:12px;right:12px;bottom:10px;height:14px;background:repeating-linear-gradient(90deg,#E6C67A 0 8px,transparent 8px 12px);border-radius:2px;opacity:.85}
+.save .slot{font:10px Silkscreen,monospace;opacity:.75}
+.save b{display:block;font-size:17px;line-height:1.1;margin:8px 0 6px;font-weight:700}
+.save .time{font:10px "IBM Plex Mono",monospace;opacity:.85}
+.save .now{position:absolute;right:8px;top:10px;font:9px Silkscreen,monospace;background:#fff;color:#111;padding:2px 5px;border-radius:3px}
+
+/* manuals (writing) */
+.book{width:128px;height:178px;border-radius:3px 8px 8px 3px;background:var(--plastic);position:relative;padding:16px 14px 14px 20px;color:#fff;
+  box-shadow:inset 6px 0 0 rgba(0,0,0,.18),inset 8px 0 0 rgba(255,255,255,.15),0 6px 0 rgba(0,0,0,.22)}
+.book small{font:9px Silkscreen,monospace;opacity:.8;letter-spacing:.08em}
+.book b{display:block;font-size:19px;line-height:1.05;margin-top:10px;font-weight:800}
+.book i{position:absolute;bottom:14px;left:20px;font:10px "IBM Plex Mono",monospace;font-style:normal;opacity:.85}
+
+/* ---------- case modal ---------- */
+dialog{border:0;padding:0;background:none;max-width:none;max-height:none;width:100%;height:100%;color:var(--ink)}
+dialog::backdrop{background:rgba(10,8,12,.62);backdrop-filter:blur(3px)}
+.case{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;
+  display:grid;grid-template-columns:300px 1fr;background:var(--panel);border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.45);animation:pop .35s cubic-bezier(.3,1.3,.5,1)}
+@keyframes pop{from{transform:translate(-50%,-46%) scale(.92);opacity:0}}
+.case .cover{background:var(--plastic);padding:28px;display:flex;flex-direction:column;gap:14px;justify-content:center;border-radius:18px 0 0 18px;position:relative}
+.case .cover .label{transform:rotate(-2deg);box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.case .cover .blow{align-self:center;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+.puff{position:absolute;left:50%;top:20%;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.7);pointer-events:none;animation:puff .9s ease-out forwards}
+@keyframes puff{to{transform:translate(var(--dx),var(--dy)) scale(4);opacity:0}}
+.case .back{padding:30px 32px;position:relative}
+.case .back .x{position:absolute;right:14px;top:14px}
+.case .kind{font:11px Silkscreen,monospace;color:var(--accent);letter-spacing:.08em}
+.case h2{font-size:40px;line-height:1;margin:8px 0 10px;letter-spacing:-.02em}
+.case .meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.case .meta span{font:12px "IBM Plex Mono",monospace;border:1px solid var(--panel-line);padding:4px 8px;border-radius:6px;color:var(--ink-2)}
+.case p{margin:0 0 12px}
+.case h3{font:11px Silkscreen,monospace;letter-spacing:.1em;color:var(--ink-2);margin:18px 0 8px}
+.case ul{margin:0;padding-left:18px}
+.case .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.btn{border:1px solid var(--panel-line);background:transparent;padding:11px 16px;border-radius:12px;cursor:pointer;text-decoration:none;font-weight:600;font-size:15px}
+.btn.start{background:var(--accent);border-color:var(--accent);color:#fff;font-family:Silkscreen,monospace;font-weight:400;letter-spacing:.04em}
+.btn:hover{transform:translateY(-1px)}
+
+/* ---------- play screen ---------- */
+.tv{position:absolute;inset:16px;background:#2B2A33;border-radius:22px;padding:14px 14px 44px;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.tv .glass{flex:1;background:#000;border-radius:10px;overflow:hidden;position:relative}
+.tv iframe{width:100%;height:100%;border:0;display:block;opacity:0;transition:opacity .6s}
+.tv iframe.on{opacity:1}
+.boot{position:absolute;inset:0;display:grid;place-items:center;background:var(--screen);color:var(--screen-ink);font-family:Silkscreen,monospace;text-align:center;transition:opacity .5s}
+.boot.off{opacity:0;pointer-events:none}
+.boot svg{width:84px;height:84px;margin:0 auto 14px;display:block}
+.boot svg path{stroke-dasharray:400;stroke-dashoffset:400;animation:draw 1.2s .1s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.boot .w{font-size:22px;letter-spacing:.12em;opacity:0;animation:fadein .4s 1.2s forwards}
+.boot .s{font-size:11px;opacity:0;animation:fadein .4s 1.6s forwards;margin-top:6px;color:#5fa}
+@keyframes fadein{to{opacity:1}}
+.tv .bar{position:absolute;left:18px;right:14px;bottom:8px;display:flex;justify-content:space-between;align-items:center;color:#9a96ad;font:11px Silkscreen,monospace}
+.tv .bar .r{display:flex;gap:8px}
+.tv .bar button,.tv .bar a{background:#3a3944;border:0;color:#ddd;border-radius:8px;padding:6px 10px;cursor:pointer;font:11px Silkscreen,monospace;text-decoration:none}
+.tv .bar .led{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3f3;box-shadow:0 0 6px #3f3;margin-right:6px}
+
+/* ---------- list ---------- */
+#plain{display:none;max-width:820px;margin:0 auto;padding:10px 24px 80px}
+body.plain #plain{display:block} body.plain main,body.plain .hero{display:none}
+#plain h2{font:11px Silkscreen,monospace;letter-spacing:.1em;margin:36px 0 10px;color:var(--ink-2)}
+#plain .r{padding:10px 0;border-top:1px solid var(--panel-line)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:var(--ink);color:var(--wall);padding:10px 16px;border-radius:12px;font-size:14px;transition:all .3s;z-index:50;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+footer{text-align:center;color:var(--ink-2);font-size:13px;padding:0 16px 40px}
+footer .pix{font-size:11px}
+
+@media (max-width:820px){
+  .hero{grid-template-columns:1fr}
+  .console{max-width:360px}
+  .case{grid-template-columns:1fr}
+  .case .cover{border-radius:18px 18px 0 0;padding:22px 60px}
+  .tv{inset:0;border-radius:0}
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" href="#" aria-label="kucukkanat home">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="var(--accent)"/><path d="M8 26c6-1 10-5 13-12 1 6-1 11-6 14 6 0 11-4 14-10 0 8-7 14-15 14-3 0-5-2-6-6z" fill="#fff"/></svg>
+    kucukkanat
+  </a>
+  <nav>
+    <button class="chip" id="plainBtn">Plain list</button>
+    <button class="chip" id="themeBtn" aria-label="Toggle theme">◐</button>
+  </nav>
+</header>
+
+<section class="hero">
+  <div>
+    <h1>Hi, I’m HT.<br>Pick a <em>cartridge.</em></h1>
+    <p><b>Hilmi Tolga Şahin</b> — engineering manager at IKEA by day, maker of games and small tools by night. <i>Küçük kanat</i> means “little wing”.</p>
+    <p>Everything I’ve made is on this shelf. Most of it plays right here in your browser. My career is in the save files.</p>
+    <div class="stats">
+      <div><b id="nCarts">00</b>cartridges</div>
+      <div><b id="nPlay">00</b>playable now</div>
+      <div><b>2011</b>first commit</div>
+    </div>
+  </div>
+  <div class="console" id="console" aria-hidden="true">
+    <div class="slot"><div class="in"></div></div>
+    <div class="bezel"><span class="led"></span>
+      <div class="scr" id="scr">
+        HT ŞAHIN<br>LV 12 · ENGINEER-MANAGER<br>CLASS: CURIOUS<br><br>
+        STR  ▮▮▮▮▮▯ LEADERSHIP<br>INT  ▮▮▮▮▮▮ MATHS<br>DEX  ▮▮▮▮▯▯ THREE.JS<br>WIS  ▮▮▮▮▮▯ DOCS<br><br>
+        <span class="blink">▶ INSERT CARTRIDGE</span>
+      </div>
+    </div>
+    <div class="pad"><div class="dpad"></div><div class="ab"><span>◆</span><span>▲</span><span>●</span></div></div>
+  </div>
+</section>
+
+<main id="shelves"></main>
+<section id="plain"></section>
+
+<footer>
+  <p>Hand-made in Amsterdam. No tracking. Source on <a href="https://github.com/kucukkanat">GitHub</a>.</p>
+  <p class="pix">tip: ← → to browse · enter to open · try blowing on a cartridge</p>
+</footer>
+
+<dialog id="caseDlg" aria-label="Cartridge details"></dialog>
+<dialog id="tvDlg" aria-label="Now playing"></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const GH='https://github.com/', HD='https://hackdonalds.github.io/', KK='https://kucukkanat.github.io/';
+
+/* ---------- label art: tiny original SVG scenes ---------- */
+const ART={
+  tilttown:`<rect width="120" height="90" fill="#F6C98B"/><circle cx="96" cy="20" r="9" fill="#FFE9B8"/><path d="M0 70 Q60 60 120 72 V90 H0Z" fill="#4E8FB0"/>
+    ${[[10,40,-6],[32,34,4],[54,38,-3],[76,30,6],[96,40,-4]].map(([x,y,r])=>`<g transform="rotate(${r} ${x+9} 70)"><rect x="${x}" y="${y}" width="18" height="${70-y}" fill="#F3E6D2" stroke="#3a2a20" stroke-width="1.2"/><path d="M${x-2} ${y} L${x+9} ${y-10} L${x+20} ${y}Z" fill="#C8492F" stroke="#3a2a20" stroke-width="1.2"/><rect x="${x+5}" y="${y+8}" width="5" height="6" fill="#FFC94A"/><rect x="${x+11}" y="${y+18}" width="4" height="6" fill="#FFC94A"/></g>`).join('')}`,
+  inkwake:`<rect width="120" height="90" fill="#F3EBD9"/><path d="M60 14c18 0 34 12 32 30-1 10 6 14 4 22-3 9-14 4-18 12-5 8-16 9-24 2-7-6-20-2-25-12-4-9 4-14 2-24C28 28 42 14 60 14z" fill="#141414"/><path d="M84 66v14M40 70v10M64 78v8" stroke="#141414" stroke-width="3" stroke-linecap="round"/><path d="M60 30l10 14-10 14-10-14z" fill="#36D1C4" stroke="#fff" stroke-width="2"/><g stroke="#888" stroke-dasharray="3 3" fill="none"><path d="M8 80h24M96 20h18"/></g>`,
+  hearthside:`<rect width="120" height="90" fill="#1D2645"/><g fill="#fff">${[[12,12],[40,8],[100,14],[80,24],[20,30]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.3"/>`).join('')}</g><path d="M30 76 L44 46 L52 60 L60 36 L70 60 L78 48 L90 76Z" fill="#F08A2C"/><path d="M44 76 L54 56 L60 66 L68 54 L76 76Z" fill="#FFD25A"/><rect x="22" y="74" width="76" height="6" rx="3" fill="#6B4630"/><g transform="rotate(-12 96 62)"><rect x="86" y="52" width="20" height="20" rx="4" fill="#fff"/><circle cx="91" cy="57" r="2" fill="#C8492F"/><circle cx="96" cy="62" r="2" fill="#C8492F"/><circle cx="101" cy="67" r="2" fill="#C8492F"/></g>`,
+  game0:`<rect width="120" height="90" fill="#9FD3E8"/><ellipse cx="88" cy="18" rx="16" ry="5" fill="#fff" opacity=".8"/><path d="M28 44 Q60 36 92 44 L74 70 L60 82 L46 70Z" fill="#8A6A4F"/><path d="M26 44 Q60 32 94 44 Q60 50 26 44Z" fill="#6BAA55"/><path d="M50 40 l6-14 6 14z" fill="#3E7A3A"/><path d="M64 38 l4-10 4 10z" fill="#3E7A3A"/><path d="M12 24 q8 4 16 0 l-2 4 h-12z" fill="#5a3d2a"/><path d="M20 24 v-10 l7 8z" fill="#fff"/>`,
+  js13k:`<rect width="120" height="90" fill="#111"/>${(()=>{const g=['1.111..1..1','11...1.1.1.','.1..11..11.','.1...1.1.1.','111111..1.1'];let s='';g.forEach((r,y)=>[...r].forEach((c,x)=>{if(c==='1')s+=`<rect x="${16+x*8}" y="${22+y*8}" width="7" height="7" fill="#FFD23F"/>`}));return s})()}<rect x="16" y="70" width="88" height="4" fill="#E2552B"/>`,
+  dice:`<rect width="120" height="90" fill="#3B2A5A"/><path d="M60 12 L92 30 L92 62 L60 80 L28 62 L28 30Z" fill="#E9E1FF" stroke="#20163A" stroke-width="2"/><path d="M60 12 L76 46 L44 46Z M44 46 L28 30 M76 46 L92 30 M44 46 L60 80 L76 46 M44 46 L28 62 M76 46 L92 62" fill="none" stroke="#20163A" stroke-width="2"/><text x="60" y="41" font-family="Silkscreen" font-size="11" text-anchor="middle" fill="#20163A">20</text>`,
+  bots:`<rect width="120" height="90" fill="#FFE1EA"/><path d="M60 18c22 0 32 14 32 32s-12 28-32 28-32-10-32-28 10-32 32-32z" fill="#7C6CF2"/><ellipse cx="50" cy="48" rx="6" ry="8" fill="#fff"/><ellipse cx="72" cy="48" rx="6" ry="8" fill="#fff"/><circle cx="52" cy="50" r="3" fill="#1b1340"/><circle cx="74" cy="50" r="3" fill="#1b1340"/><path d="M54 62q7 5 14 0" stroke="#1b1340" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M60 18v-8" stroke="#7C6CF2" stroke-width="3"/><circle cx="60" cy="9" r="4" fill="#FFB547"/>`,
+  edgewise:`<rect width="120" height="90" fill="#0F2B2A"/><rect x="38" y="22" width="44" height="44" rx="6" fill="#163F3D" stroke="#5FE0B7" stroke-width="2"/>${[0,1,2,3].map(i=>`<path d="M${44+i*10} 22v-8M${44+i*10} 66v8M38 ${28+i*10}h-8M82 ${28+i*10}h8" stroke="#5FE0B7" stroke-width="2"/>`).join('')}<g fill="#5FE0B7"><circle cx="50" cy="36" r="3"/><circle cx="70" cy="36" r="3"/><circle cx="60" cy="52" r="3"/></g><path d="M50 36L60 52L70 36M50 36H70" stroke="#5FE0B7" stroke-width="1.2" fill="none"/>`,
+  glass:`<rect width="120" height="90" fill="#fff"/>${[...Array(12)].map((_,i)=>`<rect x="${i*10}" y="0" width="5" height="90" fill="#2F6BFF" opacity=".75"/>`).join('')}<clipPath id="lens"><circle cx="60" cy="45" r="26"/></clipPath><g clip-path="url(#lens)"><rect width="120" height="90" fill="#fff"/>${[...Array(12)].map((_,i)=>`<rect x="${i*10+2}" y="0" width="7" height="90" fill="#FF5DA2" opacity=".8" transform="skewX(-12)"/>`).join('')}</g><circle cx="60" cy="45" r="26" fill="none" stroke="#fff" stroke-width="3"/><path d="M42 32a24 24 0 0 1 16-10" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/>`,
+  speech:`<rect width="120" height="90" fill="#FFF1C9"/>${[...Array(17)].map((_,i)=>{const h=8+Math.abs(Math.sin(i*1.3))*44;return `<rect x="${12+i*6}" y="${45-h/2}" width="4" height="${h}" rx="2" fill="#E2552B"/>`}).join('')}`,
+  tiny:`<rect width="120" height="90" fill="#E8F3FF"/><rect x="22" y="16" width="56" height="22" rx="10" fill="#2F6BFF"/><rect x="42" y="44" width="56" height="22" rx="10" fill="#fff" stroke="#2F6BFF" stroke-width="2"/><g fill="#fff"><circle cx="38" cy="27" r="2.5"/><circle cx="48" cy="27" r="2.5"/><circle cx="58" cy="27" r="2.5"/></g><path d="M56 55h28" stroke="#2F6BFF" stroke-width="3" stroke-linecap="round"/>`,
+  router:`<rect width="120" height="90" fill="#1E1E2A"/><circle cx="60" cy="16" r="6" fill="#FFD23F"/><path d="M60 22 L34 46 M60 22 L86 46 M34 46 L22 70 M34 46 L46 70 M86 46 L98 70" stroke="#8C8CFF" stroke-width="2.5"/><g fill="#8C8CFF"><circle cx="34" cy="46" r="5"/><circle cx="86" cy="46" r="5"/><circle cx="22" cy="72" r="4"/><circle cx="98" cy="72" r="4"/></g><circle cx="46" cy="72" r="6" fill="#5FE0B7"/>`,
+  bunker:`<rect width="120" height="90" fill="#CFE3D4"/><path d="M14 72 Q60 18 106 72Z" fill="#5C7A62"/><path d="M14 72 Q60 30 106 72" fill="none" stroke="#3F5A45" stroke-width="3"/><rect x="50" y="52" width="20" height="20" rx="3" fill="#2B2A33"/><circle cx="66" cy="62" r="1.8" fill="#FFD23F"/><rect x="0" y="72" width="120" height="18" fill="#3F5A45"/>`,
+  beambox:`<rect width="120" height="90" fill="#151321"/><path d="M60 8 L84 70 H36Z" fill="#7B61FF" opacity=".35"/><path d="M36 50 L60 38 L84 50 L60 62Z" fill="#B7A8FF"/><path d="M36 50 V72 L60 84 V62Z" fill="#7B61FF"/><path d="M84 50 V72 L60 84 V62Z" fill="#5A43D6"/>`,
+  localdb:`<rect width="120" height="90" fill="#E9F6E8"/>${[0,1,2].map(i=>`<g transform="translate(0 ${i*16})"><ellipse cx="60" cy="${24}" rx="26" ry="8" fill="#3E9B57"/><rect x="34" y="24" width="52" height="12" fill="#3E9B57"/><ellipse cx="60" cy="36" rx="26" ry="8" fill="#2F7C44"/><ellipse cx="60" cy="24" rx="26" ry="8" fill="#5CC27A"/></g>`).join('')}`,
+};
+function label(it){return `<div class="label"><svg viewBox="0 0 120 90" aria-hidden="true">${ART[it.art]}</svg><div class="name">${it.t}<span>${it.y}</span></div></div>`}
+
+/* ---------- the shelves ---------- */
+const SHELVES=[
+ {id:'games',name:'GAMES',note:'Things I make for fun, for my kids, and for game jams.',type:'cart',items:[
+  {t:'TILT TOWN',y:'2026',art:'tilttown',c:'#C8492F',kind:'City builder · 1P',url:HD+'tilttown/',src:GH+'hackdonalds/tilttown',
+   d:'A painterly city builder. Build a crooked, Porto-style riverside town of leaning houses and red roofs, then watch its people live in it.',
+   f:['Procedural houses, plazas, river and waterfall on a floating island','Citizens with daily plans, an economy and requests','Faces that blink, smile and talk up close; kids kick a ball','Day/night, weather, seasons, a regatta'],tech:'three.js · Vite'},
+  {t:'INKWAKE',y:'2026',art:'inkwake',c:'#1E1E1E',kind:'Action · 1P · 5–8 min',url:HD+'inkwake/',src:GH+'hackdonalds/inkwake',
+   d:'Issue #1: The Unprinted Wood. A pulp comic that hasn’t been printed yet. Your crystal sheds ink, not light: wherever it shines, the page gets drawn.',
+   f:['Four heroes: Inker, Penciller, Letterer, Colorist','Boss: THE EDITOR, who erases the arena','Touch, keyboard and gamepad','Installable PWA, plays offline'],tech:'TypeScript · Canvas'},
+  {t:'HEARTHSIDE',y:'2026',art:'hearthside',c:'#2B3A6B',kind:'Co-op tabletop · 2–8P · ages 6+',url:HD+'familyrpg/',src:GH+'hackdonalds/familyrpg',
+   d:'Sleighbound: recover the stolen Star before midnight. A family RPG I built so I could be game master for my two kids at Christmas.',
+   f:['A 3D virtual table — flick physical dice','Play on your own phones over encrypted Nostr relays','13 rigged characters, 48 props built in Blender','A tiny on-device model helps the Guide'],tech:'three.js · cannon-es · Nostr · Bun'},
+  {t:'GAME0',y:'TBA',art:'game0',c:'#3C7EA6',kind:'MMORPG · concept stage',url:HD+'mmo/',src:GH+'hackdonalds/mmo',
+   d:'A sky-island MMORPG, still a world bible: peoples, creatures, winds, ships and isles. The handbook has playable mini demos.',
+   f:['World concept as one file per entry','Concept art with prompt sidecars','Playable Three.js demos','Godot client: not started (yet)'],tech:'Astro · Three.js · Godot'},
+  {t:'JS13K',y:'2018',art:'js13k',c:'#333',kind:'Game jam · 13 KB',src:GH+'kucukkanat/js13k',
+   d:'My first game jam: a tiny engine and a game that had to fit in 13 kilobytes. Still proud of the constraint.',f:['Hand-rolled scene graph','Generated docs'],tech:'JavaScript'},
+  {t:'DICE',y:'2026',art:'dice',c:'#5A3F8A',kind:'Utility · Godot',src:GH+'kucukkanat/dice-roller-godot',
+   d:'A simple RPG dice roller, and my excuse to learn Godot.',f:['d4 to d20','GDScript'],tech:'Godot'},
+ ]},
+ {id:'tools',name:'TOYS & TOOLS',note:'Small, finished things. Lots of AI that runs on your own device.',type:'cart',items:[
+  {t:'BOTS',y:'2026',art:'bots',c:'#E8A6BC',clear:true,kind:'Library · avatars',url:HD+'bots/',src:GH+'hackdonalds/bots',
+   d:'Animated plush avatars for AI agents. Fourteen shapes and nine creatures that look around, hop while they work and doze off between tasks.',f:['Tell it what your agent does: bot.observe()','WebGL in workers, 2D fallback','No build step, no dependencies'],tech:'WebGL · Web Components'},
+  {t:'LIQUID GLASS',y:'2026',art:'glass',c:'#9DB8FF',clear:true,kind:'Library · React',url:KK+'liquid-glass/',src:GH+'kucukkanat/liquid-glass',
+   d:'Real optical refraction for the web. The edges genuinely bend the light behind them.',f:['SVG displacement maps','React components'],tech:'TypeScript · SVG'},
+  {t:'EDGEWISE',y:'2026',art:'edgewise',c:'#1F5C57',kind:'SDK · on-device AI',url:KK+'edgewise/',src:GH+'kucukkanat/edgewise',
+   d:'Six verbs for on-device AI. Language, vision, speech, judging, embedding, images and forecasting, running where your code runs.',f:['WebGPU / WebAssembly in the browser','ONNX Runtime in Bun or Node'],tech:'TypeScript · ONNX · WebGPU'},
+  {t:'SPEECH',y:'2026',art:'speech',c:'#D9A73A',kind:'SDK · voice',url:KK+'speech/',src:GH+'kucukkanat/speech',
+   d:'Voice-cloning text-to-speech and streaming speech-to-text, entirely in the browser.',f:['WebGPU','No server, no API key'],tech:'TypeScript · WebGPU'},
+  {t:'TINY',y:'2026',art:'tiny',c:'#5A86E8',kind:'App · PWA chat',url:KK+'tiny/',src:GH+'kucukkanat/tiny',
+   d:'A minimal PWA chat client for any OpenAI-compatible endpoint, with a plugin system.',f:['Plugins ship in the build or install at runtime'],tech:'HTML · PWA'},
+  {t:'ROUTERS',y:'2026',art:'router',c:'#3A3A5A',kind:'Demo · zero-shot',url:KK+'lfm-encoders/',src:GH+'kucukkanat/lfm-encoders',
+   d:'Zero-shot prompt routing, policy linting and masked-diffusion text, 100% in the browser.',f:['LFM2.5 encoder · transformers.js','Live demo, no key'],tech:'ONNX · transformers.js'},
+  {t:'BUNKER',y:'2026',art:'bunker',c:'#4E6B53',kind:'Server · Go',url:KK+'bunker/',src:GH+'kucukkanat/bunker',
+   d:'Your own private app cloud. Drop in a folder or describe an app; get a private web app you can share with a link.',f:['Every app sandboxed','One Go binary, one data folder','SSO when you want it'],tech:'Go'},
+  {t:'BEAMBOX',y:'2026',art:'beambox',c:'#3B2F7A',kind:'Desktop · agents',src:GH+'kucukkanat/beambox',
+   d:'Give every AI agent its own microVM sandbox, with a desktop of its own.',f:['Tauri 2 app + CLI','MCP server inside each sandbox'],tech:'Rust · Tauri'},
+  {t:'LOCALDB',y:'2015',art:'localdb',c:'#3E8A52',kind:'Library · 74★',src:GH+'kucukkanat/LocalDB',
+   d:'MongoDB in the browser, on top of localStorage. My oldest hit.',f:['Mongo-style queries','Zero dependencies'],tech:'JavaScript'},
+ ]},
+ {id:'manuals',name:'MANUALS',note:'Writing and talks. Read the manual — I wrote one for myself too.',type:'book',items:[
+  {t:'Fast Is Not Enough',y:'2026',c:'#C8492F',kind:'Research · talk',url:'https://fastnotenough.com',d:'What AI really does to team size and delivery time. I spoke about it at ACCELER8IT in Gdańsk, 2026.'},
+  {t:'ALE Manifesto',y:'2016',c:'#B8923F',kind:'Principles',url:'https://alemanifesto.com',d:'Accessible, Living, Easy to contribute: three principles for documentation people actually use.'},
+  {t:'How to work with me',y:'living',c:'#2B3A6B',kind:'User manual',url:GH+'kucukkanat/kucukkanat/blob/master/howtowork.md',d:'If it’s not documented, it doesn’t exist. Async first, links over hellos, meeting-free Fridays. Ask me anything — literally anything.'},
+  {t:'Nostr School',y:'2026',c:'#6B3FA0',kind:'Interactive course',url:GH+'kucukkanat/nostrschool',d:'An explorable course on the Nostr protocol. I like protocols nobody owns.'},
+ ]},
+ {id:'saves',name:'SAVE FILES',note:'The career. Each slot is a job; the achievements are what I’d want you to remember.',type:'save',items:[
+  {t:'IKEA',y:'2023–',slot:'08',time:'IN PROGRESS',c:'#0B5AA8',now:true,kind:'Engineering manager · Ingka',d:'Global supply-chain planning platform.',f:['3 teams, 10 direct reports','Spoke at ACCELER8IT 2026']},
+  {t:'Laicalasse',y:'2025–',slot:'07',time:'SIDE QUEST',c:'#4E6B3A',kind:'Consultancy · Succefy partner',url:'https://laicalasse.com',d:'Sharp systems, stronger teams, zero waste. Laica lasse is Quenya for “green leaf”.',f:['Partner at Succefy, an AI career platform']},
+  {t:'VirtualMetric',y:'2023–24',slot:'06',time:'1y',c:'#333',kind:'Engineering manager',d:'Engineering management at a telemetry company.',f:[]},
+  {t:'PVH',y:'2018–23',slot:'05',time:'4y 11m',c:'#8A1C2B',kind:'Senior SE → Lead → EM',d:'Tommy Hilfiger and Calvin Klein.',f:['Headless Next.js storefront rebuild','Unified both brands in 20 countries','Onboarding: 2 weeks → 2 days']},
+  {t:'ING',y:'2021',slot:'04',time:'BONUS LEVEL',c:'#E36414',kind:'Lead software engineer',d:'Micro-frontends with Lit.',f:[]},
+  {t:'Primephonic',y:'2018',slot:'03',time:'<1y',c:'#2B2A33',kind:'Software engineer',d:'Classical music streaming.',f:[]},
+  {t:'Franx · ABN AMRO',y:'2017–18',slot:'02',time:'1y',c:'#0F7C6E',kind:'Software engineer',d:'A foreign-exchange platform front-end.',f:[]},
+  {t:'Ximmio',y:'2014–16',slot:'01',time:'2y',c:'#6E4A9E',kind:'Team lead',d:'Led a remote team of nine.',f:[]},
+ ]},
+];
+
+/* ---------- render ---------- */
+const main=document.getElementById('shelves');
+let all=[];
+SHELVES.forEach(sh=>{
+  const sec=document.createElement('section');sec.className='shelf';sec.id=sh.id;
+  sec.innerHTML=`<div class="shelf-head"><span class="plate">${sh.name}</span><p>${sh.note}</p></div><div class="row" role="list"></div><div class="board"></div>`;
+  const row=sec.querySelector('.row');
+  sh.items.forEach(it=>{
+    it.type=sh.type; const b=document.createElement('button');b.className='item';b.setAttribute('role','listitem');b.style.setProperty('--plastic',it.c);
+    b.setAttribute('aria-label',`${it.t}, ${it.kind}`);
+    if(sh.type==='cart') b.innerHTML=`<div class="cart ${it.clear?'clear':''}">${it.url?'<span class="tag">PLAY</span>':'<span class="tag src">SRC</span>'}${label(it)}</div>`;
+    if(sh.type==='book') b.innerHTML=`<div class="book"><small>MANUAL · ${it.y}</small><b>${it.t}</b><i>${it.kind}</i></div>`;
+    if(sh.type==='save') b.innerHTML=`<div class="save">${it.now?'<span class="now">NOW</span>':''}<div class="slot">SLOT ${it.slot}</div><b>${it.t}</b><div class="time">${it.y}<br>${it.time}</div></div>`;
+    b.onclick=()=>openCase(it);
+    b.ondblclick=e=>{e.preventDefault();};
+    row.appendChild(b); all.push(it);
+  });
+  main.appendChild(sec);
+});
+const carts=all.filter(x=>x.type==='cart');
+document.getElementById('nCarts').textContent=String(carts.length).padStart(2,'0');
+document.getElementById('nPlay').textContent=String(carts.filter(x=>x.url).length).padStart(2,'0');
+
+/* ---------- case ---------- */
+const caseDlg=document.getElementById('caseDlg');
+function openCase(it){
+  const cover = it.type==='cart' ? label(it) :
+    it.type==='book' ? `<div class="book" style="--plastic:${it.c};width:180px;height:250px;align-self:center;transform:rotate(-3deg)"><small>MANUAL · ${it.y}</small><b style="font-size:26px">${it.t}</b><i>${it.kind}</i></div>` :
+    `<div class="save" style="--plastic:${it.c};width:170px;height:210px;align-self:center;transform:rotate(-3deg);background:color-mix(in srgb,${it.c} 80%,#000)"><div class="slot">SLOT ${it.slot}</div><b style="font-size:24px">${it.t}</b><div class="time">${it.y}<br>${it.time}</div></div>`;
+  const primary = it.type==='cart' && it.url ? `<button class="btn start" id="startBtn">▶ PRESS START</button>` :
+    it.url ? `<a class="btn start" href="${it.url}" target="_blank" rel="noopener">${it.type==='book'?'READ ↗':'VISIT ↗'}</a>` : '';
+  caseDlg.innerHTML=`<div class="case" style="--plastic:${it.c}">
+    <div class="cover">${cover}${it.type==='cart'?'<button class="blow" id="blow">💨 blow on it</button>':''}</div>
+    <div class="back">
+      <button class="chip x" id="closeCase" aria-label="Close">✕</button>
+      <div class="kind">${it.type==='save'?'SAVE FILE':it.type==='book'?'MANUAL':'CARTRIDGE'} · ${it.y}</div>
+      <h2>${it.t.charAt(0)+it.t.slice(1).toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase())}</h2>
+      <div class="meta"><span>${it.kind}</span>${it.tech?`<span>${it.tech}</span>`:''}${it.time?`<span>${it.time}</span>`:''}</div>
+      <p>${it.d}</p>
+      ${it.f&&it.f.length?`<h3>${it.type==='save'?'ACHIEVEMENTS UNLOCKED':'IN THE BOX'}</h3><ul>${it.f.map(x=>`<li>${x}</li>`).join('')}</ul>`:''}
+      <div class="actions">${primary}${it.src?`<a class="btn" href="${it.src}" target="_blank" rel="noopener">Source ↗</a>`:''}${it.type==='cart'&&it.url?`<a class="btn" href="${it.url}" target="_blank" rel="noopener">New tab ↗</a>`:''}</div>
+    </div></div>`;
+  caseDlg.showModal();
+  caseDlg.querySelector('#closeCase').onclick=()=>caseDlg.close();
+  const sb=caseDlg.querySelector('#startBtn'); if(sb) sb.onclick=()=>start(it);
+  const bl=caseDlg.querySelector('#blow'); if(bl) bl.onclick=()=>blow(bl.parentElement);
+}
+caseDlg.addEventListener('click',e=>{if(e.target===caseDlg)caseDlg.close()});
+function blow(el){
+  for(let i=0;i<10;i++){const p=document.createElement('span');p.className='puff';p.style.setProperty('--dx',(Math.random()*160-80)+'px');p.style.setProperty('--dy',(Math.random()*-90-10)+'px');p.style.animationDelay=(i*25)+'ms';el.appendChild(p);setTimeout(()=>p.remove(),1200)}
+  toast(['Works every time.','*fffffffff*','That’s not how it works. It works though.'][Math.floor(Math.random()*3)]);
+}
+
+/* ---------- play ---------- */
+const tvDlg=document.getElementById('tvDlg'), con=document.getElementById('console');
+let muted=false;
+function chime(){
+  if(muted) return;
+  try{const a=new (window.AudioContext||window.webkitAudioContext)();[523.25,659.25,783.99,1046.5].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(0,a.currentTime+i*.09);g.gain.linearRampToValueAtTime(.06,a.currentTime+i*.09+.01);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+i*.09+.35);o.connect(g).connect(a.destination);o.start(a.currentTime+i*.09);o.stop(a.currentTime+i*.09+.4)})}catch(e){}
+}
+function start(it){
+  caseDlg.close();
+  con.style.setProperty('--c',it.c); con.classList.add('loaded');
+  tvDlg.innerHTML=`<div class="tv">
+    <div class="glass">
+      <div class="boot" id="boot"><div>
+        <svg viewBox="0 0 40 40"><path d="M8 26c6-1 10-5 13-12 1 6-1 11-6 14 6 0 11-4 14-10 0 8-7 14-15 14-3 0-5-2-6-6z" fill="none" stroke="#9CF2B8" stroke-width="1.6"/></svg>
+        <div class="w">KUCUKKANAT</div><div class="s">LOADING ${it.t}…</div></div></div>
+      <iframe id="game" title="${it.t}" allow="fullscreen; gamepad; autoplay; xr-spatial-tracking" allowfullscreen></iframe>
+    </div>
+    <div class="bar"><span><span class="led"></span>KANAT·1 — NOW PLAYING: ${it.t}</span>
+      <span class="r"><button id="mute">${muted?'SOUND OFF':'SOUND ON'}</button><a href="${it.url}" target="_blank" rel="noopener">NEW TAB ↗</a><button id="fs">FULLSCREEN</button><button id="eject">⏏ EJECT</button></span></div>
+  </div>`;
+  tvDlg.showModal(); chime();
+  const fr=tvDlg.querySelector('#game');
+  setTimeout(()=>{fr.src=it.url},700);
+  fr.onload=()=>{if(!fr.src)return;setTimeout(()=>{tvDlg.querySelector('#boot')?.classList.add('off');fr.classList.add('on')},900)};
+  tvDlg.querySelector('#eject').onclick=()=>tvDlg.close();
+  tvDlg.querySelector('#fs').onclick=()=>fr.requestFullscreen?.();
+  tvDlg.querySelector('#mute').onclick=e=>{muted=!muted;e.target.textContent=muted?'SOUND OFF':'SOUND ON'};
+}
+tvDlg.addEventListener('close',()=>{tvDlg.innerHTML='';con.classList.remove('loaded')});
+
+/* ---------- keyboard browsing ---------- */
+addEventListener('keydown',e=>{
+  if(caseDlg.open||tvDlg.open) return;
+  const cur=document.activeElement; if(!cur||!cur.classList.contains('item')){ if(e.key==='ArrowRight'||e.key==='ArrowDown'){document.querySelector('.item').focus();e.preventDefault()} return; }
+  const row=[...cur.parentElement.children], i=row.indexOf(cur);
+  if(e.key==='ArrowRight'&&row[i+1]){row[i+1].focus();e.preventDefault()}
+  if(e.key==='ArrowLeft'&&row[i-1]){row[i-1].focus();e.preventDefault()}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    const rows=[...document.querySelectorAll('.row')], r=rows.indexOf(cur.parentElement)+(e.key==='ArrowDown'?1:-1);
+    if(rows[r]){const c=rows[r].children;(c[Math.min(i,c.length-1)]).focus();e.preventDefault()}
+  }
+});
+
+/* ---------- plain list ---------- */
+document.getElementById('plain').innerHTML=`<h1 style="font-size:40px;margin:0 0 8px">HT Şahin</h1>
+  <p>Engineering manager at IKEA (Ingka), Amsterdam. Maker of games and small tools. <a href="https://www.linkedin.com/in/htx">LinkedIn</a> · <a href="${GH}kucukkanat">GitHub</a> · <a href="https://x.com/hackdonaldsx">X</a></p>`+
+  SHELVES.map(sh=>`<h2>${sh.name}</h2>`+sh.items.map(it=>`<div class="r"><b>${it.t}</b> · ${it.kind} · ${it.y}<br>${it.d} ${(it.f||[]).join('. ')}${it.f&&it.f.length?'.':''} ${it.url?`<a href="${it.url}">Open</a>`:''} ${it.src?`<a href="${it.src}">Source</a>`:''}</div>`).join('')).join('');
+const plainBtn=document.getElementById('plainBtn');
+plainBtn.onclick=()=>{const on=document.body.classList.toggle('plain');plainBtn.textContent=on?'The shelf':'Plain list'};
+
+document.getElementById('themeBtn').onclick=()=>{
+  const r=document.documentElement, dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+};
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2400)}
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+__pycache__/
+*.blend1
+out/shot_*.png
+out/preview_bundle.js

@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "blender": { "command": "python3", "args": ["blender/mcp/server.py"] }
+  }
+}
