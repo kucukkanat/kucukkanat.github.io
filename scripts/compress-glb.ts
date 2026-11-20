@@ -10,6 +10,8 @@ for (const f of ['cabin.glb']) {
   const p = join(dir, f);
   if (readFileSync(p).includes('EXT_meshopt_compression')) { console.log(`${f}: already compressed`); continue; }
   const before = statSync(p).size;
-  await $`bunx gltf-transform meshopt ${p} ${p} --level medium`.quiet();
+  // level high (filters) + explicit quantisation: about 10% smaller over the wire than level medium, visually identical.
+  // 13-bit UVs keep the lightmap atlas (2048 px) accurate to a quarter texel.
+  await $`bunx gltf-transform meshopt ${p} ${p} --level high --quantize-position 14 --quantize-texcoord 13 --quantize-normal 10`.quiet();
   console.log(`${f}: ${(before / 1024).toFixed(0)} KB → ${(statSync(p).size / 1024).toFixed(0)} KB`);
 }

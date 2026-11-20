@@ -171,3 +171,21 @@ Build order:
 Open points: URL shape for Turkish notes (`/writing/tr/<slug>/` or one flat namespace), whether the two existing "notebooks" (user manual, consultancy) become notes or stay as links.
 
 Built (2026-11-20): `scripts/build-notes.ts` (notes, topics, wiki links, backlinks, series, static `/writing/` pages, Pagefind index; `bun run notes` refreshes in dev), `src/writing/` (`types.ts` contract, `reader.ts` Reading Room + topic view, `indexsheet.ts` Ship's Index, `search.ts` Speaking Tube, `shelf.ts` topic volumes, `store.ts`, `router.ts`). Dock: Writing, search. Addresses: `/?note=<slug>`, `/?topic=<id>`, `/?index=1`. The nine notes in `content/notes/` are samples ("Sample note, replace me.") and must be replaced before they go live. Turkish notes share one flat slug namespace; the older stand-alone books moved to the notebook row.
+
+## Performance pass (2026-11-20)
+
+Measured on the built site in headless Chrome on an M4 Pro (so render times are relative, not phone numbers). Transfer sizes are gzip, as GitHub Pages serves them.
+
+| | Before | After |
+|---|---|---|
+| Phone first view (transfer) | ~1.56 MB, plus ~580 KB of night/storm art fetched unasked | ~1.27 MB; night/storm only when used |
+| Desktop first view, return visit | ~1.56 MB | ~1.45 MB |
+| Main script (gzip) | 252 KB | 219 KB (+ chunks: bloom 5, outside 6, search 7, reader 10, loaded when used) |
+| Draw calls, phone / desktop | 191 / 313 | 128 / 250 |
+| Render time per frame, desktop at 2880×1800 | 2.6 ms | 2.1 ms |
+
+What changed: reader, Ship's Index, search, outside view and post-processing are separate chunks; each map island is one merged mesh; `cabin.glb` uses meshopt level high; phones use 1024² lightmaps (`scripts/lightmap-lite.ts`); night and storm art load on first use (the full tier warms them after 6 s); a pixel budget caps very large windows; a quality governor (`main.ts` loop) lowers the pixel ratio and then drops bloom when frames stay above 25 ms.
+
+Debug: `__kkInfo()` (draw calls, triangles, pixel ratio, quality, bloom) and `__kkBench(n)` (average ms per rendered frame) in the console.
+
+Not done: frame rate on a real phone was never measured; the phone galleon is still 1.44 MB on disk (742 KB transferred); three.js itself is most of the main script.

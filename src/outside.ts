@@ -12,17 +12,9 @@ import { FULL } from './tier';
 import { loadGLB } from './scene';
 import { uNight, uStorm } from './lighting';
 
-const KEY = 'kk.intro.v1';
+import { INTRO_KEY as KEY } from './intro-flag';
 const HOLD = (() => { const v = new URLSearchParams(location.search).get('introT'); return v === null || !Number.isFinite(+v) ? null : +v; })();
 const { clamp, lerp } = THREE.MathUtils;
-
-/** Should the opening shot play on this load? (?intro=1 forces it, ?intro=0 and deep links skip it.) */
-export function wantsIntro(params: URLSearchParams, deepLink: boolean): boolean {
-  const q = params.get('intro');
-  if (q === '1') return true;
-  if (q === '0' || !FULL || reducedMotion || deepLink) return false;
-  try { return localStorage.getItem(KEY) !== '1'; } catch { return false; }
-}
 
 export type OutsideMode = 'inside' | 'orbit' | 'helm';
 

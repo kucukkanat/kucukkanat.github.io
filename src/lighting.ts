@@ -3,6 +3,10 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { Cabin } from './scene';
 import { loadTexture } from './scene';
 import { lerp } from './anim';
+import { FULL } from './tier';
+
+/** Phones use the half-resolution bakes (scripts/lightmap-lite.ts). */
+const LM = FULL ? '' : '_1k';
 
 /** Shared night uniform (0 = sunset, 1 = night). */
 export const uNight = { value: 0 };
@@ -45,7 +49,7 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   scene.environmentIntensity = 0.35;
 
   // The night lightmap is not needed for the first view: it streams in after the first frame (loadNight).
-  const lmSunset = await loadTexture('/assets/lightmap_sunset.webp');
+  const lmSunset = await loadTexture(`/assets/lightmap_sunset${LM}.webp`);
   const baked = !!lmSunset && !!cabin;
   const prepLM = (t: THREE.Texture | null) => { if (t) { t.flipY = false; t.channel = 1; t.needsUpdate = true; } return t; };
   prepLM(lmSunset);
@@ -155,7 +159,7 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   setNight(0);
 
   let nightLoad: Promise<void> | null = null;
-  const loadNight = () => nightLoad ??= loadTexture('/assets/lightmap_night.webp').then(t => {
+  const loadNight = () => nightLoad ??= loadTexture(`/assets/lightmap_night${LM}.webp`).then(t => {
     if (!t || !lmSunset) return;
     prepLM(t);
     nightU.lightMapNight.value = t;

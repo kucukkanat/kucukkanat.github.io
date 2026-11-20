@@ -1,8 +1,10 @@
-import { setupFx, setupShafts } from './fx';
-import { Outside, wantsIntro } from './outside';
+import { plainFx, setupShafts, type Fx } from './fx';
+import { FULL } from './tier';
+import type { Outside } from './outside';
+import { wantsIntro } from './intro-flag';
 import { setupPatch } from './patch';
-import { Writing } from './writing/reader';
-import { Search, type SearchItem } from './writing/search';
+import type { Writing } from './writing/reader';
+import type { Search, SearchItem } from './writing/search';
 import { loadNotesIndex, shelveTopics, topicOf, topicItemId } from './writing/shelf';
 import './style.css';
 import * as THREE from 'three';
@@ -102,6 +104,7 @@ async function main() {
   const manager = makeManager(p => setProgress(0.1 + p * 0.8));
   // First view only: content, cabin, collectibles, sunset light + sky. Everything else streams in after the first frame.
   // First visit on the full tier: the galleon for the opening shot loads with the cabin.
+  const fxFull = FULL ? import('./fx-full') : null;
   const introOn = wantsIntro(params, ['view', 'play', 'open', 'storm', 'night', 'item', 'note', 'topic', 'index'].some(k => params.has(k)));
   const [content0, notesIndex, cabinGltf, collGltf, galleonGltf] = await Promise.all([
     loadContent(),
@@ -109,6 +112,7 @@ async function main() {
     loadGLB('/assets/cabin.glb', manager),
     loadGLB('/assets/collectibles.glb', manager),
     introOn ? loadGLB('/assets/galleon.glb', manager) : Promise.resolve(null),
+    introOn ? import('./outside') : null, // warm the chunk so the opening shot can start before the first frame
     fontsReady(),
   ]);
   // the digital garden: one book per topic on the shelf (writing/shelf.ts)
@@ -135,7 +139,9 @@ async function main() {
 
   const rig = new CameraRig(cabin);
   const camera = rig.camera;
-  const fx = setupFx(renderer, scene, camera);
+  // post-processing is its own chunk, fetched by the full tier only (started before the assets, awaited here)
+  let fx: Fx = plainFx(renderer);
+  if (fxFull) { try { fx = (await fxFull).setupFullFx(renderer, scene, camera); } catch { /* stay plain */ } }
   const weather = new Weather(lighting, sky, rig, { announce: t => ui.announce(t) });
   const ship = new ShipMotion();
   const hoverCapable = matchMedia('(hover: hover)').matches;
@@ -150,6 +156,7 @@ async function main() {
   // State
   let goOutside: () => void = () => { /* set once the outside view exists */ };
   let outsideRef: Outside | null = null;
+  let skyGltf: Awaited<ReturnType<typeof loadGLB>> = null;
   let night = false;
   let pulled: Collectible | null = null;
   let lastHover: Collectible | null = null;
@@ -196,14 +203,39 @@ async function main() {
     eggFocus: (id, on) => { if (id === 'tengwar') props.setTengwarLatin(on || tengwarPinned); },
   });
   // Writing: the Reading Room + Ship's Index (writing/reader.ts) and the Speaking Tube search (writing/search.ts)
-  const writing = new Writing(document.body, {
+  // Both are separate chunks, fetched the first time they are needed (or when the address asks for a note).
+  let writingRef: Writing | null = null;
+  let writingP: Promise<Writing> | null = null;
+  const getWriting = () => writingP ??= import('./writing/reader').then(m => (writingRef = new m.Writing(document.body, {
     changed: open => {
       ui.setVisible(!open);
       if (open) { hideHint(); if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
     },
     focusTopic: id => { coll.setHover(id ? coll.byId.get(topicItemId(id)) ?? null : null); },
     announce: t => ui.announce(t),
-  });
+  })));
+  const writing = {
+    get isOpen() { return !!writingRef?.isOpen; },
+    openIndex: (o?: Parameters<Writing['openIndex']>[0]) => getWriting().then(w => w.openIndex(o)),
+    openNote: (slug: string, o?: Parameters<Writing['openNote']>[1]) => getWriting().then(w => w.openNote(slug, o)),
+    openTopic: (id: string, o?: Parameters<Writing['openTopic']>[1]) => getWriting().then(w => w.openTopic(id, o)),
+    close: () => writingRef?.close(),
+    openFromUrl: async () => (['note', 'topic', 'index'].some(k => params.has(k)) ? (await getWriting()).openFromUrl() : false),
+  };
+  /** The note most recently left partly read (same storage the reader writes: kk.read.<slug> = { p, m, at }). */
+  const lastRead = (): { slug: string; title: string } | null => {
+    try {
+      let best: { slug: string; at: number } | null = null;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key?.startsWith('kk.read.')) continue;
+        const v = JSON.parse(localStorage.getItem(key) ?? '{}') as { m?: number; at?: number };
+        if (v.m !== undefined && v.m > 0.03 && v.m < 0.97 && (!best || (v.at ?? 0) > best.at)) best = { slug: key.slice(8), at: v.at ?? 0 };
+      }
+      const n = best && notesIndex?.notes.find(x => x.slug === best!.slug);
+      return n ? { slug: n.slug, title: n.title } : null;
+    } catch { return null; }
+  };
   const searchItems = (): SearchItem[] => {
     const items: SearchItem[] = [];
     const show = (view: ViewName, id: string) => { writing.close(); void goto(view).then(() => { const c = coll.byId.get(id); if (c) select(c); }); };
@@ -226,12 +258,28 @@ async function main() {
     act('plain', 'Plain version', 'The same content as a simple page', ['accessible', 'text', 'html'], () => { location.href = '/plain/'; });
     return items;
   };
-  const search = new Search(document.body, searchItems, {
+  let searchRef: Search | null = null;
+  let searchP: Promise<Search> | null = null;
+  const getSearch = () => searchP ??= import('./writing/search').then(m => (searchRef = new m.Search(document.body, searchItems, {
     pickNote: (slug, q) => { void writing.openNote(slug, { q }); },
     changed: () => { /* the palette swallows keys itself while open */ },
-    lastRead: () => { const r = writing.lastRead(); const n = r && notesIndex?.notes.find(x => x.slug === r.slug); return n ? { slug: n.slug, title: n.title } : null; },
+    lastRead,
     announce: t => ui.announce(t),
-  });
+  })));
+  const search = {
+    get isOpen() { return !!searchRef?.isOpen; },
+    open: (q?: string) => { void getSearch().then(sr => sr.open(q)); },
+  };
+  // until the palette's chunk is loaded it cannot listen for its own shortcuts: `/` and Ctrl/Cmd+K fetch and open it
+  addEventListener('keydown', (e: KeyboardEvent) => {
+    if (searchRef) return;
+    const el = e.target as HTMLElement | null;
+    const typing = !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+    const hit = (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k');
+    if (!hit || play.overlayOn) return;
+    e.preventDefault();
+    search.open();
+  }, true);
   const sheets = new Sheets(ui.root, content, {
     closed: (kind, how) => sheetClosed(kind, how),
     openContact: () => openSheet('contact'),
@@ -531,8 +579,18 @@ async function main() {
 
   // Resize
   const FG_ROPE = ['Rope_fg', 'ROPE_fg_main', 'ROPE_fg_tail', 'SWING_fg_block'];
+  // Pixel ratio: capped per tier, capped again by total pixels (a 4K window at 2x is 4x the work of a laptop screen),
+  // and stepped down by the governor below when frames run long.
+  const baseRatio = Math.min(devicePixelRatio || 1, touch ? 1.5 : 2);
+  let quality = 1;
+  const applyRatio = (w: number, h: number) => {
+    const budget = FULL ? 5.2e6 : 2.2e6; // drawn pixels
+    const capped = Math.min(baseRatio, Math.sqrt(budget / Math.max(1, w * h)));
+    renderer.setPixelRatio(Math.max(0.75, capped * quality));
+  };
   const resize = () => {
     const w = innerWidth, h = innerHeight;
+    applyRatio(w, h);
     renderer.setSize(w, h, false);
     fx.resize(w, h);
     rig.resize(w, h);
@@ -579,6 +637,7 @@ async function main() {
   firstLetter = !seenLetter && !deepLink && !!props.get('letter') || params.get('welcome') === '1';
 
   // Loop
+  let frameMs = 16, slowFor = 0;
   let t = 0, last = -1, busyFrames = 60;
   const poke = () => { busyFrames = 30; };
   for (const ev of ['pointermove', 'pointerdown', 'keydown', 'resize', 'focusin', 'wheel', 'touchmove']) addEventListener(ev, poke, { passive: true });
@@ -594,16 +653,29 @@ async function main() {
       setTimeout(once, 'requestIdleCallback' in window ? 1000 : 50);
     };
     idle(() => {
-      void loadGLB('/assets/sky.glb').then(g => { outsideRef?.setSkyModels(g); sky.addModels(g); });
+      void loadGLB('/assets/sky.glb').then(g => { skyGltf = g; outsideRef?.setSkyModels(g); sky.addModels(g); });
       void coll.loadLabelArt();
       void props.loadArt();
-      setTimeout(() => { void loadNightAssets(); void sky.loadStorm(); }, 400);
+      // night and storm art (~580 KB): fetched when first used; larger screens warm them up once the page is idle
+      if (FULL) setTimeout(() => { void loadNightAssets(); void sky.loadStorm(); }, 6000);
     });
   };
   renderer.setAnimationLoop((now: number) => {
     const dt = last < 0 ? 0 : Math.min(Math.max((now - last) / 1000, 0), 0.1);
     last = now;
     t += dt;
+    renderer.info.reset();
+    // quality governor: if frames stay long for a couple of seconds, render fewer pixels; if that is not enough on
+    // the full tier, drop the bloom. It only ever steps down (no see-sawing), and waits out the load-in hitches.
+    if (dt > 0 && dt < 0.1 && t > 4 && !document.hidden && !play.overlayOn) {
+      frameMs += (dt * 1000 - frameMs) * 0.05;
+      if (frameMs > 25) slowFor += dt; else slowFor = Math.max(0, slowFor - dt * 2);
+      if (slowFor > 2.5) {
+        slowFor = 0; frameMs = 18;
+        if (quality > 0.62) { quality *= 0.85; resize(); }
+        else if (!fx.cheap) { fx.cheapen(); quality = 0.8; resize(); }
+      }
+    }
     updateTweens(t);
     // wheel physics: friction + self-centring
     if (wheel) {
@@ -659,26 +731,36 @@ async function main() {
     if (firstFrame) { firstFrame = false; afterFirstFrame(); }
   });
 
-  // Outside the ship: the opening shot, and the "Outside" button (outside.ts)
-  const outside = new Outside(scene, rig, {
-    root: document.body,
-    crossed: out => {
-      sky.group.visible = !out;
-      shafts.visible = !out;
-      ui.setVisible(!out);
-      if (out) hideHint();
-      if (out) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); }
-    },
-    mode: m => {
-      audio.whoosh();
-      ui.announce(m === 'orbit' ? 'Outside the ship. Drag to look around it.' : m === 'helm' ? 'You have the helm.' : 'Back in the cabin.');
-    },
+  // Outside the ship: the opening shot, and the "Outside" button (outside.ts, its own chunk)
+  let outsideP: Promise<Outside> | null = null;
+  const getOutside = () => outsideP ??= import('./outside').then(m => {
+    const o = new m.Outside(scene, rig, {
+      root: document.body,
+      crossed: out => {
+        sky.group.visible = !out;
+        shafts.visible = !out;
+        ui.setVisible(!out);
+        if (out) hideHint();
+        if (out) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); }
+      },
+      mode: mo => {
+        audio.whoosh();
+        ui.announce(mo === 'orbit' ? 'Outside the ship. Drag to look around it.' : mo === 'helm' ? 'You have the helm.' : 'Back in the cabin.');
+      },
+    });
+    o.setShip(galleonGltf);
+    o.setSkyModels(skyGltf);
+    outsideRef = o;
+    return o;
   });
-  outside.setShip(galleonGltf);
-  goOutside = () => { if (letterOpen) tuckLetter(); if (rig.view !== 'overview') rig.jump('overview'); ui.setView('overview'); void outside.goOutside().then(ok => { if (!ok) showNote('The ship could not be loaded'); }); };
+  goOutside = () => {
+    if (letterOpen) tuckLetter();
+    if (rig.view !== 'overview') rig.jump('overview');
+    ui.setView('overview');
+    void getOutside().then(o => o.goOutside()).then(ok => { if (!ok) showNote('The ship could not be loaded'); }, () => showNote('The ship could not be loaded'));
+  };
   let introDone: Promise<void> = Promise.resolve();
-  if (introOn && galleonGltf) introDone = outside.playIntro();
-  outsideRef = outside;
+  if (introOn && galleonGltf) introDone = getOutside().then(o => o.playIntro());
 
   // Reveal
   setProgress(1);
@@ -696,6 +778,15 @@ async function main() {
     if (rig.view === 'overview') setTimeout(() => { void rig.introSweep(); }, 900);
     setTimeout(showHint, 1800);
   }
+  // measurement hooks: whole-frame draw calls / triangles, and the real cost of a frame (render + gl.finish)
+  renderer.info.autoReset = false;
+  (window as unknown as { __kkInfo: unknown }).__kkInfo = () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, programs: renderer.info.programs?.length ?? 0, dpr: +renderer.getPixelRatio().toFixed(2), quality, bloom: !fx.cheap });
+  (window as unknown as { __kkBench: unknown }).__kkBench = (n = 60) => {
+    const gl = renderer.getContext();
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) { renderer.info.reset(); fx.render(scene, camera); gl.finish(); }
+    return (performance.now() - t0) / n;
+  };
   (window as unknown as { __kk: unknown }).__kk = {
     scene, cabin, coll, rig, play, ui, props, weather, sheets, lighting, sky, inspector, ship, clock, hang, letterView,
     goto, openLetter, openAbout, openSheet, ringBell, toggleNight,

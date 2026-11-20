@@ -6,6 +6,7 @@ import { anchorFrame, ensureUV } from './scene';
 import * as C from './content';
 import { cartridgeLabel, spineLabel, memcardLabel, labelTexture, softDot } from './labels';
 import { damp, tween, ease, reducedMotion } from './anim';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export type TplKind = 'cartridge' | 'book' | 'notebook' | 'memcard' | 'island';
 export type Place = 'chest' | 'shelf' | 'rack' | 'table';
@@ -113,6 +114,45 @@ export class Collectibles {
     return h;
   }
 
+  /** Merge a collectible's meshes into one vertex-coloured mesh (only for kinds without label textures). */
+  private flatten(c: Collectible) {
+    const meshes: THREE.Mesh[] = [];
+    c.obj.updateMatrixWorld(true);
+    c.obj.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) meshes.push(m); });
+    if (meshes.length < 2 || meshes.some(m => Array.isArray(m.material))) return;
+    const inv = new THREE.Matrix4().copy(c.obj.matrixWorld).invert();
+    const parts: THREE.BufferGeometry[] = [];
+    for (const m of meshes) {
+      const src = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', src.getAttribute('position').clone());
+      const hadNormals = !!src.getAttribute('normal');
+      if (hadNormals) g.setAttribute('normal', src.getAttribute('normal').clone());
+      g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+      if (!hadNormals) g.computeVertexNormals();
+      const col = (m.material as THREE.MeshStandardMaterial).color ?? new THREE.Color(1, 1, 1);
+      const n = g.getAttribute('position').count;
+      const arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { arr[i * 3] = col.r; arr[i * 3 + 1] = col.g; arr[i * 3 + 2] = col.b; }
+      g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+      parts.push(g);
+      src.dispose();
+    }
+    const merged = mergeGeometries(parts, false);
+    for (const g of parts) g.dispose();
+    if (!merged) return;
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 });
+    const mesh = new THREE.Mesh(merged, mat);
+    mesh.name = `${c.obj.name}_merged`;
+    mesh.userData.collectible = c;
+    const gone = new Set<THREE.Object3D>(meshes);
+    this.pickables = this.pickables.filter(p => !gone.has(p));
+    for (const m of meshes) { m.removeFromParent(); for (const t of c.tintMats) if (t === m.material) t.dispose(); }
+    c.obj.add(mesh);
+    this.pickables.push(mesh);
+    c.tintMats = [mat];
+  }
+
   private async add(item: Item, kind: TplKind, place: Place, holder: THREE.Object3D, pos: THREE.Vector3) {
     const obj = this.tpl[kind].clone(true);
     obj.position.copy(pos);
@@ -159,6 +199,8 @@ export class Collectibles {
       };
       mesh.material = Array.isArray(mesh.material) ? mesh.material.map(conv) : conv(mesh.material);
     });
+    // a map island is eight little meshes (rock, grass, trees, flag …): bake their colours into one mesh = one draw call
+    if (kind === 'island') this.flatten(c);
     if (c.glow) {
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.haloTex, transparent: true, depthWrite: false, opacity: 0.5, blending: THREE.AdditiveBlending }));
       const s = size(obj);
