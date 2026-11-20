@@ -1,0 +1,12 @@
+{
+ "sunset": {
+  "file": "lightmap_sunset.webp",
+  "scale": 3.0,
+  "lightMapIntensity": 9.4248
+ },
+ "night": {
+  "file": "lightmap_night.webp",
+  "scale": 1.0,
+  "lightMapIntensity": 3.1416
+ }
+}

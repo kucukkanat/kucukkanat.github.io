@@ -1,0 +1,10 @@
+{
+  "name": "Hilmi Tolga Şahin — kucukkanat",
+  "short_name": "kucukkanat",
+  "description": "An airship cabin full of playable projects by Hilmi Tolga Şahin.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2a1712",
+  "theme_color": "#2a1712",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
