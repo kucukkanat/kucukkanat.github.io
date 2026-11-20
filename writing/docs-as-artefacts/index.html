@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs as artefacts · Hilmi Tolga Şahin</title>
+<meta name="description" content="A document is not a record of a decision made elsewhere. It is the place where the decision gets made, and the thing the team keeps afterwards.">
+<link rel="canonical" href="https://kucukkanat.com/writing/docs-as-artefacts/">
+<meta name="theme-color" content="#2a1d16">
+<meta property="og:title" content="Docs as artefacts · Hilmi Tolga Şahin">
+<meta property="og:description" content="A document is not a record of a decision made elsewhere. It is the place where the decision gets made, and the thing the team keeps afterwards.">
+<meta property="og:url" content="https://kucukkanat.com/writing/docs-as-artefacts/">
+<link rel="icon" href="/favicon.svg">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2026-09-14">
+<meta property="article:modified_time" content="2026-10-30">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Docs as artefacts","description":"A document is not a record of a decision made elsewhere. It is the place where the decision gets made, and the thing the team keeps afterwards.","inLanguage":"en","datePublished":"2026-09-14","dateModified":"2026-10-30","author":{"@type":"Person","name":"Hilmi Tolga Şahin","url":"https://kucukkanat.com"},"publisher":{"@type":"Person","name":"Hilmi Tolga Şahin","url":"https://kucukkanat.com"},"url":"https://kucukkanat.com/writing/docs-as-artefacts/","mainEntityOfPage":"https://kucukkanat.com/writing/docs-as-artefacts/","wordCount":243,"articleSection":"Engineering leadership","keywords":"writing, async, teams"}</script>
+<style>
+:root{--bg:#F4EBDD;--ink:#2A1D16;--ink2:#6E5A49;--line:rgba(42,29,22,.14);--accent:#C8492F;--card:#FBF6EE;--topic:#C8492F}
+@media (prefers-color-scheme:dark){:root{--bg:#1C1512;--ink:#F1E6D6;--ink2:#B5A390;--line:rgba(241,230,214,.14);--accent:#F08A5D;--card:#251C18}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.65 Georgia,"Iowan Old Style",serif}
+.wrap{max-width:700px;margin:0 auto;padding:40px 20px 80px}
+a{color:var(--accent);text-underline-offset:.15em}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;background:var(--card);padding:6px 10px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+nav.crumbs{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:30px;font:14px system-ui,sans-serif;color:var(--ink2)}
+nav.crumbs a{color:var(--ink2)}
+h1{font-size:clamp(32px,6vw,46px);line-height:1.1;margin:8px 0 12px;letter-spacing:-.01em;text-wrap:balance}
+.meta,.kicker{font:14px system-ui,sans-serif;color:var(--ink2);margin:0}
+.meta span+span::before,.meta time+span::before,.meta span+time::before{content:"·";margin:0 .5em}
+.dot{display:inline-block;width:.7em;height:.7em;border-radius:50%;background:var(--topic);margin-right:.45em}
+.stage{font:600 12px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.cabin{display:inline-block;margin:18px 0 0;padding:9px 16px;border-radius:999px;background:var(--accent);color:#fff;font:600 15px system-ui,sans-serif;text-decoration:none}
+@media (prefers-color-scheme:dark){.cabin{color:#1C1512}}
+.series,.toc{margin:24px 0 0;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:10px;font:15px/1.5 system-ui,sans-serif}
+.series ol,.toc ol{margin:6px 0 0;padding-left:22px}.toc ol ol{margin:0}
+.series p,.toc p{margin:0;color:var(--ink2)}
+.prose{margin-top:34px;overflow-wrap:break-word}
+.prose h2{font-size:27px;line-height:1.2;margin:46px 0 10px}
+.prose h3{font-size:21px;line-height:1.25;margin:34px 0 8px}
+.prose h4{font-size:18px;margin:28px 0 6px}
+.prose p,.prose ul,.prose ol,.prose blockquote,.prose pre,.prose .table{margin:0 0 20px}
+.prose ul,.prose ol{padding-left:24px}.prose li{margin:4px 0}.prose li>p{margin:0 0 8px}
+.prose blockquote{padding:2px 0 2px 18px;border-left:3px solid var(--topic);color:var(--ink2);font-style:italic}
+.prose blockquote p:last-child{margin-bottom:0}
+.prose code{font:.84em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:1px 4px}
+.prose pre{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto}
+.prose pre code{background:none;border:0;padding:0;font-size:14.5px}
+.prose img{max-width:100%;height:auto;border-radius:10px;display:block;margin:0 auto}
+.prose hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+.prose .table{overflow-x:auto}
+.prose table{border-collapse:collapse;width:100%;font:15px/1.45 system-ui,sans-serif}
+.prose th,.prose td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.prose th{font-weight:600;color:var(--ink2)}
+.prose sup{line-height:0;font:600 .72em system-ui,sans-serif}
+.prose .footnotes{margin-top:44px;padding-top:12px;border-top:1px solid var(--line);font-size:15.5px;color:var(--ink2)}
+.wikilink{text-decoration-style:dotted}
+.wikilink.missing{color:var(--ink2);border-bottom:1px dashed var(--ink2);cursor:help}
+.pager{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:48px}
+.pager a{display:block;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink)}
+.pager small{display:block;font:13px system-ui,sans-serif;color:var(--ink2)}
+.pager .next{text-align:right;grid-column:2}
+h2.sec{font-size:22px;margin:48px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
+h2.topic{font-size:26px;margin:52px 0 4px;padding-top:14px;border-top:1px solid var(--line)}
+h2.topic a{color:inherit;text-decoration:none}
+.lede{color:var(--ink2);margin:0 0 6px}
+ul.notes{list-style:none;margin:0;padding:0}
+ul.notes li{padding:14px 0;border-bottom:1px solid var(--line)}
+ul.notes h3{font-size:20px;line-height:1.3;margin:0 0 2px}
+ul.notes p{margin:2px 0}
+ul.notes .ex{color:var(--ink2);font-size:16px}
+.tags{font:14px system-ui,sans-serif;color:var(--ink2);margin-top:40px}
+footer{margin-top:56px;color:var(--ink2);font:14px system-ui,sans-serif}
+@media (max-width:560px){body{font-size:17px}.pager{grid-template-columns:1fr}.pager .next{grid-column:1;text-align:left}}
+</style>
+</head>
+<body style="--topic:#C8492F">
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb" lang="en">
+    <a href="/">← The airship cabin</a><a href="/writing/">Writing</a><a href="/writing/topic/engineering-leadership/">Engineering leadership</a>
+  </nav>
+  <main id="main">
+  <article data-pagefind-body
+    data-slug="docs-as-artefacts" data-topic="engineering-leadership" data-topic-title="Engineering leadership" data-stage="evergreen" data-lang="en"
+    data-date="2026-09-14" data-minutes="1" data-excerpt="A document is not a record of a decision made elsewhere. It is the place where the decision gets made, and the thing the team keeps afterwards."
+    data-pagefind-filter="topic[data-topic], stage[data-stage], lang[data-lang]"
+    data-pagefind-meta="slug[data-slug], topic[data-topic], topicTitle[data-topic-title], stage[data-stage], lang[data-lang], date[data-date], minutes[data-minutes], excerpt[data-excerpt]"
+    data-pagefind-sort="date[data-date]">
+    <header>
+      <p class="kicker" data-pagefind-ignore><span class="dot"></span><a href="/writing/topic/engineering-leadership/" lang="en">Engineering leadership</a></p>
+      <h1 data-pagefind-meta="title">Docs as artefacts</h1>
+      <p class="meta" data-pagefind-ignore><span class="stage" title="Evergreen: settled">Evergreen</span><time datetime="2026-09-14">14 September 2026</time><span>updated <time datetime="2026-10-30">30 October 2026</time></span><span>English</span><span>1 min read</span></p>
+      <a class="cabin" href="/?note=docs-as-artefacts" data-pagefind-ignore>Open in the cabin →</a>
+      <nav class="toc" aria-label="Contents" data-pagefind-ignore>
+        <p>Contents</p>
+        <ol><li><a href="#what-makes-a-document-an-artefact">What makes a document an artefact</a></li><li><a href="#rules-of-thumb">Rules of thumb</a></li><li><a href="#when-not-to-write">When not to write</a></li></ol>
+      </nav>
+    </header>
+    <div class="prose">
+<p>Sample note, replace me.</p>
+<p>A meeting produces a feeling of agreement. A document produces an artefact: something you can point at, link to, disagree with line by line and come back to in six months. Teams that treat documents as the work, not as paperwork about the work, move faster with fewer people in the room.</p>
+<h2 id="what-makes-a-document-an-artefact">What makes a document an artefact</h2>
+<p>It has an owner, a date and a status. It says what was decided and what was rejected, and why. It is short enough to be read before anyone is asked for an opinion.</p>
+<div class="table"><table><thead><tr><th>Kind</th><th>Answers</th><th>Lives for</th></tr></thead><tbody><tr><td>Proposal</td><td>Should we do this?</td><td>Until decided</td></tr><tr><td>Decision record</td><td>What did we pick, and what did we drop?</td><td>Years</td></tr><tr><td>Runbook</td><td>What do I do at 3 AM?</td><td>As long as the system</td></tr><tr><td>Weekly note</td><td>What changed?</td><td>A quarter</td></tr></tbody></table></div>
+<h2 id="rules-of-thumb">Rules of thumb</h2>
+<ul>
+<li>Write the summary first. If you cannot, you do not know what you think yet.</li>
+<li>One decision per document.</li>
+<li>Comments are cheap, meetings are expensive: ask for comments first.</li>
+<li>Close the loop. A proposal without a recorded outcome is noise.</li>
+</ul>
+<p>This only works when people have time to read, which is the point of <a class="wikilink" href="/writing/meeting-free-fridays/" data-note="meeting-free-fridays">Meeting-free Fridays</a>. It also pairs well with ruthless scope: see <a class="wikilink" href="/writing/seksen-yuzde-kes/" data-note="seksen-yuzde-kes">cut eighty percent</a> (in Turkish).</p>
+<h2 id="when-not-to-write">When not to write</h2>
+<p>Do not write a document to avoid a conversation. If two people are stuck, a ten minute call beats a ten comment thread. Write down what you agreed afterwards.</p>
+    </div>
+    <p class="tags" data-pagefind-ignore>Tags: <span data-pagefind-filter="tag">writing</span>, <span data-pagefind-filter="tag">async</span>, <span data-pagefind-filter="tag">teams</span></p>
+  </article>
+  <section aria-labelledby="linked-from">
+    <h2 class="sec" id="linked-from">Linked from</h2>
+    <ul class="notes"><li lang="tr">
+      <h3><a href="/writing/seksen-yuzde-kes/">Yüzde seksenini kes</a></h3>
+      <p class="ex">Bir ürünü iyi yapan şey eklenenler değil, çıkarılanlardır. Kapsamın yüzde seksenini kesmek çoğu zaman en hızlı ve en dürüst yoldur.</p>
+      <p class="meta"><span class="stage" title="Seedling: a first rough note">Filiz</span><time datetime="2026-11-10">10 Kasım 2026</time><span>Türkçe</span><span>1 dk okuma</span></p>
+    </li><li lang="en">
+      <h3><a href="/writing/meeting-free-fridays/">Meeting-free Fridays</a></h3>
+      <p class="ex">One day a week with no meetings is the cheapest productivity tool a team can adopt, and the easiest to lose.</p>
+      <p class="meta"><span class="stage" title="Growing: taking shape, still changing">Growing</span><time datetime="2026-10-05">5 October 2026</time><span>English</span><span>1 min read</span></p>
+    </li></ul>
+  </section>
+  </main>
+  <footer lang="en"><a href="/writing/">All writing</a> · <a href="/writing/topic/engineering-leadership/">Engineering leadership</a> · <a href="/plain/">About Hilmi Tolga Şahin</a></footer>
+</div>
+</body>
+</html>

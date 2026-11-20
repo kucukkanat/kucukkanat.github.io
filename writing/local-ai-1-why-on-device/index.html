@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why run the model on the device · Hilmi Tolga Şahin</title>
+<meta name="description" content="Running a model on the user's own device removes the server, the bill and the privacy question in one move. Part one of three.">
+<link rel="canonical" href="https://kucukkanat.com/writing/local-ai-1-why-on-device/">
+<meta name="theme-color" content="#2a1d16">
+<meta property="og:title" content="Why run the model on the device · Hilmi Tolga Şahin">
+<meta property="og:description" content="Running a model on the user's own device removes the server, the bill and the privacy question in one move. Part one of three.">
+<meta property="og:url" content="https://kucukkanat.com/writing/local-ai-1-why-on-device/">
+<link rel="icon" href="/favicon.svg">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2026-08-03">
+<meta property="article:modified_time" content="2026-09-01">
+<link rel="next" href="https://kucukkanat.com/writing/local-ai-2-fitting-a-model/">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Why run the model on the device","description":"Running a model on the user's own device removes the server, the bill and the privacy question in one move. Part one of three.","inLanguage":"en","datePublished":"2026-08-03","dateModified":"2026-09-01","author":{"@type":"Person","name":"Hilmi Tolga Şahin","url":"https://kucukkanat.com"},"publisher":{"@type":"Person","name":"Hilmi Tolga Şahin","url":"https://kucukkanat.com"},"url":"https://kucukkanat.com/writing/local-ai-1-why-on-device/","mainEntityOfPage":"https://kucukkanat.com/writing/local-ai-1-why-on-device/","wordCount":267,"articleSection":"Local AI","keywords":"on-device, privacy, webgpu","isPartOf":{"@type":"CreativeWorkSeries","name":"A local model in the browser"},"position":1}</script>
+<style>
+:root{--bg:#F4EBDD;--ink:#2A1D16;--ink2:#6E5A49;--line:rgba(42,29,22,.14);--accent:#C8492F;--card:#FBF6EE;--topic:#C8492F}
+@media (prefers-color-scheme:dark){:root{--bg:#1C1512;--ink:#F1E6D6;--ink2:#B5A390;--line:rgba(241,230,214,.14);--accent:#F08A5D;--card:#251C18}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.65 Georgia,"Iowan Old Style",serif}
+.wrap{max-width:700px;margin:0 auto;padding:40px 20px 80px}
+a{color:var(--accent);text-underline-offset:.15em}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;background:var(--card);padding:6px 10px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+nav.crumbs{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:30px;font:14px system-ui,sans-serif;color:var(--ink2)}
+nav.crumbs a{color:var(--ink2)}
+h1{font-size:clamp(32px,6vw,46px);line-height:1.1;margin:8px 0 12px;letter-spacing:-.01em;text-wrap:balance}
+.meta,.kicker{font:14px system-ui,sans-serif;color:var(--ink2);margin:0}
+.meta span+span::before,.meta time+span::before,.meta span+time::before{content:"·";margin:0 .5em}
+.dot{display:inline-block;width:.7em;height:.7em;border-radius:50%;background:var(--topic);margin-right:.45em}
+.stage{font:600 12px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.cabin{display:inline-block;margin:18px 0 0;padding:9px 16px;border-radius:999px;background:var(--accent);color:#fff;font:600 15px system-ui,sans-serif;text-decoration:none}
+@media (prefers-color-scheme:dark){.cabin{color:#1C1512}}
+.series,.toc{margin:24px 0 0;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:10px;font:15px/1.5 system-ui,sans-serif}
+.series ol,.toc ol{margin:6px 0 0;padding-left:22px}.toc ol ol{margin:0}
+.series p,.toc p{margin:0;color:var(--ink2)}
+.prose{margin-top:34px;overflow-wrap:break-word}
+.prose h2{font-size:27px;line-height:1.2;margin:46px 0 10px}
+.prose h3{font-size:21px;line-height:1.25;margin:34px 0 8px}
+.prose h4{font-size:18px;margin:28px 0 6px}
+.prose p,.prose ul,.prose ol,.prose blockquote,.prose pre,.prose .table{margin:0 0 20px}
+.prose ul,.prose ol{padding-left:24px}.prose li{margin:4px 0}.prose li>p{margin:0 0 8px}
+.prose blockquote{padding:2px 0 2px 18px;border-left:3px solid var(--topic);color:var(--ink2);font-style:italic}
+.prose blockquote p:last-child{margin-bottom:0}
+.prose code{font:.84em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:1px 4px}
+.prose pre{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto}
+.prose pre code{background:none;border:0;padding:0;font-size:14.5px}
+.prose img{max-width:100%;height:auto;border-radius:10px;display:block;margin:0 auto}
+.prose hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+.prose .table{overflow-x:auto}
+.prose table{border-collapse:collapse;width:100%;font:15px/1.45 system-ui,sans-serif}
+.prose th,.prose td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.prose th{font-weight:600;color:var(--ink2)}
+.prose sup{line-height:0;font:600 .72em system-ui,sans-serif}
+.prose .footnotes{margin-top:44px;padding-top:12px;border-top:1px solid var(--line);font-size:15.5px;color:var(--ink2)}
+.wikilink{text-decoration-style:dotted}
+.wikilink.missing{color:var(--ink2);border-bottom:1px dashed var(--ink2);cursor:help}
+.pager{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:48px}
+.pager a{display:block;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink)}
+.pager small{display:block;font:13px system-ui,sans-serif;color:var(--ink2)}
+.pager .next{text-align:right;grid-column:2}
+h2.sec{font-size:22px;margin:48px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
+h2.topic{font-size:26px;margin:52px 0 4px;padding-top:14px;border-top:1px solid var(--line)}
+h2.topic a{color:inherit;text-decoration:none}
+.lede{color:var(--ink2);margin:0 0 6px}
+ul.notes{list-style:none;margin:0;padding:0}
+ul.notes li{padding:14px 0;border-bottom:1px solid var(--line)}
+ul.notes h3{font-size:20px;line-height:1.3;margin:0 0 2px}
+ul.notes p{margin:2px 0}
+ul.notes .ex{color:var(--ink2);font-size:16px}
+.tags{font:14px system-ui,sans-serif;color:var(--ink2);margin-top:40px}
+footer{margin-top:56px;color:var(--ink2);font:14px system-ui,sans-serif}
+@media (max-width:560px){body{font-size:17px}.pager{grid-template-columns:1fr}.pager .next{grid-column:1;text-align:left}}
+</style>
+</head>
+<body style="--topic:#2F6F73">
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb" lang="en">
+    <a href="/">← The airship cabin</a><a href="/writing/">Writing</a><a href="/writing/topic/local-ai/">Local AI</a>
+  </nav>
+  <main id="main">
+  <article data-pagefind-body
+    data-slug="local-ai-1-why-on-device" data-topic="local-ai" data-topic-title="Local AI" data-stage="evergreen" data-lang="en"
+    data-date="2026-08-03" data-minutes="1" data-excerpt="Running a model on the user's own device removes the server, the bill and the privacy question in one move. Part one of three."
+    data-pagefind-filter="topic[data-topic], stage[data-stage], lang[data-lang]"
+    data-pagefind-meta="slug[data-slug], topic[data-topic], topicTitle[data-topic-title], stage[data-stage], lang[data-lang], date[data-date], minutes[data-minutes], excerpt[data-excerpt]"
+    data-pagefind-sort="date[data-date]">
+    <header>
+      <p class="kicker" data-pagefind-ignore><span class="dot"></span><a href="/writing/topic/local-ai/" lang="en">Local AI</a></p>
+      <h1 data-pagefind-meta="title">Why run the model on the device</h1>
+      <p class="meta" data-pagefind-ignore><span class="stage" title="Evergreen: settled">Evergreen</span><time datetime="2026-08-03">3 August 2026</time><span>updated <time datetime="2026-09-01">1 September 2026</time></span><span>English</span><span>1 min read</span></p>
+      <a class="cabin" href="/?note=local-ai-1-why-on-device" data-pagefind-ignore>Open in the cabin →</a>
+      <nav class="series" aria-label="A local model in the browser" data-pagefind-ignore>
+        <p>A local model in the browser · Part 1 of 3</p>
+        <ol><li aria-current="page"><strong>Why run the model on the device</strong></li><li><a href="/writing/local-ai-2-fitting-a-model/">Fitting a model into a browser tab</a></li><li><a href="/writing/local-ai-3-shipping-it/">Shipping a local model to real people</a></li></ol>
+      </nav>
+      <nav class="toc" aria-label="Contents" data-pagefind-ignore>
+        <p>Contents</p>
+        <ol><li><a href="#what-you-gain">What you gain</a></li><li><a href="#what-you-give-up">What you give up</a></li><li><a href="#when-it-is-the-right-choice">When it is the right choice</a></li></ol>
+      </nav>
+    </header>
+    <div class="prose">
+<p>Sample note, replace me.</p>
+<p>Most AI features are a text box wired to somebody else&#39;s data centre. That is a fine place to start, and a strange place to stop. A laptop or a phone bought in the last few years can run a useful model by itself.</p>
+<h2 id="what-you-gain">What you gain</h2>
+<ul>
+<li><strong>Privacy by construction.</strong> The text never leaves the device, so there is nothing to promise and nothing to leak.</li>
+<li><strong>No bill per request.</strong> The user brings the hardware. A hobby project can stay free for ever.</li>
+<li><strong>It works offline.</strong> On a train, on a plane, in a cabin.</li>
+<li><strong>Latency you control.</strong> No queue, no cold start on someone else&#39;s cluster.</li>
+</ul>
+<h2 id="what-you-give-up">What you give up</h2>
+<p>The largest models do not fit, and the ones that do are less capable. The first visit includes a large download. Devices differ wildly, so the same page can be instant on one machine and unusable on another.</p>
+<h2 id="when-it-is-the-right-choice">When it is the right choice</h2>
+<p>Local models shine at narrow, well-defined jobs: transcribing speech, embedding text for search, classifying, summarising a page the user is already looking at. They struggle when the task needs broad knowledge or long reasoning.</p>
+<p>A good test: would the feature still be worth having if it were only ninety percent as good, but private and free? If so, run it locally.</p>
+<p>Next: <a class="wikilink" href="/writing/local-ai-2-fitting-a-model/" data-note="local-ai-2-fitting-a-model">Fitting a model into a browser tab</a> looks at getting a model small enough to download, and <a class="wikilink" href="/writing/local-ai-3-shipping-it/" data-note="local-ai-3-shipping-it">Shipping a local model to real people</a> at the unglamorous parts of putting it in front of people. There is a shorter Turkish take in <a class="wikilink" href="/writing/cihazda-yapay-zeka/" data-note="cihazda-yapay-zeka">Cihazda çalışan yapay zekâ</a>.</p>
+    </div>
+    <span hidden data-pagefind-index-attrs="data-ascii" data-ascii="calisan"></span>
+    <p class="tags" data-pagefind-ignore>Tags: <span data-pagefind-filter="tag">on-device</span>, <span data-pagefind-filter="tag">privacy</span>, <span data-pagefind-filter="tag">webgpu</span></p>
+  </article>
+  <nav class="pager" aria-label="A local model in the browser">
+    
+    <a class="next" rel="next" href="/writing/local-ai-2-fitting-a-model/"><small>Next →</small>Fitting a model into a browser tab</a>
+  </nav>
+  <section aria-labelledby="linked-from">
+    <h2 class="sec" id="linked-from">Linked from</h2>
+    <ul class="notes"><li lang="tr">
+      <h3><a href="/writing/cihazda-yapay-zeka/">Cihazda çalışan yapay zekâ</a></h3>
+      <p class="ex">Model kendi cihazınızda çalıştığında veriniz sizde kalır, fatura gelmez ve internet kesilse bile iş görür.</p>
+      <p class="meta"><span class="stage" title="Growing: taking shape, still changing">Büyüyor</span><time datetime="2026-10-19">19 Ekim 2026</time><span>Türkçe</span><span>1 dk okuma</span></p>
+    </li><li lang="en">
+      <h3><a href="/writing/local-ai-3-shipping-it/">Shipping a local model to real people</a></h3>
+      <p class="ex">Caching the weights, showing honest progress and keeping the page alive while the model thinks. Part three of three.</p>
+      <p class="meta"><span class="stage" title="Seedling: a first rough note">Seedling</span><time datetime="2026-09-21">21 September 2026</time><span>English</span><span>1 min read</span><span>A local model in the browser · 3</span></p>
+    </li><li lang="en">
+      <h3><a href="/writing/local-ai-2-fitting-a-model/">Fitting a model into a browser tab</a></h3>
+      <p class="ex">Quantisation, a memory budget and a fallback path. Part two of three.</p>
+      <p class="meta"><span class="stage" title="Growing: taking shape, still changing">Growing</span><time datetime="2026-08-17">17 August 2026</time><span>English</span><span>1 min read</span><span>A local model in the browser · 2</span></p>
+    </li></ul>
+  </section>
+  </main>
+  <footer lang="en"><a href="/writing/">All writing</a> · <a href="/writing/topic/local-ai/">Local AI</a> · <a href="/plain/">About Hilmi Tolga Şahin</a></footer>
+</div>
+</body>
+</html>
