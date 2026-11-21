@@ -5,7 +5,12 @@ export default defineConfig({
   build: {
     target: 'es2022', assetsInlineLimit: 0, chunkSizeWarningLimit: 900,
     // second page: the sky-whale viewer at /whales/ (whales/index.html; the rest of whales/ is build sources)
-    rollupOptions: { input: { main: 'index.html', whales: 'whales/index.html' } },
+    rollupOptions: {
+      input: { main: 'index.html', whales: 'whales/index.html' },
+      // three.js core in its own chunk: it changes far less often than the app, so returning visitors keep it cached
+      // (the shared loaders/examples land in a small chunk named after one of its modules)
+      output: { manualChunks: (id: string) => (id.includes('node_modules/three/build/') ? 'three' : undefined) },
+    },
   },
   // allowedHosts: portless serves the dev server as kucukkanat.localhost and, in LAN mode, kucukkanat.local
   server: { port: 4380, host: true, allowedHosts: ['.localhost', '.local'] },

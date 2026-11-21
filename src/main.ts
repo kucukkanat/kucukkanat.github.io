@@ -31,6 +31,10 @@ import { Hanging, addTestRigs } from './hang';
 import { LetterView } from './letter';
 import { ShipClock } from './clock';
 import { uRainSlant } from './lighting';
+import { lockZoom, registerSW } from './pwa';
+
+lockZoom();
+registerSW();
 
 const LETTER_KEY = 'kk-letter';
 const LETTER_ID = '__letter';

@@ -11,10 +11,16 @@
   --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #2a1712; color: var(--ink); font-family: var(--sans); overflow: hidden; overscroll-behavior: none; }
-body { -webkit-tap-highlight-color: transparent; }
+body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* app, not document: no double-tap zoom, no text selection or callouts on the chrome (form fields and reading panes opt back in) */
+html { touch-action: manipulation; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable], .panel .body, .selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 a { color: inherit; }
 .noscript { padding: 2rem; }
 #app { position: fixed; inset: 0; }
@@ -36,11 +42,11 @@ a { color: inherit; }
 /* Chrome */
 .ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 .ui > * { pointer-events: auto; }
-.brand { position: absolute; top: calc(16px + var(--safe-t)); left: 20px; max-width: min(520px, calc(100vw - 40px)); pointer-events: none;
+.brand { position: absolute; top: calc(16px + var(--safe-t)); left: calc(20px + var(--safe-l)); max-width: min(520px, calc(100vw - 40px)); pointer-events: none;
   text-shadow: 0 1px 12px rgba(30, 12, 6, .65); }
 .brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(1.15rem, 2.4vw, 1.6rem); letter-spacing: .005em; }
 .brand p { margin: 2px 0 0; font-size: clamp(.78rem, 1.4vw, .92rem); color: var(--ink-dim); }
-.back { position: absolute; top: calc(16px + var(--safe-t)); right: 20px; }
+.back { position: absolute; top: calc(16px + var(--safe-t)); right: calc(20px + var(--safe-r)); }
 .btn { font: 500 .9rem/1 var(--sans); color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-radius: 999px;
   padding: 10px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background .2s, transform .15s, border-color .2s; min-height: 40px; }
@@ -136,6 +142,17 @@ a { color: inherit; }
   .dock { gap: 0; padding: 4px; }
   .dock .nav { padding: 8px 6px; }
   .icon-btn { width: 34px; height: 34px; }
+}
+/* Touch screens: every control at least 44px to the finger (the visible dot or label can stay small) */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .bezel .btn { min-height: 40px; }
+  .icon-btn, .dock .icon-btn { width: 44px; height: 44px; }
+  .dock .nav { min-height: 44px; }
+  .hotspot { width: 48px; height: 48px; }
+  .hotspot::before { inset: 17px; }
+  .item-btn { width: 44px; height: 44px; }
+  .icon-btn:active, .dock .nav:not([aria-current="true"]):active { background: rgba(255,255,255,.12); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -262,3 +279,10 @@ a { color: inherit; }
 .outside-hud .out-helm[aria-pressed="true"] { background: #e8652b; border-color: #e8652b; }
 .outside-hud .out-hint { flex-basis: 100%; margin: 0; text-align: center; color: #fff; font: 500 .8rem var(--sans, system-ui);
   text-shadow: 0 1px 6px rgba(42,23,18,.8); }
+
+/* Touch screens, late overrides (after the rules they widen) */
+@media (pointer: coarse) {
+  .dock .nav { min-width: 44px; justify-content: center; }
+  .brand .linkish, .brand a { display: inline-block; padding: 12px 6px; margin: -12px -6px; }
+  .letter-view .letter-close { width: 44px; height: 44px; }
+}
