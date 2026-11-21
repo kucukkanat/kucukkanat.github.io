@@ -245,7 +245,7 @@ export class Play {
     f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock allow-popups allow-forms');
     f.setAttribute('allow', 'fullscreen; gamepad; autoplay; xr-spatial-tracking');
     f.setAttribute('allowfullscreen', '');
-    f.src = it.url!;
+    f.src = it.embed ?? it.url!;
     o.appendChild(f);
     this.iframe = f;
     o.querySelector('[data-eject]')!.addEventListener('click', () => this.eject());

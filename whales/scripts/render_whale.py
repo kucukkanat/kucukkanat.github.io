@@ -136,6 +136,17 @@ if mode == 'quick':
         sc.render.filepath = f'{out}_still{i}.png'
         bpy.ops.render.render(write_still=True)
 
+if mode == 'label':
+    # square cartridge label: three-quarter hero shot, whale + island filling the frame
+    sc.render.resolution_x = sc.render.resolution_y = resx
+    sc.frame_set(30)
+    tg = Vector((0, 0.02 * L, 0.06 * L))
+    cam.data.lens = 50
+    cam.location = tg + Vector((0.95, -0.55, 0.42)).normalized() * 1.05 * L
+    cam.rotation_euler = (tg - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    sc.render.filepath = f'{out}.png'
+    bpy.ops.render.render(write_still=True)
+
 if mode in ('closeups', 'review'):
     sc.frame_set(30)
     ys = info.get('anat', {})

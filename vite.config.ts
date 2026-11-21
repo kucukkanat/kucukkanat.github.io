@@ -2,7 +2,11 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   base: '/',
-  build: { target: 'es2022', assetsInlineLimit: 0, chunkSizeWarningLimit: 900 },
+  build: {
+    target: 'es2022', assetsInlineLimit: 0, chunkSizeWarningLimit: 900,
+    // second page: the sky-whale viewer at /whales/ (whales/index.html; the rest of whales/ is build sources)
+    rollupOptions: { input: { main: 'index.html', whales: 'whales/index.html' } },
+  },
   // allowedHosts: portless serves the dev server as kucukkanat.localhost and, in LAN mode, kucukkanat.local
   server: { port: 4380, host: true, allowedHosts: ['.localhost', '.local'] },
   plugins: [{
