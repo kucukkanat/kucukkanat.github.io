@@ -45,7 +45,8 @@ interface Key { p: THREE.Vector3; t: THREE.Vector3 }
 
 /**
  * One camera move: a Catmull-Rom path through the keys' positions and one through their aim points (same parameter,
- * so the heading turns as smoothly as the path bends), paced by arc length: speed 1 in the cabin, rising by 1 for
+ * so the heading turns as smoothly as the path bends; the aim is kept as a look direction, consecutive keys well under
+ * 180 degrees apart), paced by arc length: speed 1 in the cabin, rising by 1 for
  * every `grow` metres of path outside the window. One easing over the whole move: no stop at the window.
  */
 class Flight {
@@ -56,7 +57,8 @@ class Flight {
   private static N = 400;
   constructor(keys: Key[], grow: number, inward: boolean) {
     this.pc = new THREE.CatmullRomCurve3(keys.map(k => k.p.clone()), false, 'catmullrom', 0.5);
-    this.tc = new THREE.CatmullRomCurve3(keys.map(k => k.t.clone()), false, 'catmullrom', 0.5);
+    // aim as look directions, not points: the camera can pass its aim point without the heading flipping
+    this.tc = new THREE.CatmullRomCurve3(keys.map(k => k.t.clone().sub(k.p).normalize()), false, 'catmullrom', 0.5);
     this.pc.arcLengthDivisions = Flight.N;
     const lengths = this.pc.getLengths(Flight.N);
     this.len = lengths[Flight.N];
@@ -79,6 +81,7 @@ class Flight {
     const t = this.pc.getUtoTmapping(u, u * this.len);
     this.pc.getPoint(t, pos);
     this.tc.getPoint(t, target);
+    target.normalize().multiplyScalar(4).add(pos);
   }
 }
 
@@ -489,18 +492,21 @@ export class Outside {
     this.layoutWorld();
     const ahead = new THREE.Vector3(0, 1.74, -12);
     const mid = out.clone().lerp(ASTERN, 0.35).setY(lerp(ASTERN.y, out.y, 0.5));
+    const side = ASTERN.clone().lerp(mid, 0.45).setY(lerp(ASTERN.y, mid.y, 0.3));
     const keys: Key[] = [
       { p: this.pose.pos.clone(), t: this.pose.target.clone() },
       { p: new THREE.Vector3(0.42, 1.86, 0.4), t: new THREE.Vector3(0.15, 1.76, -5) },
       { p: new THREE.Vector3(0.12, 1.82, -1.5), t: new THREE.Vector3(0.04, 1.74, -9) },
       { p: WINDOW.clone(), t: ahead },
-      { p: ASTERN.clone(), t: new THREE.Vector3(1.5, 2.2, -19) },
-      { p: mid, t: mid.clone().add(new THREE.Vector3(-8, -1, 6)).lerp(this.centre, 0.55) },
+      // clear of the stern, turn to port (back toward the ship) while flying out to starboard
+      { p: ASTERN.clone(), t: ASTERN.clone().add(new THREE.Vector3(-0.35, 0, -0.94)) },
+      { p: side, t: side.clone().add(new THREE.Vector3(-0.9, 0.05, -0.42)) },
+      { p: mid, t: this.centre.clone() },
       { p: out, t: this.centre.clone() },
     ];
     // the camera's start may be anywhere in the cabin: drop the first cabin key when it would double back
     if (this.pose.pos.distanceTo(keys[1].p) < 0.6 || this.pose.pos.z < keys[1].p.z) keys.splice(1, 1);
-    await this.fly(new Flight(keys, 3, false), 4.6, { level: 0.25, fov0 });
+    await this.fly(new Flight(keys, 6, false), 4.8, { level: 0.25, fov0 });
     this.setMix(0);
     this.setOutside(true);
     this.mode = 'orbit';
