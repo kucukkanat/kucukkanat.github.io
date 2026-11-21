@@ -681,7 +681,9 @@ async function main() {
     idle(() => {
       void loadGLB('/assets/sky.glb').then(g => {
         skyGltf = g; outsideRef?.setSkyModels(g); sky.addModels(g);
-        // then the whales: after the sky has arrived, a little later on phones
+        // then the whales: after the sky has arrived, a little later on phones; never on data saver or a slow link
+        const net = (navigator as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+        if (net?.saveData || /(^|-)(2g|3g)$/.test(net?.effectiveType ?? '')) return;
         setTimeout(() => {
           void import('./whales-world').then(m => m.setupWhales(sky, scene)).then(w => {
             whalesRef = w;
