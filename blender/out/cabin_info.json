@@ -1,6 +1,6 @@
 {
- "path": "/private/tmp/claude-502/-Users-hilmitolga-sahin--claude-spares-spare-3p51my/184e77ee-3c87-4fba-aec0-ef634a5510ad/scratchpad/assets/cabin.glb",
- "bytes": 3067408,
+ "path": "/home/user/kucukkanat.github.io/public/assets/cabin.glb",
+ "bytes": 3066916,
  "tris": 48729,
  "nodes": [
   "Bell_body",
@@ -12,6 +12,7 @@
   "Bottle_glass",
   "Bottle_note",
   "Bottle",
+  "Captain",
   "Clock_face",
   "Clock_hour_mesh",
   "Clock_hour",
