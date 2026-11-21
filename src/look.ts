@@ -7,8 +7,8 @@ export const GLOW = tune('glow', 0.7);
 /** Contrast around mid grey (1 = none). Full tier: in the colour grade; lite tier: in every material's output. */
 export const CONTRAST = tune('contrast', 1.15);
 /** Brightness of everything seen through the windows (sky, islands, clouds). */
-export const SKY = tune('sky', 1);
+export const SKY = tune('sky', 0.75);
 /** Extra light on the side walls (bookcase, chest, rack, portrait): 0 = as baked. */
-export const SIDE = tune('side', 0);
+export const SIDE = tune('side', 0.6);
 /** Edge darkening of the full tier's colour grade. */
-export const VIG = tune('vig', 0.34);
+export const VIG = tune('vig', 0.1);
