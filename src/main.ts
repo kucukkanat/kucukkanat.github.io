@@ -820,7 +820,7 @@ async function main() {
   // Reveal
   setProgress(1);
   const loader = document.getElementById('loader');
-  requestAnimationFrame(() => { loader?.classList.add('done'); setTimeout(() => loader?.remove(), 800); });
+  requestAnimationFrame(() => { loader?.classList.add('done'); setTimeout(() => loader?.remove(), 800); ui.flashTips(4200); });
   // land in the cabin with a short zoom in (not on deep links, which open somewhere specific)
   if (!introOn && rig.view === 'overview') void rig.zoomInFrom(1.3, 1.8);
   function afterWelcome() {

@@ -39,6 +39,24 @@
         if (!(c.getContext('webgl2') || c.getContext('webgl'))) location.replace('/plain/');
       } catch (e) { location.replace('/plain/'); }
     })();
+    // The first view's sunset sky and lightmap, fetched alongside the app script (main.ts asks for the same URLs; the
+    // lightmap's size follows src/tier.ts — tablets are left to main.ts, since their tier needs the GPU check)
+    (function () {
+      var add = function (href) {
+        var l = document.createElement('link');
+        l.rel = 'preload'; l.as = 'image'; l.href = href; l.crossOrigin = 'anonymous';
+        document.head.appendChild(l);
+      };
+      try {
+        add('/assets/sky_sunset.jpg');
+        var q = new URLSearchParams(location.search).get('tier');
+        var coarse = matchMedia('(pointer: coarse)').matches, small = Math.min(screen.width, screen.height) < 700;
+        var mem = navigator.deviceMemory, save = navigator.connection && navigator.connection.saveData;
+        var lite = q === 'lite' || (q !== 'full' && (save || (mem !== undefined && mem < 4) || (coarse && small)));
+        if (lite) add('/assets/lightmap_sunset_1k.webp');
+        else if (q === 'full' || !coarse) add('/assets/lightmap_sunset.webp');
+      } catch (e) { /* hints only */ }
+    })();
   </script>
 </head>
 <body>

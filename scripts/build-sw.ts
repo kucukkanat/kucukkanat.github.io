@@ -29,7 +29,7 @@ for (let i = 0; i < fromHtml.length; i++) {
 }
 const shell = ['/', '/content.json', '/notes.json', '/manifest.webmanifest', '/favicon.svg',
   '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/plain/', '/whales/', '/assets/whales/manifest.json'];
-const firstView = ['fonts/fraunces-latin.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/dmsans-latin.woff2', 'cabin.glb', 'collectibles.glb', 'sky.glb', 'sky_sunset.jpg', 'lightmap_sunset_1k.webp', 'lightmaps.json'].map(hashed);
+const firstView = ['fonts/fraunces-latin.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/dmsans-latin.woff2', 'cabin.glb', 'collectibles.glb', 'captain.glb', 'sky.glb', 'sky_sunset.jpg', 'lightmap_sunset_1k.webp', 'lightmaps.json'].map(hashed);
 const precache = [...new Set([...shell, ...fromHtml, ...firstView])].filter(u => existsSync(join(dist, u === '/' || u.endsWith('/') ? `${u}index.html` : u)));
 
 // a new worker whenever a precached file or this script (the worker's logic) changes

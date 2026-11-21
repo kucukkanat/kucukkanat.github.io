@@ -122,5 +122,5 @@
 }
 
 @supports (height: 1dvh) {
-  .st-palette { max-height: min(80dvh, 720px); }
+  @media (min-width: 721px) and (min-height: 501px) { .st-palette { max-height: min(80dvh, 720px); } }
 }
