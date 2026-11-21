@@ -1,0 +1,116 @@
+[
+ {
+  "key": "blue",
+  "name": "Blue Whale",
+  "biome": "forest",
+  "biomeLabel": "Temperate forest & waterfall lake",
+  "biomeShort": "Temperate forest",
+  "color": "#2f86a6",
+  "fact": "The largest animal ever known. A broad, flat U-shaped head, a splashguard around the blowholes and throat pleats that stretch to the navel.",
+  "files": {
+   "A": "/assets/whales/blue_A.glb",
+   "B": "/assets/whales/blue_B.glb",
+   "lite": "/assets/whales/blue_lite.glb"
+  },
+  "sizes": {
+   "A": 1.0,
+   "B": 0.82,
+   "lite": 0.51
+  }
+ },
+ {
+  "key": "sperm",
+  "name": "Sperm Whale",
+  "biome": "desert",
+  "biomeLabel": "Desert oasis",
+  "biomeShort": "Desert oasis",
+  "color": "#c8622e",
+  "fact": "A huge square head (a third of its length) holding the spermaceti organ, a narrow lower jaw underneath and prune-wrinkled skin.",
+  "files": {
+   "A": "/assets/whales/sperm_A.glb",
+   "B": "/assets/whales/sperm_B.glb",
+   "lite": "/assets/whales/sperm_lite.glb"
+  },
+  "sizes": {
+   "A": 0.81,
+   "B": 0.74,
+   "lite": 0.43
+  }
+ },
+ {
+  "key": "beluga",
+  "name": "Beluga",
+  "biome": "tundra",
+  "biomeLabel": "Snowy pine tundra",
+  "biomeShort": "Snowy pine tundra",
+  "color": "#94cdef",
+  "fact": "The white whale: a soft, shape-shifting melon, a flexible neck and a ridge instead of a dorsal fin.",
+  "files": {
+   "A": "/assets/whales/beluga_A.glb",
+   "B": "/assets/whales/beluga_B.glb",
+   "lite": "/assets/whales/beluga_lite.glb"
+  },
+  "sizes": {
+   "A": 0.81,
+   "B": 0.65,
+   "lite": 0.48
+  }
+ },
+ {
+  "key": "humpback",
+  "name": "Humpback Whale",
+  "biome": "jungle",
+  "biomeLabel": "Tropical jungle & cascades",
+  "biomeShort": "Tropical jungle",
+  "color": "#1f6e52",
+  "fact": "Flippers a third of its body length with scalloped edges, knobs on the head and a fluke pattern unique to each animal.",
+  "files": {
+   "A": "/assets/whales/humpback_A.glb",
+   "B": "/assets/whales/humpback_B.glb",
+   "lite": "/assets/whales/humpback_lite.glb"
+  },
+  "sizes": {
+   "A": 0.95,
+   "B": 0.82,
+   "lite": 0.49
+  }
+ },
+ {
+  "key": "bowhead",
+  "name": "Bowhead Whale",
+  "biome": "autumn",
+  "biomeLabel": "Autumn maple grove & ruins",
+  "biomeShort": "Autumn maple grove",
+  "color": "#6b2a55",
+  "fact": "A bow-shaped mouth in a head a third of its length, a white chin patch, no dorsal fin - and it can live over 200 years.",
+  "files": {
+   "A": "/assets/whales/bowhead_A.glb",
+   "B": "/assets/whales/bowhead_B.glb",
+   "lite": "/assets/whales/bowhead_lite.glb"
+  },
+  "sizes": {
+   "A": 0.88,
+   "B": 0.76,
+   "lite": 0.47
+  }
+ },
+ {
+  "key": "minke",
+  "name": "Minke Whale",
+  "biome": "sakura",
+  "biomeLabel": "Cherry blossom zen garden",
+  "biomeShort": "Cherry blossom zen garden",
+  "color": "#e094ab",
+  "fact": "The smallest rorqual: a sharp, pointed head with a single ridge and a bright white band on each flipper.",
+  "files": {
+   "A": "/assets/whales/minke_A.glb",
+   "B": "/assets/whales/minke_B.glb",
+   "lite": "/assets/whales/minke_lite.glb"
+  },
+  "sizes": {
+   "A": 0.82,
+   "B": 0.73,
+   "lite": 0.4
+  }
+ }
+]

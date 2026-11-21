@@ -23,13 +23,15 @@ Both styles share species-faithful anatomy.
 | `scripts/render_all.sh`, `render_whale.py` | Turnaround stills and the 8 s cruise MP4 per variant → `renders/` |
 | `scripts/measure_stretch.py`, `attrib_stretch.py` | Skin-strain check of flippers and fluke over every clip, and which bones cause it |
 | `scripts/test_body.py`, `render_finposes.py`, `render_finclip.py`, `contact_sheet.py` | Anatomy and flipper review renders, contact sheets |
-| `out/glb/` | Master GLBs (Draco). The site uses re-encoded copies in `public/assets/whales/` |
+| `out/glb/` | Master GLBs (Draco) |
+| `scripts/web.ts`, `export_web.py`, `make_manifest.py` | Web copies for the site → `public/assets/whales/`: `<sp>_A.glb` (world + viewer), `<sp>_B.glb` (viewer), `<sp>_lite.glb` (far whales, phones: ~4.5k-tri body, ~5k-tri island, 512 px texture), all meshopt + WebP, plus `manifest.json` |
 | `out/blend/`, `out/textures/`, `renders/`, `ref/` | Source scenes, textures, final renders, reference renders (**Git LFS**) |
-| `viewer_v1/` | The original standalone viewer (CDN three.js), kept until the `/whales/` Vite page replaces it |
+| `index.html` | The `/whales/` viewer page (second Vite entry; code in `src/whales/`) |
 
 ## Rebuild
 ```bash
 bun run whales                     # all 12 -> whales/out
+bun whales/scripts/web.ts          # web copies + manifest -> public/assets/whales
 whales/scripts/render_all.sh       # stills + MP4s -> whales/renders
 ```
 Blender 5.3 at `/Applications/Blender.app` (its bundled numpy and openvdb are used).
