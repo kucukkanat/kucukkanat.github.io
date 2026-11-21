@@ -27,11 +27,60 @@ export interface OutsideHooks {
   mode?(m: OutsideMode): void;
   /** A tap / click on the outside view that was not a drag (normalised device coordinates). */
   click?(ndc: THREE.Vector2): void;
+  /** The cabin's window sky (sky.ts): shown inside, hidden outside, crossfaded with the outside world at the window. */
+  windowSky?: THREE.Object3D;
+  /** The mix changed: 1 = all window sky (cabin), 0 = all outside world. For things that fade with it (light shafts). */
+  mix?(k: number): void;
 }
 
 // Path through the middle stern window, in cabin coordinates (windows face -Z, the bow is toward +Z).
 const WINDOW = new THREE.Vector3(0, 1.8, -2.62);
 const ASTERN = new THREE.Vector3(0, 1.86, -7.5);
+/** The crossfade runs from this far inside the window (m) to this far outside it. */
+const FADE_IN = 0.5, FADE_OUT = 0.7;
+/** While crossfading, the window sky covers only what is farther than this (m): the outside world, not the hull. */
+const FADE_DEPTH = 120;
+
+interface Key { p: THREE.Vector3; t: THREE.Vector3 }
+
+/**
+ * One camera move: a Catmull-Rom path through the keys' positions and one through their aim points (same parameter,
+ * so the heading turns as smoothly as the path bends), paced by arc length: speed 1 in the cabin, rising by 1 for
+ * every `grow` metres of path outside the window. One easing over the whole move: no stop at the window.
+ */
+class Flight {
+  private pc: THREE.CatmullRomCurve3;
+  private tc: THREE.CatmullRomCurve3;
+  private tau: Float32Array;
+  private len: number;
+  private static N = 400;
+  constructor(keys: Key[], grow: number, inward: boolean) {
+    this.pc = new THREE.CatmullRomCurve3(keys.map(k => k.p.clone()), false, 'catmullrom', 0.5);
+    this.tc = new THREE.CatmullRomCurve3(keys.map(k => k.t.clone()), false, 'catmullrom', 0.5);
+    this.pc.arcLengthDivisions = Flight.N;
+    const lengths = this.pc.getLengths(Flight.N);
+    this.len = lengths[Flight.N];
+    const wi = keys.findIndex(k => k.p.distanceToSquared(WINDOW) < 1e-8);
+    const sW = wi < 0 ? (inward ? this.len : 0) : lengths[Math.round(wi / (keys.length - 1) * Flight.N)];
+    const N = Flight.N, tau = this.tau = new Float32Array(N + 1);
+    const inv = (s: number) => 1 / (1 + Math.max(0, inward ? sW - s : s - sW) / grow);
+    for (let j = 1; j <= N; j++) {
+      const s0 = this.len * (j - 1) / N, s1 = this.len * j / N;
+      tau[j] = tau[j - 1] + (inv(s0) + inv(s1)) * 0.5 * (s1 - s0);
+    }
+  }
+  /** Pose at progress p (0..1 of the paced time). */
+  at(p: number, pos: THREE.Vector3, target: THREE.Vector3) {
+    const N = Flight.N, tau = this.tau, want = clamp(p, 0, 1) * tau[N];
+    let lo = 0, hi = N;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (tau[m] <= want) lo = m; else hi = m; }
+    const f = tau[hi] > tau[lo] ? (want - tau[lo]) / (tau[hi] - tau[lo]) : 0;
+    const u = clamp((lo + f) / N, 0, 1);
+    const t = this.pc.getUtoTmapping(u, u * this.len);
+    this.pc.getPoint(t, pos);
+    this.tc.getPoint(t, target);
+  }
+}
 
 /** Sunset sky all around with a sea of cloud below. */
 function skyDome(): THREE.Mesh {
@@ -129,12 +178,37 @@ export class Outside {
   private helmBtn: HTMLButtonElement;
   private hint: HTMLElement;
   private isOut = false;
+  private mixK = 1;
+  private rt: THREE.WebGLRenderTarget | null = null;
+  private fadeQuad: THREE.Mesh;
 
   constructor(private scene: THREE.Scene, private rig: CameraRig, private hooks: OutsideHooks) {
     this.world.name = 'OutsideWorld';
     this.world.visible = false;
     this.dome.visible = false;
     scene.add(this.world, this.dome);
+    // the window sky laid over the outside world while the camera passes the window (prerender fills tSky)
+    this.fadeQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, depthTest: true, fog: false, toneMapped: false,
+      uniforms: { tSky: { value: null }, uK: { value: 1 }, uDepth: { value: FADE_DEPTH } },
+      vertexShader: /* glsl */`
+        uniform float uDepth; varying vec2 vUv;
+        void main() { vUv = position.xy * 0.5 + 0.5; vec4 c = projectionMatrix * vec4(0.0, 0.0, -uDepth, 1.0); gl_Position = vec4(position.xy * c.w, c.z, c.w); }`,
+      fragmentShader: /* glsl */`
+        uniform sampler2D tSky; uniform float uK; varying vec2 vUv;
+        void main() {
+          vec4 s = texture2D(tSky, vUv);
+          float a = min(s.a, 1.0);
+          if (a < 0.002) discard;
+          gl_FragColor = vec4(s.rgb / max(a, 1e-4), a * uK); // the target holds premultiplied colour
+          #include <colorspace_fragment>
+        }`,
+    }));
+    this.fadeQuad.name = 'WindowSkyFade';
+    this.fadeQuad.frustumCulled = false;
+    this.fadeQuad.renderOrder = -1000; // first of the transparent pass: over the outside world, under glass and shafts
+    this.fadeQuad.visible = false;
+    scene.add(this.fadeQuad);
 
     const layer = this.layer = document.createElement('div');
     layer.className = 'outside-layer';
@@ -242,65 +316,90 @@ export class Outside {
 
   // ───────────────────────── transitions
 
+  /** 1 = the cabin's window sky, 0 = the outside world, in between = crossfading (both drawn, see prerender). */
+  private setMix(k: number) {
+    k = clamp(k, 0, 1);
+    if (k === this.mixK) return;
+    this.mixK = k;
+    const out = k < 1;
+    if (this.holder) this.holder.visible = out;
+    this.world.visible = out;
+    this.dome.visible = out;
+    if (this.hooks.windowSky) this.hooks.windowSky.visible = k >= 1;
+    this.fadeQuad.visible = k > 0 && k < 1;
+    (this.fadeQuad.material as THREE.ShaderMaterial).uniforms.uK.value = k;
+    this.rig.camera.far = out ? 4000 : 200;
+    this.rig.camera.updateProjectionMatrix();
+    this.hooks.mix?.(k);
+  }
+
+  /** Which side of the window the camera is on (cabin UI, panels, whales). */
   private setOutside(on: boolean) {
     if (this.isOut === on) return;
     this.isOut = on;
-    if (this.holder) this.holder.visible = on;
-    this.world.visible = on;
-    this.dome.visible = on;
-    this.rig.camera.far = on ? 4000 : 200;
-    this.rig.camera.updateProjectionMatrix();
     this.hooks.crossed(on);
   }
 
-  /** Camera position on the way between the landing view and a point astern (k: 0 = landing view, 1 = astern). */
-  private through(k: number, from: THREE.Vector3, out: THREE.Vector3, pos: THREE.Vector3, target: THREE.Vector3) {
-    const over = this.rig.viewFor('overview');
-    // inside part: up from the landing view, over the table and the wheel, turning to face the window
-    const SPLIT = 0.42;
-    if (k <= SPLIT) {
-      const u = k / SPLIT;
-      const e = ease.inOutCubic(u);
-      const a = new THREE.Vector3(0.42, 1.86, 0.4), b = new THREE.Vector3(0.12, 1.82, -1.5);
-      const curve = new THREE.CatmullRomCurve3([over.pos, a, b, WINDOW], false, 'catmullrom', 0.5);
-      curve.getPoint(e, pos);
-      // heading: the landing view looks at the windows already, so only ease the aim from its target to straight out
-      target.lerpVectors(over.target, new THREE.Vector3(0, 1.74, -12), e);
-      void from;
-      return;
-    }
-    const u = (k - SPLIT) / (1 - SPLIT);
-    const e = ease.inOutCubic(u);
-    const curve = new THREE.CatmullRomCurve3([WINDOW, ASTERN, out.clone().lerp(ASTERN, 0.35).setY(lerp(ASTERN.y, out.y, 0.5)), out], false, 'catmullrom', 0.5);
-    curve.getPoint(e, pos);
-    // going out we look ahead (astern) and then turn back to the ship
-    const ahead = new THREE.Vector3(0, 1.74, -12).lerp(pos.clone().add(new THREE.Vector3(0, 0, -6)), 0.5);
-    target.lerpVectors(ahead, this.centre, ease.inOutCubic(clamp((u - 0.25) / 0.6, 0, 1)));
+  /** Mix and side for a camera position near the stern window: the crossfade runs while it passes the opening. */
+  private atWindow(pos: THREE.Vector3) {
+    const d = WINDOW.z - pos.z; // > 0: outside
+    const u = clamp((d + FADE_IN) / (FADE_IN + FADE_OUT), 0, 1);
+    this.setMix(1 - u * u * (3 - 2 * u));
+    this.setOutside(d > 0);
   }
 
-  /** Coming in: from the window over the wheel and the table, turning round to the landing view (u: 0 = at the window). */
-  private enter(u: number, pos: THREE.Vector3, target: THREE.Vector3) {
-    const over = this.rig.viewFor('overview');
-    const sm = (x: number) => { const t = clamp(x, 0, 1); return t * t * (3 - 2 * t); };
-    const curve = new THREE.CatmullRomCurve3([WINDOW, new THREE.Vector3(0.1, 1.98, -1.6), new THREE.Vector3(0.5, 1.92, 0.5), over.pos], false, 'catmullrom', 0.5);
-    curve.getPoint(ease.inOutCubic(u), pos);
-    // heading swings from "forward into the cabin" round the starboard side to "back at the windows"
-    const ang = Math.PI * sm((u - 0.12) / 0.7);
-    const dir = new THREE.Vector3(Math.sin(ang), -0.12 * sm(u * 2), Math.cos(ang)).multiplyScalar(4);
-    target.copy(pos).add(dir).lerp(over.target, sm((u - 0.72) / 0.28));
-  }
-
-  /** Coming in, outside part (u: 0 = far, 1 = at the window): look at the ship, then into the middle window. */
-  private approach(u: number, far: THREE.Vector3, pos: THREE.Vector3, target: THREE.Vector3) {
-    const curve = new THREE.CatmullRomCurve3([far, far.clone().lerp(ASTERN, 0.6).setY(lerp(far.y, ASTERN.y, 0.75)), ASTERN, WINDOW], false, 'catmullrom', 0.5);
-    curve.getPoint(u, pos);
-    const sm = clamp((u - 0.25) / 0.55, 0, 1);
-    target.lerpVectors(this.centre, new THREE.Vector3(0, 1.7, 2), sm * sm * (3 - 2 * sm));
+  /**
+   * Called by the render loop just before the frame is drawn. While crossfading, the window sky is drawn on its own
+   * into a target, then laid over the outside world (only where that is farther than FADE_DEPTH, so the cabin and the
+   * hull stay in front) at the mix.
+   */
+  prerender(renderer: THREE.WebGLRenderer) {
+    const sky = this.hooks.windowSky;
+    if (!sky || !this.fadeQuad.visible) return;
+    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    if (!this.rt) this.rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, depthBuffer: true });
+    else if (this.rt.width !== size.x || this.rt.height !== size.y) this.rt.setSize(size.x, size.y);
+    (this.fadeQuad.material as THREE.ShaderMaterial).uniforms.tSky.value = this.rt.texture;
+    const prevTarget = renderer.getRenderTarget(), prevAlpha = renderer.getClearAlpha();
+    const prevColor = renderer.getClearColor(new THREE.Color());
+    renderer.setRenderTarget(this.rt);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear();
+    sky.visible = true;
+    renderer.render(sky, this.rig.camera);
+    sky.visible = false;
+    renderer.setRenderTarget(prevTarget);
+    renderer.setClearColor(prevColor, prevAlpha);
   }
 
   private orbitPos(out = new THREE.Vector3()) {
     const o = this.orbit;
     return out.set(Math.sin(o.yaw) * Math.cos(o.pitch), Math.sin(o.pitch), Math.cos(o.yaw) * Math.cos(o.pitch)).multiplyScalar(o.dist).add(this.centre);
+  }
+
+  private orbitAt(yaw: number, pitch: number, dist: number) {
+    return new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(dist).add(this.centre);
+  }
+
+  /** Keys from the window into the cabin, turning round over the wheel and the table to the landing view. */
+  private enterKeys(): Key[] {
+    const over = this.rig.viewFor('overview');
+    const a = new THREE.Vector3(0.1, 1.98, -1.6), b = new THREE.Vector3(0.5, 1.92, 0.5);
+    return [
+      { p: WINDOW.clone(), t: new THREE.Vector3(0, 1.75, 1.6) },
+      { p: a, t: new THREE.Vector3(2.5, 1.62, 1.2) },
+      { p: b, t: new THREE.Vector3(2.4, 1.5, -2.6) },
+      { p: over.pos, t: over.target },
+    ];
+  }
+
+  /** Keys from far astern (looking at the ship) in through the middle window. */
+  private approachKeys(far: THREE.Vector3): Key[] {
+    const into = new THREE.Vector3(0, 1.7, 2);
+    return [
+      { p: far.clone().lerp(ASTERN, 0.6).setY(lerp(far.y, ASTERN.y, 0.75)), t: this.centre.clone().lerp(into, 0.1) },
+      { p: ASTERN.clone(), t: this.centre.clone().lerp(into, 0.8) },
+    ];
   }
 
   private skipAll = false;
@@ -322,6 +421,23 @@ export class Outside {
     });
   }
 
+  /** Fly one path; the window crossfade follows the camera. `level` (0..1 of the time) eases the ship and the camera's up level. */
+  private async fly(f: Flight, dur: number, opts: { skippable?: boolean; level?: number; fov0?: number } = {}) {
+    const r0 = this.ship.roll, p0 = this.ship.pitch;
+    const up0 = this.pose.up.clone(), Y = new THREE.Vector3(0, 1, 0);
+    const level = opts.level ?? 0.3;
+    const cam = this.rig.camera, fov0 = opts.fov0 ?? cam.fov, fov1 = cam.fov;
+    await this.run(reducedMotion ? 0 : dur, k => {
+      f.at(ease.inOutCubic(k), this.pose.pos, this.pose.target);
+      const l = clamp(k / level, 0, 1), e = l * l * (3 - 2 * l);
+      if (r0 || p0) { this.ship.roll = r0 * (1 - e); this.ship.pitch = p0 * (1 - e); }
+      this.pose.up.copy(up0).lerp(Y, e).normalize();
+      if (fov0 !== fov1) { cam.fov = lerp(fov0, fov1, e); cam.updateProjectionMatrix(); }
+      this.layoutWorld();
+      this.atWindow(this.pose.pos);
+    }, opts.skippable, 0);
+  }
+
   /** Opening shot: start far astern, come in through the window, settle on the landing view. */
   async playIntro(): Promise<void> {
     try { localStorage.setItem(KEY, '1'); } catch { /* private mode */ }
@@ -331,21 +447,24 @@ export class Outside {
     const far = new THREE.Vector3(-22, 9, -44);
     this.pose.up.set(0, 1, 0);
     this.rig.cine = this.pose;
-    this.setOutside(true);
     this.layoutWorld();
+    this.atWindow(far);
     const skip = document.createElement('button');
     skip.type = 'button'; skip.className = 'intro-skip'; skip.textContent = 'Skip';
     this.hooks.root.append(skip);
     this.skipAll = false;
-    const OUT_T = 3.9, IN_T = 2.6;
-    await this.run(OUT_T, k => {
-      this.approach(Math.pow(k, 1.6), far, this.pose.pos, this.pose.target); // linger on the whole ship, then close in
+    const keys: Key[] = [{ p: far, t: this.centre.clone() }, ...this.approachKeys(far), ...this.enterKeys()];
+    // a slow start lingers on the whole ship before closing in
+    const f = new Flight(keys, 3, true);
+    await this.run(6.5, k => {
+      f.at(ease.inOutCubic(k), this.pose.pos, this.pose.target);
+      this.layoutWorld();
+      this.atWindow(this.pose.pos);
     }, true, 0);
-    this.setOutside(false);
-    await this.run(IN_T, k => this.enter(k, this.pose.pos, this.pose.target), true, OUT_T);
     skip.remove();
+    this.setMix(1);
     this.setOutside(false);
-    this.rig.cine = null;
+    this.rig.releaseCine();
     this.busy = false;
   }
 
@@ -357,16 +476,32 @@ export class Outside {
     this.resetShip();
     this.orbit.yaw = this.orbit.yawT = 2.55; this.orbit.pitch = this.orbit.pitchT = 0.16; this.orbit.dist = this.orbit.distT = 46;
     const out = this.orbitPos();
-    this.pose.up.set(0, 1, 0);
-    const start = this.rig.viewFor('overview');
-    this.pose.pos.copy(start.pos); this.pose.target.copy(start.target);
-    this.rig.jump('overview');
+    // start from exactly what is on screen (any view, any visitor turn / zoom / sway)
+    const cam = this.rig.camera;
+    cam.updateMatrixWorld();
+    const fov0 = cam.fov;
+    this.pose.pos.copy(cam.position);
+    this.pose.target.copy(cam.position).add(cam.getWorldDirection(new THREE.Vector3()).multiplyScalar(4));
+    this.pose.up.set(0, 1, 0).applyQuaternion(cam.quaternion);
     this.rig.cine = this.pose;
+    this.rig.jump('overview'); // under the cinematic: the rig is ready for the way back
+    cam.fov = fov0; cam.updateProjectionMatrix();
     this.layoutWorld();
-    await this.run(reducedMotion ? 0 : 4.2, k => {
-      this.through(k, out, out, this.pose.pos, this.pose.target);
-      this.setOutside(this.pose.pos.z < WINDOW.z);
-    });
+    const ahead = new THREE.Vector3(0, 1.74, -12);
+    const mid = out.clone().lerp(ASTERN, 0.35).setY(lerp(ASTERN.y, out.y, 0.5));
+    const keys: Key[] = [
+      { p: this.pose.pos.clone(), t: this.pose.target.clone() },
+      { p: new THREE.Vector3(0.42, 1.86, 0.4), t: new THREE.Vector3(0.15, 1.76, -5) },
+      { p: new THREE.Vector3(0.12, 1.82, -1.5), t: new THREE.Vector3(0.04, 1.74, -9) },
+      { p: WINDOW.clone(), t: ahead },
+      { p: ASTERN.clone(), t: new THREE.Vector3(1.5, 2.2, -19) },
+      { p: mid, t: mid.clone().add(new THREE.Vector3(-8, -1, 6)).lerp(this.centre, 0.55) },
+      { p: out, t: this.centre.clone() },
+    ];
+    // the camera's start may be anywhere in the cabin: drop the first cabin key when it would double back
+    if (this.pose.pos.distanceTo(keys[1].p) < 0.6 || this.pose.pos.z < keys[1].p.z) keys.splice(1, 1);
+    await this.fly(new Flight(keys, 3, false), 4.6, { level: 0.25, fov0 });
+    this.setMix(0);
     this.setOutside(true);
     this.mode = 'orbit';
     this.busy = false;
@@ -375,31 +510,30 @@ export class Outside {
     return true;
   }
 
-  /** Back in through the window to the landing view. */
+  /** Back in through the window to the landing view: round the ship to astern, then in. */
   async goInside(): Promise<void> {
     if (this.busy || this.mode === 'inside') return;
     this.busy = true;
     this.showHud(false);
     this.setHelm(false, true);
-    const from = this.rig.camera.position.clone();
-    const lookFrom = this.pose.target.clone();
-    // level the ship while the camera swings astern
-    const r0 = this.ship.roll, p0 = this.ship.pitch;
-    const out = new THREE.Vector3(-6, 4.5, -26);
-    await this.run(reducedMotion ? 0 : 1.6, k => {
-      const e = ease.inOutCubic(k);
-      this.ship.roll = r0 * (1 - e); this.ship.pitch = p0 * (1 - e);
-      this.layoutWorld();
-      this.pose.up.set(0, 1, 0);
-      this.pose.pos.lerpVectors(from, out, e);
-      this.pose.target.lerpVectors(lookFrom, this.centre, e);
-    });
     this.mode = 'inside';
-    await this.run(reducedMotion ? 0 : 2.4, k => this.approach(ease.inOutCubic(k), out, this.pose.pos, this.pose.target));
+    const o = this.orbit;
+    // the swing round the ship, sampled on the orbit sphere so the path never cuts through the hull
+    const yA = -2.97, pA = -0.042, dA = 35.5;
+    const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+    const y0 = wrap(o.yaw), dy = wrap(yA - y0);
+    const n = Math.max(1, Math.ceil(Math.abs(dy) / 0.5));
+    const keys: Key[] = [{ p: this.pose.pos.clone(), t: this.pose.target.clone() }];
+    for (let i = 1; i <= n; i++) {
+      const k = i / n, e = k * k * (3 - 2 * k);
+      keys.push({ p: this.orbitAt(y0 + dy * k, lerp(o.pitch, pA, e), lerp(o.dist, dA, e)), t: this.centre.clone() });
+    }
+    const far = keys[keys.length - 1].p;
+    keys.push(...this.approachKeys(far), ...this.enterKeys());
+    await this.fly(new Flight(keys, 3, true), 5.6 + Math.abs(dy) * 0.45, { level: 0.3 });
+    this.setMix(1);
     this.setOutside(false);
-    await this.run(reducedMotion ? 0 : 2.6, k => this.enter(k, this.pose.pos, this.pose.target));
-    this.setOutside(false);
-    this.rig.cine = null;
+    this.rig.releaseCine();
     this.busy = false;
     this.hooks.mode?.('inside');
   }
@@ -494,7 +628,7 @@ export class Outside {
   }
 
   update(dt: number) {
-    if (!this.isOut && this.mode === 'inside') return;
+    if (this.mixK >= 1 && this.mode === 'inside') return;
     for (const sp of this.spinners) sp.o.rotateOnAxis(sp.axis, sp.rps * Math.PI * 2 * dt);
     if (this.mode === 'inside' || this.busy) { this.layoutWorld(); return; }
     const s = this.ship, o = this.orbit;

@@ -142,6 +142,7 @@ async function main() {
   const props = setupProps(scene, cabin, content);
   setupPatch(cabin);
   const shafts = setupShafts(scene);
+  const shaftGain = (shafts.material as THREE.ShaderMaterial).uniforms.uGain, shaftGain0 = shaftGain.value as number;
   const dust = setupDust(scene, { pixelRatio: renderer.getPixelRatio(), count: touch ? 150 : 240 });
 
   const rig = new CameraRig(cabin);
@@ -748,6 +749,7 @@ async function main() {
     clock.place(camera, innerWidth, innerHeight);
     letterView.place(camera, innerWidth, innerHeight);
     play.placeNoSignal();
+    outsideRef?.prerender(renderer);
     fx.render(scene, camera);
     if (inspector.overlay) {
       // the inspected item: a second pass on top (depth cleared), so it never clips into the cabin
@@ -771,12 +773,12 @@ async function main() {
       root: document.body,
       crossed: out => {
         whalesRef?.setOutside(out ? outsideRef : null);
-        sky.group.visible = !out;
-        shafts.visible = !out;
         ui.setVisible(!out);
         if (out) hideHint();
         if (out) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); }
       },
+      windowSky: sky.group,
+      mix: k => { shafts.visible = k > 0; shaftGain.value = shaftGain0 * k; },
       click: ndc => { const k = whalesRef?.pickOutside(camera, ndc); if (k) { whalesRef!.showCard(k); audio.click(); } },
       mode: mo => {
         audio.whoosh();
@@ -790,8 +792,7 @@ async function main() {
   });
   goOutside = () => {
     if (letterOpen) tuckLetter();
-    if (rig.view !== 'overview') rig.jump('overview');
-    ui.setView('overview');
+    ui.setView('overview'); // the flight out starts from whatever view is on screen
     void getOutside().then(o => o.goOutside()).then(ok => { if (!ok) showNote('The ship could not be loaded'); }, () => showNote('The ship could not be loaded'));
   };
   let introDone: Promise<void> = Promise.resolve();
@@ -827,6 +828,8 @@ async function main() {
   (window as unknown as { __kk: unknown }).__kk = {
     scene, cabin, coll, rig, play, ui, props, weather, sheets, lighting, sky, inspector, ship, clock, hang, letterView,
     get whales() { return whalesRef; },
+    get outside() { return outsideRef; },
+    goOutside: () => goOutside(),
     goto, openLetter, openAbout, openSheet, ringBell, toggleNight,
     tengwar: (on: boolean) => props.setTengwarLatin(on),
   };

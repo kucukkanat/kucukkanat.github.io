@@ -53,6 +53,10 @@ export class CameraRig {
   headHeave = 0;
   /** Cinematic override (intro.ts): while set, the camera sits exactly at this pose and visitor input is ignored. */
   cine: { pos: THREE.Vector3; target: THREE.Vector3; up?: THREE.Vector3 } | null = null;
+  /** After a cinematic: the pose it ended on, eased into the rig's own (sway, head roll, look-around) over `relDur`. */
+  private rel: { pos: THREE.Vector3; q: THREE.Quaternion; fov: number } | null = null;
+  private relK = 1;
+  private relDur = 0.8;
 
   constructor(private cabin: Cabin) {
     this.camera = new THREE.PerspectiveCamera(BASE_VFOV, 1, 0.03, 200);
@@ -180,6 +184,17 @@ export class CameraRig {
     this.apply();
   }
 
+  /** End a cinematic without a cut: start from where it left the camera and ease into the rig's pose. */
+  releaseCine(dur = 0.8) {
+    if (!this.cine) return;
+    const c = this.camera;
+    this.rel = { pos: c.position.clone(), q: c.quaternion.clone(), fov: c.fov };
+    this.cine = null;
+    this.relK = 0;
+    this.relDur = reducedMotion ? 0 : dur;
+    if (this.relDur <= 0) this.rel = null;
+  }
+
   /** Normalised pointer (-1..1) for a gentle look-around. */
   setLook(x: number, y: number) { this.look.set(x, y); }
 
@@ -205,6 +220,7 @@ export class CameraRig {
     if (s === Infinity) this.panCur.copy(this.pan);
     else this.panCur.set(damp(this.panCur.x, this.pan.x, s, dt), damp(this.panCur.y, this.pan.y, s, dt));
     if (Math.abs(z0 - this.zoomCur) > 1e-5) this.updateFov();
+    if (this.rel) { this.relK = Math.min(1, this.relK + dt / this.relDur); if (this.relK >= 1) { this.rel = null; this.updateFov(); } }
     this.apply(t);
   }
 
@@ -294,6 +310,15 @@ export class CameraRig {
       .addScaledVector(c.up, -this.lookCur.y * dist * 0.03);
     c.lookAt(look);
     c.rotation.z += (Math.sin(t * 0.45) * 0.002 + this.headRoll) * sway; // the head trails the ship's roll a little
+    if (this.rel) {
+      const k = this.relK, e = k * k * (3 - 2 * k);
+      c.position.lerpVectors(this.rel.pos, c.position, e);
+      const to = c.quaternion.clone();
+      c.quaternion.copy(this.rel.q).slerp(to, e);
+      const f = this.lim.mode === 'look' ? this.zoomCur : 1;
+      c.fov = THREE.MathUtils.lerp(this.rel.fov, this.baseFov * f, e);
+      c.updateProjectionMatrix();
+    }
   }
 
   /** Which way the camera faces (for panel placement etc). */
