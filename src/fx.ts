@@ -4,6 +4,12 @@ import * as THREE from 'three';
 import { FULL } from './tier';
 import { uNight, uStorm, uTime, uFlash } from './lighting';
 
+/** Look tuning (captain round): bloom strength factor and colour-grade contrast. ?glow= and ?contrast= override
+ *  them for comparing looks. */
+const tune = (k: string, d: number) => { const v = parseFloat(new URLSearchParams(location.search).get(k) ?? ''); return Number.isFinite(v) ? v : d; };
+export const GLOW = tune('glow', 0.7);
+export const CONTRAST = tune('contrast', 1.15);
+
 // Window layout (docs/SCENE_CONTRACT.md, blender/kit/layout.py): posts on an arc of radius 3.6 around (0, *, 1).
 const ARC_R = 3.6, ARC_CZ = 1.0, SILL = 0.95, TOP = 2.55;
 const WIN_EDGES = [-30, -18, -6, 6, 18, 30];
@@ -46,7 +52,7 @@ export function setupShafts(scene: THREE.Scene): THREE.Mesh {
   g.setIndex(idx);
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-    uniforms: { uNight, uStorm, uTime, uFlash, uGain: { value: FULL ? 0.12 : 0.09 } },
+    uniforms: { uNight, uStorm, uTime, uFlash, uGain: { value: (FULL ? 0.12 : 0.09) * GLOW } },
     vertexShader: /* glsl */`
       attribute float aSeed; varying vec2 vUv; varying float vSeed; varying float vDist;
       void main() { vUv = uv; vSeed = aSeed; vec4 mv = modelViewMatrix * vec4(position, 1.0); vDist = -mv.z; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
