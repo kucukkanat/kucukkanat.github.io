@@ -6,6 +6,7 @@ import { setupPatch } from './patch';
 import type { Writing } from './writing/reader';
 import type { Search, SearchItem } from './writing/search';
 import { loadNotesIndex, shelveTopics, topicOf, topicItemId } from './writing/shelf';
+import './fonts.css';
 import './style.css';
 import * as THREE from 'three';
 import { loadContent, findItem } from './content';

@@ -6,6 +6,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SkyWhale, AutoPilot, loadManifest, type WhaleEntry } from './sky-whale';
+import '../fonts.css';
 import { lockZoom, registerSW } from '../pwa';
 
 lockZoom();

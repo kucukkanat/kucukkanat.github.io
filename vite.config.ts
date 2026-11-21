@@ -8,8 +8,12 @@ export default defineConfig({
     rollupOptions: {
       input: { main: 'index.html', whales: 'whales/index.html' },
       // three.js core in its own chunk: it changes far less often than the app, so returning visitors keep it cached
-      // (the shared loaders/examples land in a small chunk named after one of its modules)
-      output: { manualChunks: (id: string) => (id.includes('node_modules/three/build/') ? 'three' : undefined) },
+      // (the shared loaders/examples land in a small chunk named after one of its modules); the code and styles both
+      // pages share (PWA plumbing, fonts) get a name of their own too
+      output: {
+        manualChunks: (id: string) => id.includes('node_modules/three/build/') ? 'three'
+          : /\/src\/(pwa\.ts|fonts\.css)$/.test(id) ? 'shell' : undefined,
+      },
     },
   },
   // allowedHosts: portless serves the dev server as kucukkanat.localhost and, in LAN mode, kucukkanat.local
