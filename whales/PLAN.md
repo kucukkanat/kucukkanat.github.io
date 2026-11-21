@@ -33,7 +33,7 @@ Move the six sky whales (both styles, build sources, renders) into this repo. Ma
 
 The `.gitattributes` LFS patterns cover only `whales/out/blend/**`, `whales/out/textures/**` and `whales/renders/**` (`*.blend`, `*.png`, `*.mp4`). `public/` assets stay in regular git, so the Pages build never needs LFS.
 
-## Milestones (one commit each)
+## Milestones (one commit each). Status 2026-11-21: 1–6 done; the scale, routes and lighting were tuned against screenshots of the window and helm views
 1. **Move sources + LFS.**
    - Install git-lfs (Homebrew, with your OK).
    - Copy scripts, masters, final renders and docs into `whales/`.

@@ -28,6 +28,17 @@ Both styles share species-faithful anatomy.
 | `out/blend/`, `out/textures/`, `renders/`, `ref/` | Source scenes, textures, final renders, reference renders (**Git LFS**) |
 | `index.html` | The `/whales/` viewer page (second Vite entry; code in `src/whales/`) |
 
+## In the site
+- **The world** (`src/whales-world.ts`, its own chunk, loaded in idle time after the sky models):
+  - **Window view:** the six style A whales wander outside the stern windows, weaving between the islands.
+  - **Outside / at the helm:** they're giant, and one may swim alongside when you fly near.
+  - **Look:** they're painted with the sky's shader, so they follow sunset, night and storm. Light versions show first and full ones swap in up close.
+  - **Phones:** two whales, with no particles.
+  - **Interaction:** click one for a card linking to the viewer.
+  - **Sound:** whale calls in the sound engine.
+- **The viewer:** `/whales/` (this folder's `index.html`, code in `src/whales/`). It's also the **Sky Whales** cartridge in the map chest (`content/sky-whales.md`), which plays inside the KANAT·1 handheld via `?embed=1`.
+- **Runtime controller:** `src/whales/sky-whale.ts` (`SkyWhale`). It's shared by both, and handles reactions, particles, spouts, world scale and motion space.
+
 ## Rebuild
 ```bash
 bun run whales                     # all 12 -> whales/out

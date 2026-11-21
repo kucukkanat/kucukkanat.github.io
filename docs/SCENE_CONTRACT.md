@@ -155,3 +155,23 @@ No rope may form a loop that could read as a noose. Hanging rope coils are hung 
 
 - The chart table and everything on it (`STATIC_table`, `Lantern`, `Handheld`, `Letter`, their `HIT_*`, `SLOT_map`, `VP_table`/`VP_handheld`/`VP_screen`/`VP_letter`) is turned 30° clockwise (seen from above) about the table centre (0, 0, −0.2) by `blender/kit/captain.py` (`TABLE_YAW`). Coordinates listed earlier for those nodes are before that turn.
 - `Captain`: empty at the floor centre of the throne behind the table (local +Z = facing, uniform scale = model units → metres). The app adds `public/assets/captain.glb` (`bun scripts/build-captain.ts` from `art/models/captain.glb`: full mesh, every map 1024 px WebP, meshopt) right after the first frame, sits its lowest point on the empty and lights it with its own lights. The Blender build imports the same model for the bake only, so its shadow is in the lightmaps.
+
+## Sky whales (2026-11-21)
+
+Built by `whales/scripts` (Blender 5.3, see `whales/README.md`); the site only reads the web copies.
+
+| File | Content |
+|---|---|
+| `public/assets/whales/<sp>_lite.glb` | World whales (window view, far outside) and phones: ~4.5k-tri body, ~5k-tri island, 512 px texture |
+| `public/assets/whales/<sp>_A.glb` | Full detail, style A: the world swaps it in when a whale comes near, and the `/whales/` viewer |
+| `public/assets/whales/<sp>_B.glb` | Style B (cel shading + outline at runtime), viewer only |
+| `public/assets/whales/manifest.json` | Species, names, ecosystem labels, a fact line, files and sizes (keeps its name in builds; `hash-assets` rewrites the GLB paths inside it) |
+
+`<sp>` is one of `blue`, `sperm`, `beluga`, `humpback`, `bowhead` and `minke`.
+
+- **Orientation:** nose +Z, up +Y, the whale's left +X. glTF units are metres of the real animal (`userData.whale.length`).
+- **Bones:** `blowhole` (spouts), `fin_L/R_1..5`, `fluke`, `fluke_L/R_1..2`, the spine chain, and `tree_NN_a/b` and `water_N` (ecosystem reactions).
+- **Clips:** `cruise` (8 s loop), `rest`, and `body_*` / `eco_*` reaction poses (`bankL`, `bankR`, `climb`, `dive`, `accel`). The runtime makes the reaction poses additive.
+- **Window view:** whales live in `sky.group` (`Whales`) at scale 0.55 and wander x ±11, y −1..4, z −7.6..−19.5. They avoid `sky.obstacles()` and use the painted sky shader with the backdrop haze (`HAZE_VERT`, `sky.uniforms`).
+- **Outside:** whales live in `WhalesOutside`, a child of `Outside.worldGroup` positioned at −ship position (absolute space). They're at scale 8 and wander 160–480 m from the ship; at the helm one comes to swim off the bow quarter.
+- **Picking:** each whale carries an invisible `WhaleHit_<sp>` box with `userData.whale = <sp>`.

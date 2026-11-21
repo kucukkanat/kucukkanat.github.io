@@ -327,6 +327,7 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
     next.setScale(outside ? OUT.k : WIN.k);
     parent.add(next.object); next.addEffectsTo(parent);
     next.setParticlesVisible(!outside && FULL);
+    next.spout.pts.visible = FULL;   // spouts are a full-tier effect: don't draw empty emitters on phones
     (outside ? w.out! : w.win).apply(next.object);
     next.resetMotion();
   };
