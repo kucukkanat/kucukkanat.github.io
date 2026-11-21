@@ -7,10 +7,11 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { CameraRig } from './camera';
-import { ease, reducedMotion } from './anim';
+import { reducedMotion } from './anim';
 import { FULL } from './tier';
 import { loadGLB } from './scene';
 import { uNight, uStorm } from './lighting';
+import { Flight, PACE, type Key } from './flight';
 
 import { INTRO_KEY as KEY } from './intro-flag';
 const HOLD = (() => { const v = new URLSearchParams(location.search).get('introT'); return v === null || !Number.isFinite(+v) ? null : +v; })();
@@ -41,49 +42,6 @@ const FADE_IN = 0.5, FADE_OUT = 0.7;
 /** While crossfading, the window sky covers only what is farther than this (m): the outside world, not the hull. */
 const FADE_DEPTH = 120;
 
-interface Key { p: THREE.Vector3; t: THREE.Vector3 }
-
-/**
- * One camera move: a Catmull-Rom path through the keys' positions and one through their aim points (same parameter,
- * so the heading turns as smoothly as the path bends; the aim is kept as a look direction, consecutive keys well under
- * 180 degrees apart), paced by arc length: speed 1 in the cabin, rising by 1 for
- * every `grow` metres of path outside the window. One easing over the whole move: no stop at the window.
- */
-class Flight {
-  private pc: THREE.CatmullRomCurve3;
-  private tc: THREE.CatmullRomCurve3;
-  private tau: Float32Array;
-  private len: number;
-  private static N = 400;
-  constructor(keys: Key[], grow: number, inward: boolean) {
-    this.pc = new THREE.CatmullRomCurve3(keys.map(k => k.p.clone()), false, 'catmullrom', 0.5);
-    // aim as look directions, not points: the camera can pass its aim point without the heading flipping
-    this.tc = new THREE.CatmullRomCurve3(keys.map(k => k.t.clone().sub(k.p).normalize()), false, 'catmullrom', 0.5);
-    this.pc.arcLengthDivisions = Flight.N;
-    const lengths = this.pc.getLengths(Flight.N);
-    this.len = lengths[Flight.N];
-    const wi = keys.findIndex(k => k.p.distanceToSquared(WINDOW) < 1e-8);
-    const sW = wi < 0 ? (inward ? this.len : 0) : lengths[Math.round(wi / (keys.length - 1) * Flight.N)];
-    const N = Flight.N, tau = this.tau = new Float32Array(N + 1);
-    const inv = (s: number) => 1 / (1 + Math.max(0, inward ? sW - s : s - sW) / grow);
-    for (let j = 1; j <= N; j++) {
-      const s0 = this.len * (j - 1) / N, s1 = this.len * j / N;
-      tau[j] = tau[j - 1] + (inv(s0) + inv(s1)) * 0.5 * (s1 - s0);
-    }
-  }
-  /** Pose at progress p (0..1 of the paced time). */
-  at(p: number, pos: THREE.Vector3, target: THREE.Vector3) {
-    const N = Flight.N, tau = this.tau, want = clamp(p, 0, 1) * tau[N];
-    let lo = 0, hi = N;
-    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (tau[m] <= want) lo = m; else hi = m; }
-    const f = tau[hi] > tau[lo] ? (want - tau[lo]) / (tau[hi] - tau[lo]) : 0;
-    const u = clamp((lo + f) / N, 0, 1);
-    const t = this.pc.getUtoTmapping(u, u * this.len);
-    this.pc.getPoint(t, pos);
-    this.tc.getPoint(t, target);
-    target.normalize().multiplyScalar(4).add(pos);
-  }
-}
 
 /** Sunset sky all around with a sea of cloud below. */
 function skyDome(): THREE.Mesh {
@@ -431,7 +389,7 @@ export class Outside {
     const level = opts.level ?? 0.3;
     const cam = this.rig.camera, fov0 = opts.fov0 ?? cam.fov, fov1 = cam.fov;
     await this.run(reducedMotion ? 0 : dur, k => {
-      f.at(ease.inOutCubic(k), this.pose.pos, this.pose.target);
+      f.at(f.progress(k), this.pose.pos, this.pose.target);
       const l = clamp(k / level, 0, 1), e = l * l * (3 - 2 * l);
       if (r0 || p0) { this.ship.roll = r0 * (1 - e); this.ship.pitch = p0 * (1 - e); }
       this.pose.up.copy(up0).lerp(Y, e).normalize();
@@ -458,9 +416,9 @@ export class Outside {
     this.skipAll = false;
     const keys: Key[] = [{ p: far, t: this.centre.clone() }, ...this.approachKeys(far), ...this.enterKeys()];
     // a slow start lingers on the whole ship before closing in
-    const f = new Flight(keys, 3, true);
-    await this.run(6.5, k => {
-      f.at(ease.inOutCubic(k), this.pose.pos, this.pose.target);
+    const f = new Flight(keys, WINDOW, PACE.intro.grow, true, PACE.intro.turn);
+    await this.run(f.duration, k => {
+      f.at(f.progress(k), this.pose.pos, this.pose.target);
       this.layoutWorld();
       this.atWindow(this.pose.pos);
     }, true, 0);
@@ -506,7 +464,8 @@ export class Outside {
     ];
     // the camera's start may be anywhere in the cabin: drop the first cabin key when it would double back
     if (this.pose.pos.distanceTo(keys[1].p) < 0.6 || this.pose.pos.z < keys[1].p.z) keys.splice(1, 1);
-    await this.fly(new Flight(keys, 6, false), 4.8, { level: 0.25, fov0 });
+    const f = new Flight(keys, WINDOW, PACE.out.grow, false, PACE.out.turn);
+    await this.fly(f, f.duration, { level: 0.25, fov0 });
     this.setMix(0);
     this.setOutside(true);
     this.mode = 'orbit';
@@ -536,7 +495,8 @@ export class Outside {
     }
     const far = keys[keys.length - 1].p;
     keys.push(...this.approachKeys(far), ...this.enterKeys());
-    await this.fly(new Flight(keys, 3, true), 5.6 + Math.abs(dy) * 0.45, { level: 0.3 });
+    const f = new Flight(keys, WINDOW, PACE.back.grow, true, PACE.back.turn);
+    await this.fly(f, f.duration, { level: 0.3 });
     this.setMix(1);
     this.setOutside(false);
     this.rig.releaseCine();

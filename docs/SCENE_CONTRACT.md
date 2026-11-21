@@ -148,6 +148,7 @@ No rope may form a loop that could read as a noose. Hanging rope coils are hung 
 - The cabin sits inside the galleon: `src/outside.ts` moves the ship so `Cabin_anchor` lands on the cabin's origin and hides the ship's `Gallery_glass*` / `Gallery_frames*` (the cabin's own stern windows show instead). Keep the ship's stern gallery and the cabin's window wall the same shape (five panes, posts every 12 degrees, radius ~3.6 m, sill 0.95 m, top 2.55 m above the cabin floor).
 - The camera enters and leaves through the **middle pane** (`WINDOW` in `outside.ts`): nothing may be modelled in that opening, in either file, and the path over the wheel to the landing view must stay clear up to y = 2.0 m.
 - `public/assets/galleon_lite.glb` is the phone copy (`airship/export_web.py` writes both). Fetched only when a phone visitor taps Outside.
+- Going out and back in is one continuous flight each way (`src/flight.ts`: a path through keys, paced by a speed planner that slows for turns and caps acceleration; the pacing sets the duration). Check the profile without a browser with `bun scripts/flight-check.ts -v`. While the camera passes the window, the window sky crossfades with the outside world (`Outside.prerender`).
 - Flying never moves the ship or the cabin: the outside world (sky dome, far islands) turns and slides instead. Far islands reuse `sky.glb`'s island meshes.
 - `Jacket_patch` / `Patch_filo` (material `SquadronPatch`, UV 0..1): the app draws the squadron patch (`src/patch.ts`), or uses `public/assets/patch.webp` when that file exists.
 
