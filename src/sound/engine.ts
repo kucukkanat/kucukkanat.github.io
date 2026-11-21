@@ -456,4 +456,60 @@ export class SoundEngine {
     }
     this.burst(t, 0.02, 'highpass', 4000, 0.7, 0.2, out); // the strike
   }
+  /** A sky whale calling from somewhere outside (species-flavoured, synthesized). gain ~ nearness, pan -1..1. */
+  whale(species: string, gain = 0.2, pan = 0) {
+    const c = this.ctx, t = c.currentTime + 0.05;
+    const out = c.createGain(); out.gain.value = gain * (this.storm ? 0.6 : 1);
+    const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan * 0.8));
+    // far away and through the hull: soften the top end
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.Q.value = 0.4;
+    out.connect(lp).connect(p).connect(this.amb);
+    if (species === 'sperm') {           // click trains, slowing then speeding up
+      let at = t;
+      for (let i = 0, n = Math.round(rand(9, 16)); i < n; i++) {
+        this.burst(at, 0.012, 'bandpass', rand(1800, 2600), 4, 0.5, out);
+        at += 0.11 + 0.06 * Math.sin(i / n * Math.PI);
+      }
+      return;
+    }
+    if (species === 'beluga') {          // the 'sea canary': quick whistles and chirps
+      let at = t;
+      for (let i = 0, n = Math.round(rand(3, 6)); i < n; i++) {
+        const o = c.createOscillator(); o.type = 'sine';
+        const f0 = rand(900, 1500), d = rand(0.12, 0.35);
+        o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f0 * rand(1.3, 2.1), at + d * 0.7);
+        o.frequency.exponentialRampToValueAtTime(f0 * rand(0.8, 1.1), at + d);
+        const g = c.createGain(); g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.25, at + 0.03); g.gain.linearRampToValueAtTime(0, at + d);
+        o.connect(g).connect(out); o.start(at); o.stop(at + d + 0.05);
+        at += d + rand(0.05, 0.25);
+      }
+      return;
+    }
+    if (species === 'minke') {           // a pulsed 'boing'
+      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = rand(1300, 1500);
+      const am = c.createOscillator(); am.frequency.value = rand(90, 120);
+      const amg = c.createGain(); amg.gain.value = 0.5;
+      const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.18, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+      am.connect(amg).connect(g.gain);
+      o.connect(g).connect(out); o.start(t); am.start(t); o.stop(t + 2.3); am.stop(t + 2.3);
+      return;
+    }
+    // moans: blue / bowhead low and slow, humpback a rising-falling song phrase
+    const base = species === 'blue' ? rand(70, 90) : species === 'bowhead' ? rand(110, 160) : rand(160, 240);
+    const dur = species === 'blue' ? rand(4, 6) : rand(2.4, 3.6);
+    const shape: [number, number][] = species === 'humpback'
+      ? [[0, 1], [0.35, 1.9], [0.6, 1.4], [1, 0.8]]
+      : species === 'bowhead' ? [[0, 1], [0.5, 1.5], [1, 1.1]] : [[0, 1], [0.4, 0.92], [1, 0.78]];
+    for (const [h, a] of [[1, 0.5], [2, 0.18], [3, 0.07]] as const) {
+      const o = c.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(base * h * shape[0][1], t);
+      for (const [k, m] of shape.slice(1)) o.frequency.exponentialRampToValueAtTime(base * h * m, t + k * dur);
+      const vib = c.createOscillator(); vib.frequency.value = rand(4, 6);
+      const vg = c.createGain(); vg.gain.value = base * h * 0.012;
+      vib.connect(vg).connect(o.frequency);
+      const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + dur * 0.25);
+      g.gain.setValueAtTime(a, t + dur * 0.7); g.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(g).connect(out); o.start(t); vib.start(t); o.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
+    }
+  }
 }

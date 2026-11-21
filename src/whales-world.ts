@@ -55,7 +55,7 @@ const WHALE_VERT = /* glsl */`
   #include <skinning_pars_vertex>
   uniform vec4 uMapXf; uniform vec4 uAlphaXf; uniform float uHazeMode; uniform float uOutHaze;
   ${HAZE_VERT}
-  varying vec2 vUvMap; varying vec2 vUvA; varying vec3 vNrm; varying vec3 vCol; varying vec3 vHaze; varying float vHazeK;
+  varying vec2 vUvMap; varying vec2 vUvA; varying vec3 vNrm; varying vec3 vCol; varying vec3 vHaze; varying float vHazeK; varying float vLamp;
   void main() {
     #include <beginnormal_vertex>
     #include <skinbase_vertex>
@@ -69,8 +69,10 @@ const WHALE_VERT = /* glsl */`
     vUvA = uv * uAlphaXf.xy + uAlphaXf.zw;
     #ifdef USE_COLOR
       vCol = color.rgb;
+      // lantern windows are painted one exact warm colour in the generator (props.lantern): they glow at night
+      vLamp = step(length(color.rgb - vec3(1.0, 0.694, 0.214)), 0.03);
     #else
-      vCol = vec3(1.0);
+      vCol = vec3(1.0); vLamp = 0.0;
     #endif
     float d = length(mv.xyz);
     if (uHazeMode < 0.5) { vHaze = skyHaze(wp.xyz); vHazeK = hazeAmount(d); }
@@ -92,7 +94,7 @@ const WHALE_FRAG = /* glsl */`
   #ifdef HAS_ALPHAMAP
     uniform sampler2D alphaMap;
   #endif
-  varying vec2 vUvMap; varying vec2 vUvA; varying vec3 vNrm; varying vec3 vCol; varying vec3 vHaze; varying float vHazeK;
+  varying vec2 vUvMap; varying vec2 vUvA; varying vec3 vNrm; varying vec3 vCol; varying vec3 vHaze; varying float vHazeK; varying float vLamp;
   void main() {
     vec3 n = normalize(vNrm);
     if (!gl_FrontFacing) n = -n;
@@ -112,10 +114,12 @@ const WHALE_FRAG = /* glsl */`
     vec3 shC = mix(mix(uShadeSun, uShadeNight, uNight), uShadeStorm * dim, uStorm);
     vec3 c = alb * (mix(shC, litC, lit) + uBounce * max(-up, 0.0) * (1.0 - uNight) * (1.0 - uStorm));
     c += alb * uFlash * 0.7;
+    float on = max(uNight, uStorm * 0.7);
+    c = mix(c, vec3(1.0, 0.72, 0.38) * (0.85 + 1.9 * on), vLamp);
     // a thin rim of backdrop light, so the silhouette reads against the painting
     float rim = pow(1.0 - abs(n.z), 3.0);
     c += vHaze * rim * 0.18;
-    c = mix(c, vHaze, vHazeK);
+    c = mix(c, vHaze, vHazeK * (1.0 - 0.55 * vLamp * on));
     c = mix(vHaze, c, uFadeIn);
     gl_FragColor = vec4(c, a);
     #include <colorspace_fragment>

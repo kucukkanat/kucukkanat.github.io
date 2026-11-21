@@ -651,6 +651,7 @@ async function main() {
   // Loop
   let frameMs = 16, slowFor = 0;
   let t = 0, last = -1, busyFrames = 60;
+  let whaleCallT = 8;
   const poke = () => { busyFrames = 30; };
   for (const ev of ['pointermove', 'pointerdown', 'keydown', 'resize', 'focusin', 'wheel', 'touchmove']) addEventListener(ev, poke, { passive: true });
   sky.update(0, 0);
@@ -734,6 +735,12 @@ async function main() {
     rig.setSheet(innerWidth <= 720 && (ui.panelOpen || sheets.isOpen || clock.isOpen));
     outsideRef?.update(dt);
     whalesRef?.update(t, dt, camera);
+    // now and then the nearest whale calls (louder when close, panned to where it is)
+    if (whalesRef && audio.enabled && !reducedMotion && (whaleCallT -= dt) <= 0) {
+      whaleCallT = 18 + Math.random() * 26;
+      const n = whalesRef.nearest(camera);
+      if (n) audio.whale(n.key, clamp(0.5 / Math.max(n.rel, 1), 0.04, 0.3), n.pan);
+    }
     rig.update(t, dt);
     inspector.update(dt);
     ui.setQuiet(inspector.overlay);

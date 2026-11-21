@@ -68,6 +68,8 @@ class Sound {
   creak() { this.fx(e => e.creak()); }
   thunder(delay?: number) { if (this.mode !== 'off') this.eng?.thunder(delay); }
   bell(gain?: number, delay?: number) { if (this.mode !== 'off') this.eng?.bell(gain, delay); }
+  /** A sky whale's call (ambient and full modes). */
+  whale(species: string, gain?: number, pan?: number) { if (this.mode !== 'off') this.eng?.whale(species, gain, pan); }
 }
 
 export const audio = new Sound();
