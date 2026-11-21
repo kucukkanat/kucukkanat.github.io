@@ -100,7 +100,7 @@ New props in `cabin.glb` (each with a `HIT_*` box; lightmap them if static):
 | Name | Where (three.js) | Notes |
 |---|---|---|
 | `Letter` (+ `HIT_letter`) | On the chart table, front-right of the handheld | A folded letter with a wax seal. Mesh `Letter_paper` material `LetterPaper` (UV 0..1 over the visible face). Not static (the app lifts it). |
-| `Portrait` (+ `HIT_portrait`) | Above the logbook rack: frame bottom at ~2.05 m, canvas centre (2.41, 2.30, −1.59), tilted forward 5° (built: the rack top is at 1.92 m, so ~1.9 m would overlap it) | Gilded frame `STATIC_`-joinable; canvas mesh `Portrait_canvas` with material `PortraitCanvas`, UV 0..1, aspect 4:5 portrait. App sets `/assets/portrait.webp` (placeholder if missing). |
+| `Portrait` (+ `HIT_portrait`) | Above the logbook rack: frame bottom at ~2.05 m, canvas centre (2.41, 2.30, −1.59), tilted forward 5° (built: the rack top is at 1.92 m, so ~1.9 m would overlap it) | Gilded frame `STATIC_`-joinable; canvas mesh `Portrait_canvas` with material `PortraitCanvas`, UV 0..1, aspect 1:1 (was 4:5 until the captain round). App sets `/assets/portrait.webp` (720 px square WebP; placeholder if missing). |
 | `Bottle` (+ `HIT_bottle`) | On a small shelf or the window sill near the rack | Glass message bottle with a rolled note inside, cork. Material `BottleGlass` (app makes it transparent). Not static. |
 | `Tengwar_note` (+ `HIT_tengwar`) | Pinned to the left wall/beam near the bookshelf, eye height | Paper note, mesh `Tengwar_paper`, material `TengwarPaper`, UV 0..1, landscape 3:2. App draws the text. |
 | `Slate` (+ `HIT_slate`) | Leaning on the chest top or hanging by the shelf | Small framed chalk slate, mesh `Slate_board`, material `SlateBoard`, UV 0..1, landscape 4:3. App draws "√−1" in chalk. |
@@ -109,7 +109,7 @@ New props in `cabin.glb` (each with a `HIT_*` box; lightmap them if static):
 
 New viewpoints: `VP_portrait`/`_T` (facing the portrait), `VP_letter`/`_T` (looking down at the letter on the table).
 
-New art: `public/assets/sky_storm.jpg` (storm backdrop), `public/assets/portrait.webp` (painted portrait, 4:5, ≤150 KB), Tengwar font in `public/fonts/`.
+New art: `public/assets/sky_storm.jpg` (storm backdrop), `public/assets/portrait.webp` (painted portrait, square, ≤150 KB), Tengwar font in `public/fonts/`.
 
 ## Fix round additions (2026-11-20)
 
@@ -138,7 +138,7 @@ No rope may form a loop that could read as a noose. Hanging rope coils are hung 
 - **Palette**: `blender/kit/paint.py` (`PALETTE`, `ACCENT`, `paint()`) is the single colour source for `cabin.glb` and the galleon. Material names are unchanged; new ones: `BookOchre`, `BookPlum`, `BookTeal`, `SkyMapGlobe`.
 - **Baked materials get a painted highlight** in the app by material name (`SHEEN` in `src/lighting.ts`: Brass, Gilt, Mahogany, Iron, Glass). Rename a material and it loses its sheen.
 - **Dressing** (all inside `STATIC_props` / `STATIC_chest`, no new nodes): telescope, globe, chart basket, coat pegs, hourglass, bookend.
-- **`public/assets/galleon.glb`** (full tier, first visit only): the sky galleon, root `Ship`, +X bow. The empty `Cabin_anchor` marks where the cabin sits inside it (cabin origin and axes); the app moves the ship so that anchor lands on the cabin's origin. Joint empties with `extras.joint = 'spin'`, `axis`, `rpm` are spun by the app. ≤ 1.8 MB, meshopt + WebP.
+- **`public/assets/galleon.glb`** (full tier: streamed in after the first frame for the Outside view; the opening shot only plays with `?intro=1`): the sky galleon, root `Ship`, +X bow. The empty `Cabin_anchor` marks where the cabin sits inside it (cabin origin and axes); the app moves the ship so that anchor lands on the cabin's origin. Joint empties with `extras.joint = 'spin'`, `axis`, `rpm` are spun by the app. ≤ 1.8 MB, meshopt + WebP.
 - **Light shafts** (`src/fx.ts`) repeat the window layout and the bake's sun direction as constants: change `layout.py` / `lights.py` and update them there too.
 - **Tiers**: `src/tier.ts` (`TIER`, `FULL`).
 - **Sky files**: `sky.glb` (both tiers: `SKY_island_1..6`, `SKY_airship`, `SKY_balloon_1..2`, `SKY_clouds` + cloud atlas) and `sky_full.glb` (full tier: `SKY_island_7`, `SKY_rocks_1`, `SKY_airship_2`, `SKY_balloon_3..4`). Written by `blender/kit/sky_pack.py`, not the Blender exporter: int16 positions (`KHR_mesh_quantization`), sRGB byte vertex colours, no normals, vertex alpha 0 = glowing at night. Do not run meshopt on them. Layout and tuning live in `src/sky.ts` (`LAYOUT`, `CLOUDS`, `HAZE_*`, `COLORS`).
@@ -154,4 +154,4 @@ No rope may form a loop that could read as a noose. Hanging rope coils are hung 
 ## Captain round (2026-11-21)
 
 - The chart table and everything on it (`STATIC_table`, `Lantern`, `Handheld`, `Letter`, their `HIT_*`, `SLOT_map`, `VP_table`/`VP_handheld`/`VP_screen`/`VP_letter`) is turned 30° clockwise (seen from above) about the table centre (0, 0, −0.2) by `blender/kit/captain.py` (`TABLE_YAW`). Coordinates listed earlier for those nodes are before that turn.
-- `Captain`: empty at the floor centre of the throne behind the table (local +Z = facing, uniform scale = model units → metres). The app loads `public/assets/captain.glb` (from `art/models/captain.glb`: 1024 px WebP textures + meshopt) after the first frame, sits its lowest point on the empty and lights it with its own lights. The Blender build imports the same model for the bake only, so its shadow is in the lightmaps.
+- `Captain`: empty at the floor centre of the throne behind the table (local +Z = facing, uniform scale = model units → metres). The app adds `public/assets/captain.glb` (`bun scripts/build-captain.ts` from `art/models/captain.glb`: half the triangles, WebP colour 1024 / normal 512 / roughness 256 px, meshopt) right after the first frame, sits its lowest point on the empty and lights it with its own lights. The Blender build imports the same model for the bake only, so its shadow is in the lightmaps.

@@ -65,7 +65,7 @@ export function paper(ctx: CanvasRenderingContext2D, w: number, h: number, seed:
 
 /** Painted-looking stand-in portrait: a captain's silhouette with a peaked cap on a warm ground. */
 export function portraitPlaceholder(): HTMLCanvasElement {
-  const W = 512, H = 640;
+  const W = 512, H = 512;
   const [c, ctx] = canvas(W, H);
   const rnd = seeded('portrait');
   const g = ctx.createRadialGradient(W * 0.45, H * 0.35, 30, W / 2, H / 2, H * 0.75);
@@ -298,7 +298,7 @@ function standIn(id: EggId): { obj: THREE.Object3D; face?: THREE.Mesh } {
       const frame = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.04), gilt);
       const lip = new THREE.Mesh(new THREE.BoxGeometry(0.43, 0.53, 0.046), new THREE.MeshStandardMaterial({ color: '#4a2a14', roughness: 0.7 }));
       g.add(lip);
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), new THREE.MeshStandardMaterial({ name: 'PortraitCanvas', roughness: 0.85 }));
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.36), new THREE.MeshStandardMaterial({ name: 'PortraitCanvas', roughness: 0.85 }));
       face.position.z = 0.025;
       g.add(frame, face);
       // above the logbook rack, on the angled wall (normal ≈ (−0.68, 0, 0.73))

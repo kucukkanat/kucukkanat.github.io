@@ -1,13 +1,15 @@
 // The captain on his throne behind the chart table. cabin.glb carries only the empty `Captain` (floor centre of the
-// throne, facing, scale); the model (/assets/captain.glb, ~0.5 MB) streams in after the first frame and is lit by the
+// throne, facing, scale); the model (/assets/captain.glb, ~0.5 MB) is fetched alongside the cabin and added after the first frame and is lit by the
 // app's lights like the other non-baked props. Its baked shadow is already in the lightmaps.
 import * as THREE from 'three';
+import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { loadGLB, type Cabin } from './scene';
 
-export async function loadCaptain(cabin: Cabin): Promise<THREE.Object3D | null> {
+/** Put the captain on his anchor. `pending` is the download main.ts started alongside the cabin. */
+export async function loadCaptain(cabin: Cabin, pending?: Promise<GLTF | null>): Promise<THREE.Object3D | null> {
   const anchor = cabin.get('Captain');
   if (!anchor) return null;
-  const gltf = await loadGLB('/assets/captain.glb');
+  const gltf = await (pending ?? loadGLB('/assets/captain.glb'));
   if (!gltf) return null;
   const model = gltf.scene;
   model.name = 'Captain_model';
