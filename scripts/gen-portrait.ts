@@ -15,7 +15,7 @@ const MAX_BYTES = 150 * 1024;
 async function exportWebp(png: string) {
   // 4:5, 640×800 is plenty for a framed painting a few hundred px tall; step quality down until it fits.
   for (const quality of [82, 76, 70, 64, 58, 50]) {
-    const buf = await sharp(png).resize(640, 800, { fit: 'cover', position: 'attention' }).webp({ quality }).toBuffer();
+    const buf = await sharp(png).resize(720, 720, { fit: 'cover', position: 'attention' }).webp({ quality }).toBuffer();
     if (buf.length <= MAX_BYTES || quality === 50) {
       writeFileSync(outWebp, buf);
       console.log(`portrait: public/assets/portrait.webp (${Math.round(buf.length / 1024)} KB, q${quality})`);

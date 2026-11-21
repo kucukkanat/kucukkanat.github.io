@@ -20,7 +20,7 @@ LETTER_W, LETTER_D = 0.17, 0.115
 # Portrait: above the logbook rack (rack frame local coords), hangs tilted forward
 PORTRAIT_BOTTOM = 2.05
 PORTRAIT_TILT = 5.0
-CANVAS_W, CANVAS_H = 0.32, 0.40          # 4:5
+CANVAS_W, CANVAS_H = 0.36, 0.36          # 1:1 (captain round: square painting)
 FRAME_BAR = 0.055
 
 # Bottle: lying on the sill of the window right of the wheel (18..30 deg)

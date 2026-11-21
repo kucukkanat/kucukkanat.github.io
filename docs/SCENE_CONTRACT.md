@@ -100,7 +100,7 @@ New props in `cabin.glb` (each with a `HIT_*` box; lightmap them if static):
 | Name | Where (three.js) | Notes |
 |---|---|---|
 | `Letter` (+ `HIT_letter`) | On the chart table, front-right of the handheld | A folded letter with a wax seal. Mesh `Letter_paper` material `LetterPaper` (UV 0..1 over the visible face). Not static (the app lifts it). |
-| `Portrait` (+ `HIT_portrait`) | Above the logbook rack: frame bottom at ~2.05 m, canvas centre (2.41, 2.30, −1.59), tilted forward 5° (built: the rack top is at 1.92 m, so ~1.9 m would overlap it) | Gilded frame `STATIC_`-joinable; canvas mesh `Portrait_canvas` with material `PortraitCanvas`, UV 0..1, aspect 4:5 portrait. App sets `/assets/portrait.webp` (placeholder if missing). |
+| `Portrait` (+ `HIT_portrait`) | Above the logbook rack: frame bottom at ~2.05 m, canvas centre (2.41, 2.30, −1.59), tilted forward 5° (built: the rack top is at 1.92 m, so ~1.9 m would overlap it) | Gilded frame `STATIC_`-joinable; canvas mesh `Portrait_canvas` with material `PortraitCanvas`, UV 0..1, aspect 1:1 (was 4:5 until the captain round). App sets `/assets/portrait.webp` (720 px square WebP; placeholder if missing). |
 | `Bottle` (+ `HIT_bottle`) | On a small shelf or the window sill near the rack | Glass message bottle with a rolled note inside, cork. Material `BottleGlass` (app makes it transparent). Not static. |
 | `Tengwar_note` (+ `HIT_tengwar`) | Pinned to the left wall/beam near the bookshelf, eye height | Paper note, mesh `Tengwar_paper`, material `TengwarPaper`, UV 0..1, landscape 3:2. App draws the text. |
 | `Slate` (+ `HIT_slate`) | Leaning on the chest top or hanging by the shelf | Small framed chalk slate, mesh `Slate_board`, material `SlateBoard`, UV 0..1, landscape 4:3. App draws "√−1" in chalk. |
@@ -109,7 +109,7 @@ New props in `cabin.glb` (each with a `HIT_*` box; lightmap them if static):
 
 New viewpoints: `VP_portrait`/`_T` (facing the portrait), `VP_letter`/`_T` (looking down at the letter on the table).
 
-New art: `public/assets/sky_storm.jpg` (storm backdrop), `public/assets/portrait.webp` (painted portrait, 4:5, ≤150 KB), Tengwar font in `public/fonts/`.
+New art: `public/assets/sky_storm.jpg` (storm backdrop), `public/assets/portrait.webp` (painted portrait, square, ≤150 KB), Tengwar font in `public/fonts/`.
 
 ## Fix round additions (2026-11-20)
 
