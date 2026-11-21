@@ -150,3 +150,8 @@ No rope may form a loop that could read as a noose. Hanging rope coils are hung 
 - `public/assets/galleon_lite.glb` is the phone copy (`airship/export_web.py` writes both). Fetched only when a phone visitor taps Outside.
 - Flying never moves the ship or the cabin: the outside world (sky dome, far islands) turns and slides instead. Far islands reuse `sky.glb`'s island meshes.
 - `Jacket_patch` / `Patch_filo` (material `SquadronPatch`, UV 0..1): the app draws the squadron patch (`src/patch.ts`), or uses `public/assets/patch.webp` when that file exists.
+
+## Captain round (2026-11-21)
+
+- The chart table and everything on it (`STATIC_table`, `Lantern`, `Handheld`, `Letter`, their `HIT_*`, `SLOT_map`, `VP_table`/`VP_handheld`/`VP_screen`/`VP_letter`) is turned 30° clockwise (seen from above) about the table centre (0, 0, −0.2) by `blender/kit/captain.py` (`TABLE_YAW`). Coordinates listed earlier for those nodes are before that turn.
+- `Captain`: empty at the floor centre of the throne behind the table (local +Z = facing, uniform scale = model units → metres). The app loads `public/assets/captain.glb` (from `art/models/captain.glb`: 1024 px WebP textures + meshopt) after the first frame, sits its lowest point on the empty and lights it with its own lights. The Blender build imports the same model for the bake only, so its shadow is in the lightmaps.

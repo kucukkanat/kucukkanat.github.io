@@ -9,6 +9,7 @@ import { loadNotesIndex, shelveTopics, topicOf, topicItemId } from './writing/sh
 import './style.css';
 import * as THREE from 'three';
 import { loadContent, findItem } from './content';
+import { loadCaptain } from './captain';
 import { loadGLB, indexCabin, makeManager, type ViewName, type Cabin, type EggId } from './scene';
 import { setupLighting } from './lighting';
 import { setupSky } from './sky';
@@ -654,6 +655,7 @@ async function main() {
     };
     idle(() => {
       void loadGLB('/assets/sky.glb').then(g => { skyGltf = g; outsideRef?.setSkyModels(g); sky.addModels(g); });
+      void loadCaptain(cabin).then(poke);
       void coll.loadLabelArt();
       void props.loadArt();
       // night and storm art (~580 KB): fetched when first used; larger screens warm them up once the page is idle

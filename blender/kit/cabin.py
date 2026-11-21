@@ -540,5 +540,7 @@ def build(blockout=False):
     fix.build_hanging_lamp(C)
     from . import dress
     dress.build_patch(C)
+    from . import captain
+    captain.build(C)
     bpy.context.view_layer.update()
     return C
