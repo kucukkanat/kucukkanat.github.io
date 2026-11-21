@@ -98,11 +98,14 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
 
   // Static meshes → unlit base colour × blended lightmap.
   const lantGlow: THREE.MeshStandardMaterial[] = [];
+  const flames: THREE.Mesh[] = []; // the flame itself: hidden by day
+  const GLASS_DAY = new THREE.Color('#9a958c'), glassNight = new Map<THREE.MeshStandardMaterial, THREE.Color>();
   cabin?.root.traverse(o => {
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh) return;
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const m of mats) if (m.name === 'LanternGlow') lantGlow.push(m as THREE.MeshStandardMaterial);
+    for (const m of mats) if (m.name === 'LanternGlow' && !lantGlow.includes(m as THREE.MeshStandardMaterial)) lantGlow.push(m as THREE.MeshStandardMaterial);
+    if (mats.some(m => m.name === 'LanternFlame')) flames.push(mesh);
   });
   // Normalise bake exposure so a darker/brighter bake still reads well.
   const gains = {
@@ -146,18 +149,24 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
     hemi.color.set('#ffe6d2').lerp(new THREE.Color('#5a6aa8'), n).lerp(STORM_SKY, st * 0.6).lerp(FLASH, fl);
     fill.intensity = lerp(baked ? 0.6 : 1.0, 0.1, n) * (1 - 0.5 * st) + fl * 2.5;
     fill.color.set('#ffb27a').lerp(FLASH, fl);
-    lantern.intensity = lerp(0.4, baked ? 2.0 : 2.4, n) + st * 0.5;
+    lantern.intensity = (lerp(0, baked ? 2.0 : 2.4, n) + st * 0.5) * n; // dark by day
     lanternBase = lantern.intensity;
     scene.environmentIntensity = lerp(0.35, 0.05, n) * (1 - 0.4 * st);
     for (const m of lantGlow) {
       m.emissive?.set('#ffb055');
-      m.emissiveIntensity = lerp(0.6, 3.2, n) + st * 0.8;
+      m.emissiveIntensity = (lerp(0, 3.2, n) + st * 0.8) * n;
     }
-    glowBase = lerp(0.6, 3.2, n) + st * 0.8;
+    glowBase = (lerp(0, 3.2, n) + st * 0.8) * n;
+    // unlit glass by day: plain smoky glass, not the warm amber of a lit lantern
+    for (const m of lantGlow) {
+      if (!glassNight.has(m)) glassNight.set(m, m.color.clone());
+      m.color.copy(GLASS_DAY).lerp(glassNight.get(m)!, n);
+    }
+    for (const f of flames) f.visible = n > 0.05;
     screenGlow.intensity = 0.022 * n;
     for (const m of plastics) m.emissiveIntensity = 0.16 * n;
   };
-  let lanternBase = 0.4, glowBase = 0.6;
+  let lanternBase = 0, glowBase = 0;
   const flicker = (t: number, amount: number) => {
     // layered sines ≈ a guttering flame; gusts make it dip harder
     const f = 1 + amount * (0.45 * Math.sin(t * 11.3) + 0.3 * Math.sin(t * 23.9 + 1.1) + 0.25 * Math.sin(t * 41.7 + 2.3) - 0.35 * Math.max(0, Math.sin(t * 2.3)));

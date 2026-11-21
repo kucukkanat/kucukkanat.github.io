@@ -424,7 +424,19 @@ export function setupProps(scene: THREE.Scene, cabin: Cabin, content: Content): 
       if (mesh) faces.set(id, { mesh, flipY: isStandIn });
     }
     let hit = cabin.eggHits.get(id);
-    if (!hit) {
+    if (hit) {
+      // an authored hit box that ended up away from its prop (HIT_letter lands on the floor) is moved back onto it
+      const want = new THREE.Box3().setFromObject(obj).getCenter(new THREE.Vector3());
+      const have = new THREE.Box3().setFromObject(hit).getCenter(new THREE.Vector3());
+      hit.traverse(m => { m.userData.egg = true; });
+      if (want.distanceTo(have) > 0.15 && hit.parent) {
+        const p = hit.parent;
+        p.updateWorldMatrix(true, false);
+        const w = hit.getWorldPosition(new THREE.Vector3()).add(want.sub(have));
+        hit.position.copy(p.worldToLocal(w));
+        hit.updateMatrixWorld(true);
+      }
+    } else {
       hit = obj;
       obj.userData.hit = id;
     }
