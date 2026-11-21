@@ -87,9 +87,9 @@ export class Input {
     this.ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
     this.ray.setFromCamera(this.ndc, this.camera);
     const hits = this.ray.intersectObjects(this.h.targets(), true);
-    // collectibles win over the (bigger) hotspot volumes around them
-    // an item held up for inspection is in front of everything
-    return hits.find(x => x.object.userData.inspected) ?? hits.find(x => x.object.userData.collectible) ?? hits[0] ?? null;
+    // an item held up for inspection is in front of everything; collectibles and props (egg) win over the
+    // (bigger) hotspot volumes around them
+    return hits.find(x => x.object.userData.inspected) ?? hits.find(x => x.object.userData.collectible) ?? hits.find(x => x.object.userData.egg) ?? hits[0] ?? null;
   }
 
   private mid() {
