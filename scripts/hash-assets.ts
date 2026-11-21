@@ -3,24 +3,30 @@
 // The unhashed files stay as well (old pages in flight, hand-typed links).
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, copyFileSync, readdirSync, statSync } from 'node:fs';
-import { join, extname, basename } from 'node:path';
+import { join, extname, basename, dirname } from 'node:path';
 
 const root = join(import.meta.dir, '..');
 const dist = join(root, 'dist'), assets = join(dist, 'assets');
-const names = readdirSync(join(root, 'public', 'assets'));
+// files in public/assets and its subfolders (e.g. assets/whales/), as paths relative to it
+const list = (d: string, pre = ''): string[] => readdirSync(d, { withFileTypes: true })
+  .flatMap(e => e.isDirectory() ? list(join(d, e.name), `${pre}${e.name}/`) : [`${pre}${e.name}`]);
+const names = list(join(root, 'public', 'assets'));
 const map = new Map<string, string>();
 for (const n of names) {
+  // manifests that list other assets keep their names: a hashed copy would be taken before their references are
+  // rewritten below (assets/whales/manifest.json)
+  if (basename(n) === 'manifest.json') continue;
   const p = join(assets, n);
-  try { statSync(p); } catch { continue; }
+  try { if (!statSync(p).isFile()) continue; } catch { continue; }
   const h = createHash('sha256').update(readFileSync(p)).digest('hex').slice(0, 8);
-  const ext = extname(n);
-  const hashed = `${basename(n, ext)}.${h}${ext}`;
+  const ext = extname(n), dir = dirname(n);
+  const hashed = `${dir === '.' ? '' : `${dir}/`}${basename(n, ext)}.${h}${ext}`;
   copyFileSync(p, join(assets, hashed));
   map.set(`/assets/${n}`, `/assets/${hashed}`);
 }
 const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]);
 let files = 0, refs = 0;
-const re = new RegExp(`(${[...map.keys()].map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\w.])`, 'g');
+const re = new RegExp(`(${[...map.keys()].sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\w.])`, 'g');
 for (const f of walk(dist)) {
   if (!/\.(js|html|css|json|webmanifest|xml)$/.test(f)) continue;
   const s = readFileSync(f, 'utf8');
