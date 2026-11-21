@@ -14,6 +14,7 @@ export interface Item {
   url?: string;          // live link
   playable?: boolean;    // true → can run inside the handheld (iframe-embeddable)
   embed?: string;        // playable: URL for the handheld iframe when it differs from `url` (e.g. a compact mode)
+  orientation?: 'landscape' | 'portrait'; // playable: lock the phone to this while the cartridge is fullscreen (Android)
   source?: string;       // repo link
   tags?: string[];
   job?: string;          // links memory-card and map-island of the same job

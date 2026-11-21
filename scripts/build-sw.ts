@@ -8,7 +8,9 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const dist = join(import.meta.dir, '..', 'dist');
-const html = readFileSync(join(dist, 'index.html'), 'utf8');
+// the cabin page, and the sky-whale viewer (the one cartridge served from this origin: it plays offline too; its
+// whale models are cached as they are first seen)
+const html = ['index.html', 'whales/index.html'].map(f => readFileSync(join(dist, f), 'utf8')).join('\n');
 // the hashed copy of a public/assets file (scripts/hash-assets.ts), falling back to the plain name
 const hashed = (name: string) => {
   const slash = name.lastIndexOf('/'), dir = name.slice(0, slash + 1), file = name.slice(slash + 1);
@@ -26,7 +28,7 @@ for (let i = 0; i < fromHtml.length; i++) {
     if (!fromHtml.includes(`/assets/${m[1]}`)) fromHtml.push(`/assets/${m[1]}`);
 }
 const shell = ['/', '/content.json', '/notes.json', '/manifest.webmanifest', '/favicon.svg',
-  '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/plain/'];
+  '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/plain/', '/whales/', '/assets/whales/manifest.json'];
 const firstView = ['fonts/fraunces-latin.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/dmsans-latin.woff2', 'cabin.glb', 'collectibles.glb', 'sky.glb', 'sky_sunset.jpg', 'lightmap_sunset_1k.webp', 'lightmaps.json'].map(hashed);
 const precache = [...new Set([...shell, ...fromHtml, ...firstView])].filter(u => existsSync(join(dist, u === '/' || u.endsWith('/') ? `${u}index.html` : u)));
 

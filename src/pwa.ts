@@ -35,6 +35,23 @@ export function registerSW(): void {
     return;
   }
   // after load, so the worker's precache never competes with the first view's downloads
+  // a deploy while the app is open: the new worker takes over at once, the page offers a reload (the open page keeps
+  // running its own version until then; inside an iframe, e.g. a cartridge, nothing is shown)
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && window.top === window) showUpdateToast(); });
   const go = () => setTimeout(() => { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { /* offline-only feature */ }); }, 3000);
   if (document.readyState === 'complete') go(); else addEventListener('load', go, { once: true });
+}
+
+function showUpdateToast() {
+  if (document.querySelector('.update-toast')) return;
+  const el = document.createElement('div');
+  el.className = 'update-toast';
+  el.setAttribute('role', 'status');
+  el.innerHTML = '<span>New cabin ready</span><button type="button">Reload</button><button type="button" class="x" aria-label="Dismiss">✕</button>';
+  const [reload, dismiss] = el.querySelectorAll('button');
+  reload.addEventListener('click', () => location.reload());
+  dismiss.addEventListener('click', () => { el.classList.remove('on'); setTimeout(() => el.remove(), 300); });
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('on'));
 }
