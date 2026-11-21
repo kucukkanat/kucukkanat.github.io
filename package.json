@@ -9,6 +9,7 @@
     "build": "bun run content && tsc --noEmit && vite build && bun scripts/build-notes.ts && bun scripts/build-plain.ts && bun scripts/hash-assets.ts",
     "preview": "vite preview",
     "blender": "/Applications/Blender.app/Contents/MacOS/Blender --background --python blender/build.py && bun scripts/compress-glb.ts && bun scripts/lightmap-lite.ts",
+    "whales": "whales/scripts/build_all.sh",
     "labels": "bun scripts/gen-labels.ts",
     "portrait": "bun scripts/gen-portrait.ts",
     "lan": "bun run content && bun run notes && PLAIN_OUT=public bun scripts/build-plain.ts && portless kucukkanat --lan vite",

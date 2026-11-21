@@ -31,6 +31,7 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 | `src/` | three.js app (Vite + TypeScript) |
 | `blender/` | Python scripts that build the cabin, collectibles and sky in Blender 5.3 and bake the lightmaps (`bun run blender`) |
 | `airship/` | The sky galleon (exterior of the same ship): build scripts, standalone preview, and the web copy `public/assets/galleon.glb` used for the opening shot |
+| `whales/` | Six sky whales with ecosystems on their backs: generator scripts, master GLBs, renders (`bun run whales`), see [whales/README.md](whales/README.md) |
 | `blender/mcp/server.py` | Stdio MCP server for Blender Lab's MCP extension (registered in `.mcp.json`) |
 | `art/` | Painted textures, labels and sky art made with OpenRouter (`scripts/gen-art.ts`), see [docs/ART.md](docs/ART.md) |
 | `public/assets/` | Exported `.glb` files, lightmaps, sky images |

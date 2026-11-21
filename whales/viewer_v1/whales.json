@@ -1,0 +1,98 @@
+[
+ {
+  "key": "blue",
+  "name": "Blue Whale",
+  "biome": "forest",
+  "biomeLabel": "Temperate forest & waterfall lake",
+  "biomeShort": "Temperate forest",
+  "color": "#2f86a6",
+  "files": {
+   "A": "../glb/blue_A.glb",
+   "B": "../glb/blue_B.glb"
+  },
+  "sizes": {
+   "A": 1.06,
+   "B": 0.87
+  }
+ },
+ {
+  "key": "sperm",
+  "name": "Sperm Whale",
+  "biome": "desert",
+  "biomeLabel": "Desert oasis",
+  "biomeShort": "Desert oasis",
+  "color": "#c8622e",
+  "files": {
+   "A": "../glb/sperm_A.glb",
+   "B": "../glb/sperm_B.glb"
+  },
+  "sizes": {
+   "A": 0.84,
+   "B": 0.77
+  }
+ },
+ {
+  "key": "beluga",
+  "name": "Beluga",
+  "biome": "tundra",
+  "biomeLabel": "Snowy pine tundra",
+  "biomeShort": "Snowy pine tundra",
+  "color": "#94cdef",
+  "files": {
+   "A": "../glb/beluga_A.glb",
+   "B": "../glb/beluga_B.glb"
+  },
+  "sizes": {
+   "A": 0.85,
+   "B": 0.68
+  }
+ },
+ {
+  "key": "humpback",
+  "name": "Humpback Whale",
+  "biome": "jungle",
+  "biomeLabel": "Tropical jungle & cascades",
+  "biomeShort": "Tropical jungle",
+  "color": "#1f6e52",
+  "files": {
+   "A": "../glb/humpback_A.glb",
+   "B": "../glb/humpback_B.glb"
+  },
+  "sizes": {
+   "A": 1.0,
+   "B": 0.85
+  }
+ },
+ {
+  "key": "bowhead",
+  "name": "Bowhead Whale",
+  "biome": "autumn",
+  "biomeLabel": "Autumn maple grove & ruins",
+  "biomeShort": "Autumn maple grove",
+  "color": "#6b2a55",
+  "files": {
+   "A": "../glb/bowhead_A.glb",
+   "B": "../glb/bowhead_B.glb"
+  },
+  "sizes": {
+   "A": 0.93,
+   "B": 0.79
+  }
+ },
+ {
+  "key": "minke",
+  "name": "Minke Whale",
+  "biome": "sakura",
+  "biomeLabel": "Cherry blossom zen garden",
+  "biomeShort": "Cherry blossom zen garden",
+  "color": "#e094ab",
+  "files": {
+   "A": "../glb/minke_A.glb",
+   "B": "../glb/minke_B.glb"
+  },
+  "sizes": {
+   "A": 0.84,
+   "B": 0.74
+  }
+ }
+]
