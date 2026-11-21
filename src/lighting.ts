@@ -3,6 +3,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { Cabin } from './scene';
 import { loadTexture } from './scene';
 import { lerp } from './anim';
+import { SIDE } from './look';
 import { FULL } from './tier';
 
 /** Phones use the half-resolution bakes (scripts/lightmap-lite.ts). */
@@ -70,7 +71,13 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   uLanternPos.value.copy(lanternWorld);
   const lantern = new THREE.PointLight('#ffb55e', 0.4, 6, 2);
   lantern.position.copy(lanternWorld);
+  // the same lift for the things on the side walls the bake doesn't cover (books, cartridges, logbook cards)
+  const sideL = new THREE.PointLight('#ffd2a0', 1.6 * SIDE, 2.6, 2);
+  sideL.position.set(-1.55, 1.55, -0.55);
+  const sideR = sideL.clone();
+  sideR.position.set(1.55, 1.55, -0.55);
   scene.add(hemi, sun, sun.target, fill, lantern);
+  if (SIDE > 0) scene.add(sideL, sideR);
   // At night the handheld is lit by its own screen (a small cool light just above it) and its plastic keeps a
   // little of its colour, so it reads as the orange KANAT·1 instead of a brown lump.
   const screenGlow = new THREE.PointLight('#bcd0ff', 0, 0.9, 2);
@@ -268,6 +275,8 @@ function bakedMaterial(src: THREE.MeshStandardMaterial, sunset: THREE.Texture, s
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <lightmap_pars_fragment>', '#include <lightmap_pars_fragment>\nuniform sampler2D lightMapNight;\nuniform float uNight;\nuniform float uStorm;\nuniform float uFlash;\nuniform float uNightGain;\nuniform float uSheen;\nuniform float uLift;\nuniform vec3 uLanternPos;\nvarying vec3 vPN;\nvarying vec3 vPW;')
       .replace('#include <opaque_fragment>', `
+        // side walls (bookcase, chest, rack, portrait) a little brighter so they hold their own against the windows
+        outgoingLight *= 1.0 + ${SIDE.toFixed(3)} * smoothstep(1.0, 2.1, abs(vPW.x)) * (1.0 - 0.5 * uNight);
         if (uLift > 0.0) {
           // keep whites white: same brightness as the bake, most of its colour cast removed, never darker than a soft floor
           float lum = dot(reflectedLight.indirectDiffuse, vec3(0.34)) / max(dot(diffuseColor.rgb, vec3(0.34)), 0.04);
@@ -295,6 +304,6 @@ function bakedMaterial(src: THREE.MeshStandardMaterial, sunset: THREE.Texture, s
         lightMapTexel.rgb += uFlash * vec3(0.30, 0.33, 0.42);`,
       );
   };
-  mat.customProgramCacheKey = () => 'baked-night-v4';
+  mat.customProgramCacheKey = () => `baked-night-v5-${SIDE}`;
   return mat;
 }

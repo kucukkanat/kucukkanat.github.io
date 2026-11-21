@@ -6,7 +6,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { uNight, uStorm } from './lighting';
-import { GLOW, CONTRAST, type Fx } from './fx';
+import { GLOW, CONTRAST, VIG } from './look';
+import type { Fx } from './fx';
 
 /** Before the bloom: no NaN, no negatives, no runaway highlights (one bad pixel would smear over the whole frame). */
 const SanitizeShader = {
@@ -22,7 +23,7 @@ const SanitizeShader = {
 };
 
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null as THREE.Texture | null }, uNight, uStorm, uVignette: { value: 0.34 }, uContrast: { value: CONTRAST } },
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null }, uNight, uStorm, uVignette: { value: VIG }, uContrast: { value: CONTRAST } },
   vertexShader: /* glsl */`varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse; uniform float uNight; uniform float uStorm; uniform float uVignette; uniform float uContrast; varying vec2 vUv;

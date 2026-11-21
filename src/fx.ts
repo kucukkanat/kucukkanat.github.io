@@ -2,13 +2,15 @@
 // renderer path. Bloom, the colour grade and the vignette live in fx-full.ts, a chunk only the full tier downloads.
 import * as THREE from 'three';
 import { FULL } from './tier';
+import { GLOW, CONTRAST } from './look';
+export { GLOW, CONTRAST };
 import { uNight, uStorm, uTime, uFlash } from './lighting';
 
-/** Look tuning (captain round): bloom strength factor and colour-grade contrast. ?glow= and ?contrast= override
- *  them for comparing looks. */
-const tune = (k: string, d: number) => { const v = parseFloat(new URLSearchParams(location.search).get(k) ?? ''); return Number.isFinite(v) ? v : d; };
-export const GLOW = tune('glow', 0.7);
-export const CONTRAST = tune('contrast', 1.15);
+// Phones skip the colour grade pass: apply the same contrast in every material, just before tone mapping
+// (no extra full-screen pass). Must run before the first material compiles (this module loads with main.ts).
+if (!FULL && CONTRAST !== 1) {
+  THREE.ShaderChunk.tonemapping_fragment = `gl_FragColor.rgb = 0.18 * pow(max(gl_FragColor.rgb, vec3(1e-4)) / 0.18, vec3(${CONTRAST.toFixed(3)}));\n` + THREE.ShaderChunk.tonemapping_fragment;
+}
 
 // Window layout (docs/SCENE_CONTRACT.md, blender/kit/layout.py): posts on an arc of radius 3.6 around (0, *, 1).
 const ARC_R = 3.6, ARC_CZ = 1.0, SILL = 0.95, TOP = 2.55;
