@@ -74,6 +74,9 @@ export class SkyWhale {
   /** Materials whose colour the world tints for night / storm. */
   readonly tintable: { mat: THREE.Material & { color: THREE.Color }; base: THREE.Color }[] = [];
   time = 0;
+  /** World scale of `object` (the motion space's units per glTF metre): reactions, tempo and particles follow it. */
+  private k = 1;
+  private baseSizes = new Map<THREE.PointsMaterial, number>();
   private opts: Required<SkyWhaleOptions>;
   private skinned: THREE.SkinnedMesh[] = [];
   private blowhole: THREE.Object3D | undefined;
@@ -219,6 +222,7 @@ export class SkyWhale {
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, alphaTest: additive ? 0 : 0.05,
     });
     const pts = new THREE.Points(geo, mat); pts.frustumCulled = false;
+    this.baseSizes.set(mat, size);
     const P = { pts, pos, col, vel: new Float32Array(N * 3), life: new Float32Array(N), max: new Float32Array(N), N, scale: this.L / 14 };
     for (let i = 0; i < N; i++) { P.life[i] = -1; pos[i * 3 + 1] = -1e5; }
     return P;
@@ -242,6 +246,20 @@ export class SkyWhale {
     parent.remove(this.spout.pts);
   }
   setParticlesVisible(on: boolean) { if (this.particles) this.particles.pts.visible = on; }
+
+  /** Set the whale's world scale (also sets object.scale). Clears the motion history so a jump isn't an acceleration. */
+  setScale(k: number) {
+    this.k = k; this.object.scale.setScalar(k);
+    for (const [m, s] of this.baseSizes) m.size = s * k;
+    this.spout.scale = (this.L / 14) * k;
+    if (this.particles) this.particles.scale = (this.L / 14) * k;
+    this.resetMotion();
+  }
+  get scale() { return this.k; }
+  /** Change the space motion and particles are measured in (see the `space` option). */
+  setSpace(space: THREE.Object3D | null) { this.opts.space = space; this.resetMotion(); }
+  /** Forget the previous position (after teleporting / re-parenting). */
+  resetMotion() { this.first = true; this.velSm.set(0, 0, 0); this.acc.set(0, 0, 0); }
 
   /** The whale's transform in the space it moves in. */
   private localMatrix(out: THREE.Matrix4) {
@@ -280,9 +298,9 @@ export class SkyWhale {
         _v.set((Math.random() * 2 - 1) * isl.halfWidth, 0.2 + Math.random() * 1.5 * P.scale, (Math.random() * 2 - 1) * isl.halfLength)
           .add(new THREE.Vector3(...isl.center)).applyMatrix4(M);
         P.pos.set([_v.x, _v.y, _v.z], i * 3);
-        const k = cfg.kind === 'fireflies' ? 0.85 : 0.75;
-        P.vel.set([this.velSm.x * k + (Math.random() - 0.5) * 0.6, this.velSm.y * k + (Math.random() - 0.2) * 0.5,
-          this.velSm.z * k + (Math.random() - 0.5) * 0.6], i * 3);
+        const k = cfg.kind === 'fireflies' ? 0.85 : 0.75, j = this.k;
+        P.vel.set([this.velSm.x * k + (Math.random() - 0.5) * 0.6 * j, this.velSm.y * k + (Math.random() - 0.2) * 0.5 * j,
+          this.velSm.z * k + (Math.random() - 0.5) * 0.6 * j], i * 3);
         P.max[i] = P.life[i] = 3 + Math.random() * 3;
         const c = P.c1.clone().lerp(P.c2, Math.random());
         P.col.set([c.r, c.g, c.b], i * 3);
@@ -292,8 +310,8 @@ export class SkyWhale {
       for (let i = 0; i < P.N; i++) {
         if (P.life[i] <= 0) continue;
         P.life[i] -= dt; const o = i * 3;
-        P.vel[o] *= drag; P.vel[o + 1] = P.vel[o + 1] * drag + cfg.gravity * dt; P.vel[o + 2] *= drag;
-        if (wander) { const t = this.time * 2 + i; P.vel[o] += Math.sin(t) * dt * 0.8; P.vel[o + 2] += Math.cos(t * 1.3) * dt * 0.8; }
+        P.vel[o] *= drag; P.vel[o + 1] = P.vel[o + 1] * drag + cfg.gravity * this.k * dt; P.vel[o + 2] *= drag;
+        if (wander) { const t = this.time * 2 + i; P.vel[o] += Math.sin(t) * dt * 0.8 * this.k; P.vel[o + 2] += Math.cos(t * 1.3) * dt * 0.8 * this.k; }
         P.pos[o] += P.vel[o] * dt; P.pos[o + 1] += P.vel[o + 1] * dt; P.pos[o + 2] += P.vel[o + 2] * dt;
         if (P.life[i] <= 0) P.pos[o + 1] = -1e5;
       }
@@ -331,7 +349,7 @@ export class SkyWhale {
     const qInv = _q.setFromRotationMatrix(M).invert();
     const aL = this.acc.clone().applyQuaternion(qInv);
     const gL = new THREE.Vector3(0, -1, 0).applyQuaternion(qInv);
-    const aRef = 0.9 * this.L / 14 * 6;
+    const aRef = 0.9 * this.L * this.k / 14 * 6;
     const g = this.opts.reactionGain;
     const clamp = (x: number) => Math.max(-1, Math.min(1, x));
     const sig: Record<Part, Record<Axis, number>> = {
@@ -350,7 +368,7 @@ export class SkyWhale {
       this.w(`${part}_accel`, Math.max(0, ac));
     }
     const speed = this.velSm.length();
-    this.cruise.timeScale = 0.55 + Math.min(1.6, speed / (this.L * 0.45)) * 0.7 + this.springs.body.accel.x * 0.6;
+    this.cruise.timeScale = 0.55 + Math.min(1.6, speed / (this.L * this.k * 0.45)) * 0.7 + this.springs.body.accel.x * 0.6;
     if (animate) this.mixer.update(dt);
 
     for (const s of this.scrollers) { s.tex.offset.y += (s.v ?? 0) * dt; s.tex.offset.x += (s.u ?? 0) * dt; }

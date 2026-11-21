@@ -28,6 +28,10 @@ export interface Sky {
   /** Islands, balloons, airships and clouds from sky.glb (after the first frame); procedural ones if it is missing.
    *  On the full tier this also fetches sky_full.glb. */
   addModels(gltf: GLTF | null): void;
+  /** The shared shader uniforms (backdrop haze, sunset/night/storm palette) - for things that join the sky. */
+  uniforms: Record<string, THREE.IUniform>;
+  /** Islands as rough spheres in `group` space (current pose), for things that steer around them. */
+  obstacles(): { pos: THREE.Vector3; r: number }[];
 }
 
 // ───────────────────────────────────────────────────────────────── tunables
@@ -112,7 +116,7 @@ const CLOUDS: [number, number, number, number, number, number, number, number, b
 
 // ───────────────────────────────────────────────────────────────── shader chunks
 /** Colour of the painted backdrop behind a point (blurred), as seen from the camera: the haze colour. */
-const HAZE_VERT = /* glsl */`
+export const HAZE_VERT = /* glsl */`
   uniform sampler2D tSunset; uniform sampler2D tNight; uniform sampler2D tStorm;
   uniform float uNight; uniform float uStorm; uniform float uFlash;
   uniform float uHasSunset; uniform float uHasNight; uniform float uHasStorm; uniform float uYaw;
@@ -416,7 +420,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
 
   // ── placed things
   interface Proto { geo: THREE.BufferGeometry; pos: THREE.Vector3; scale: THREE.Vector3; glow: THREE.BufferGeometry | null; }
-  interface Mover { o: THREE.Object3D; p: Place; par: number; ph: number; }
+  interface Mover { o: THREE.Object3D; p: Place; par: number; ph: number; r: number; }
   const movers: Mover[] = [];
   const placed = new Set<string>();
   let birds: THREE.Object3D | null = null;
@@ -489,7 +493,9 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
       }
       holder.scale.setScalar(p.s);
       group.add(holder);
-      movers.push({ o: holder, p, par: 1 - (CAM_Z - p.z) / 30, ph: i * 1.618 });
+      proto.geo.computeBoundingSphere();
+      const r = (proto.geo.boundingSphere?.radius ?? 1) * Math.max(proto.scale.x, proto.scale.y, proto.scale.z) * p.s;
+      movers.push({ o: holder, p, par: 1 - (CAM_Z - p.z) / 30, ph: i * 1.618, r });
     });
     pose(lastT);
   };
@@ -613,7 +619,8 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
   });
   const setShip = (q: THREE.Quaternion, h: number) => { shipQ.copy(q); heave = h; place0(); };
   place0();
-  return { group, update, setYaw: r => { yawTarget = r; }, setShip, loadNight, loadStorm, addModels };
+  const obstacles = () => movers.map(m => ({ pos: m.o.position, r: m.r }));
+  return { group, update, setYaw: r => { yawTarget = r; }, setShip, loadNight, loadStorm, addModels, uniforms: U, obstacles };
 }
 
 /** sky.glb missing: a few plain islands so the windows are not empty. */

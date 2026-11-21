@@ -25,6 +25,8 @@ export interface OutsideHooks {
   crossed(outside: boolean): void;
   /** Mode changed (for announcements / sound). */
   mode?(m: OutsideMode): void;
+  /** A tap / click on the outside view that was not a drag (normalised device coordinates). */
+  click?(ndc: THREE.Vector2): void;
 }
 
 // Path through the middle stern window, in cabin coordinates (windows face -Z, the bow is toward +Z).
@@ -162,6 +164,12 @@ export class Outside {
   }
 
   get active() { return this.mode !== 'inside' || this.busy; }
+  /** The outside world (turns and tilts against the ship; children are placed relative to the ship). */
+  get worldGroup(): THREE.Group { return this.world; }
+  /** The ship's flight state in the outside world's frame (read only). */
+  get shipState(): { pos: THREE.Vector3; yaw: number; speed: number } { return this.ship; }
+  /** True while the outside world is on screen. */
+  get isOutside() { return this.isOut; }
 
   /** Models for the far islands (the sky.glb the window sky uses). Call before sky.addModels consumes it. */
   setSkyModels(gltf: GLTF | null) {
@@ -426,14 +434,24 @@ export class Outside {
   private bindPointer(el: HTMLElement) {
     const pts = new Map<number, { x: number; y: number }>();
     let pinch = 0;
-    el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); pinch = 0; });
+    let down: { x: number; y: number; t: number; moved: boolean } | null = null;
+    el.addEventListener('pointerdown', e => {
+      el.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); pinch = 0;
+      down = pts.size === 1 ? { x: e.clientX, y: e.clientY, t: performance.now(), moved: false } : null;
+    });
     const up = (e: PointerEvent) => { pts.delete(e.pointerId); pinch = 0; if (!pts.size) this.drag.turn = this.drag.climb = 0; };
+    el.addEventListener('pointerup', e => {
+      if (down && !down.moved && e.type === 'pointerup' && performance.now() - down.t < 450 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8)
+        this.hooks.click?.(new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1));
+      down = null;
+    });
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
     el.addEventListener('pointermove', e => {
       const p = pts.get(e.pointerId);
       if (!p || this.busy) return;
       const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 8) down.moved = true;
       if (pts.size === 2) {
         p.x = e.clientX; p.y = e.clientY;
         const [a, b] = [...pts.values()];

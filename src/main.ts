@@ -163,6 +163,8 @@ async function main() {
   // State
   let goOutside: () => void = () => { /* set once the outside view exists */ };
   let outsideRef: Outside | null = null;
+  // the sky whales: their own chunk, set up in idle time after the sky models (whales-world.ts)
+  let whalesRef: import('./whales-world').WhalesWorld | null = null;
   let skyGltf: Awaited<ReturnType<typeof loadGLB>> = null;
   let night = false;
   let pulled: Collectible | null = null;
@@ -256,6 +258,7 @@ async function main() {
     act('index', 'Open the Ship\u2019s Index', 'Every note, with filters', ['writing', 'blog', 'articles', 'notes', 'yazılar', 'liste'], () => { void writing.openIndex(); });
     act('night', night ? 'Blow out the lantern: back to sunset' : 'Light the lantern: night', 'Switch between sunset and night', ['night', 'day', 'dark', 'gece', 'gündüz', 'lantern'], () => toggleNight());
     act('outside', 'Go outside', 'See the ship from the air and take the helm', ['ship', 'galleon', 'fly', 'helm', 'dışarı', 'gemi'], () => goOutside());
+    act('whales', 'Watch the sky whales', 'Six whales carrying their own worlds, in the whale viewer', ['whale', 'whales', 'sky whales', 'balina'], () => { location.href = '/whales/'; });
     act('letter', 'Read the welcome letter', 'The letter on the chart table', ['welcome', 'hello', 'mektup'], () => { void openLetter(true); });
     act('about', 'About HT', 'The portrait on the wall', ['about', 'who', 'bio', 'hakkında'], () => { void openAbout(); });
     act('contact', 'Send a message', 'The message bottle', ['contact', 'email', 'mail', 'iletişim', 'mesaj'], () => openSheet('contact'));
@@ -535,7 +538,7 @@ async function main() {
     targets: () => {
       if (play.overlayOn || play.busy || outsideRef?.active || writing.isOpen || search.isOpen) return [];
       const place = VIEW_PLACE[rig.view];
-      const hits = [...inspector.pickables(), ...allHits.filter(h => h.userData.hit !== rig.view && !(rig.view === 'screen' && h.userData.hit === 'handheld')), ...(rig.view === 'screen' ? [] : eggHits), ...(clock.hit && rig.view !== 'screen' ? [clock.hit] : [])];
+      const hits = [...inspector.pickables(), ...allHits.filter(h => h.userData.hit !== rig.view && !(rig.view === 'screen' && h.userData.hit === 'handheld')), ...(rig.view === 'screen' ? [] : eggHits), ...(clock.hit && rig.view !== 'screen' ? [clock.hit] : []), ...(whalesRef && rig.view === 'overview' ? whalesRef.pickables() : [])];
       if (!place) return hits;
       return [...coll.pickables.filter(p => (p.userData.collectible as Collectible).place === place), ...hits];
     },
@@ -547,10 +550,12 @@ async function main() {
       if (hoverCapable) props.setTengwarLatin(id === 'tengwar' || tengwarPinned);
       if (hc && hc !== lastHover && hc !== pulled) audio.tick(1.2);
       lastHover = hc;
-      renderer.domElement.style.cursor = h && inspector.owns(h.object) ? 'grab' : c || id ? 'pointer' : '';
+      renderer.domElement.style.cursor = h && inspector.owns(h.object) ? 'grab' : c || id || h?.object.userData.whale ? 'pointer' : '';
     },
     click: h => {
       if (h && inspector.owns(h.object)) { inspector.flip(); return; }
+      const whaleKey = h?.object.userData.whale as string | undefined;
+      if (whaleKey) { whalesRef?.showCard(whaleKey); audio.click(); return; }
       // the letter is up: a click anywhere else puts it back
       if (letterOpen) { tuckLetter(); return; }
       const c = collOf(h);
@@ -662,7 +667,16 @@ async function main() {
     // the captain right after the first frame (his download started with the cabin's)
     void loadCaptain(cabin, captainGltf).then(poke);
     idle(() => {
-      void loadGLB('/assets/sky.glb').then(g => { skyGltf = g; outsideRef?.setSkyModels(g); sky.addModels(g); });
+      void loadGLB('/assets/sky.glb').then(g => {
+        skyGltf = g; outsideRef?.setSkyModels(g); sky.addModels(g);
+        // then the whales: after the sky has arrived, a little later on phones
+        setTimeout(() => {
+          void import('./whales-world').then(m => m.setupWhales(sky, scene)).then(w => {
+            whalesRef = w;
+            if (w && outsideRef?.isOutside) w.setOutside(outsideRef);
+          }).catch(err => console.warn('sky whales', err));
+        }, FULL ? 1200 : 3500);
+      });
       // the galleon for the Outside view (~1 MB): larger screens fetch it once the cabin is up, phones on first use
       if (FULL && !introOn) setTimeout(() => { void getOutside().then(o => o.preload()); }, 2500);
       void coll.loadLabelArt();
@@ -719,6 +733,7 @@ async function main() {
     play.update(t);
     rig.setSheet(innerWidth <= 720 && (ui.panelOpen || sheets.isOpen || clock.isOpen));
     outsideRef?.update(dt);
+    whalesRef?.update(t, dt, camera);
     rig.update(t, dt);
     inspector.update(dt);
     ui.setQuiet(inspector.overlay);
@@ -748,12 +763,14 @@ async function main() {
     const o = new m.Outside(scene, rig, {
       root: document.body,
       crossed: out => {
+        whalesRef?.setOutside(out ? outsideRef : null);
         sky.group.visible = !out;
         shafts.visible = !out;
         ui.setVisible(!out);
         if (out) hideHint();
         if (out) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); }
       },
+      click: ndc => { const k = whalesRef?.pickOutside(camera, ndc); if (k) { whalesRef!.showCard(k); audio.click(); } },
       mode: mo => {
         audio.whoosh();
         ui.announce(mo === 'orbit' ? 'Outside the ship. Drag to look around it.' : mo === 'helm' ? 'You have the helm.' : 'Back in the cabin.');
@@ -802,6 +819,7 @@ async function main() {
   };
   (window as unknown as { __kk: unknown }).__kk = {
     scene, cabin, coll, rig, play, ui, props, weather, sheets, lighting, sky, inspector, ship, clock, hang, letterView,
+    get whales() { return whalesRef; },
     goto, openLetter, openAbout, openSheet, ringBell, toggleNight,
     tengwar: (on: boolean) => props.setTengwarLatin(on),
   };
