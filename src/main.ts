@@ -11,8 +11,8 @@ import * as THREE from 'three';
 import { loadContent, findItem } from './content';
 import { loadCaptain } from './captain';
 import { loadGLB, indexCabin, makeManager, type ViewName, type Cabin, type EggId } from './scene';
-import { setupLighting } from './lighting';
-import { setupSky } from './sky';
+import { setupLighting, prefetchLightmap } from './lighting';
+import { setupSky, prefetchSky } from './sky';
 import { Collectibles, type Collectible, type Place } from './collectibles';
 import { CameraRig } from './camera';
 import { UI } from './ui';
@@ -103,8 +103,11 @@ async function main() {
   app.appendChild(renderer.domElement);
 
   const manager = makeManager(p => setProgress(0.1 + p * 0.8));
+  // Everything the first view needs is fetched at once (the lightmap and the sky used to wait for the cabin).
+  prefetchLightmap();
+  prefetchSky();
   // First view only: content, cabin, collectibles, sunset light + sky. Everything else streams in after the first frame.
-  // First visit on the full tier: the galleon for the opening shot loads with the cabin.
+  // The galleon is not fetched here: it streams in after the first frame (full tier) or when Outside is opened.
   const fxFull = FULL ? import('./fx-full') : null;
   const introOn = wantsIntro(params, ['view', 'play', 'open', 'storm', 'night', 'item', 'note', 'topic', 'index'].some(k => params.has(k)));
   const [content0, notesIndex, cabinGltf, collGltf, galleonGltf] = await Promise.all([
@@ -116,6 +119,9 @@ async function main() {
     introOn ? import('./outside') : null, // warm the chunk so the opening shot can start before the first frame
     fontsReady(),
   ]);
+  // The captain is not part of the first frame: his download starts once the first view's files are in (so it does
+  // not slow them down) and runs while the scene is set up and compiled, so he is there when the room appears.
+  const captainGltf = loadGLB('/assets/captain.glb');
   // the digital garden: one book per topic on the shelf (writing/shelf.ts)
   const content = shelveTopics(content0, notesIndex);
   if (loaderText) loaderText.textContent = 'Lighting the lantern…';
@@ -653,9 +659,12 @@ async function main() {
       if ('requestIdleCallback' in window) requestIdleCallback(once, { timeout: 600 });
       setTimeout(once, 'requestIdleCallback' in window ? 1000 : 50);
     };
+    // the captain right after the first frame (his download started with the cabin's)
+    void loadCaptain(cabin, captainGltf).then(poke);
     idle(() => {
       void loadGLB('/assets/sky.glb').then(g => { skyGltf = g; outsideRef?.setSkyModels(g); sky.addModels(g); });
-      void loadCaptain(cabin).then(poke);
+      // the galleon for the Outside view (~1 MB): larger screens fetch it once the cabin is up, phones on first use
+      if (FULL && !introOn) setTimeout(() => { void getOutside().then(o => o.preload()); }, 2500);
       void coll.loadLabelArt();
       void props.loadArt();
       // night and storm art (~580 KB): fetched when first used; larger screens warm them up once the page is idle
@@ -768,6 +777,8 @@ async function main() {
   setProgress(1);
   const loader = document.getElementById('loader');
   requestAnimationFrame(() => { loader?.classList.add('done'); setTimeout(() => loader?.remove(), 800); });
+  // land in the cabin with a short zoom in (not on deep links, which open somewhere specific)
+  if (!introOn && rig.view === 'overview') void rig.zoomInFrom(1.3, 1.8);
   function afterWelcome() {
     if (rig.view === 'overview') setTimeout(() => { void rig.introSweep(); }, 500);
     setTimeout(showHint, 900);

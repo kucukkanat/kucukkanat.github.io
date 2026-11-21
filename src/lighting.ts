@@ -6,7 +6,11 @@ import { lerp } from './anim';
 import { FULL } from './tier';
 
 /** Phones use the half-resolution bakes (scripts/lightmap-lite.ts). */
-const LM = FULL ? '' : '_1k';
+const LM_SUNSET = FULL ? '/assets/lightmap_sunset.webp' : '/assets/lightmap_sunset_1k.webp';
+const LM_NIGHT = FULL ? '/assets/lightmap_night.webp' : '/assets/lightmap_night_1k.webp';
+let lmSunsetP: Promise<THREE.Texture | null> | null = null;
+/** Start fetching the sunset lightmap before the cabin has arrived (main.ts calls this first thing). */
+export function prefetchLightmap() { lmSunsetP ??= loadTexture(LM_SUNSET); }
 
 /** Shared night uniform (0 = sunset, 1 = night). */
 export const uNight = { value: 0 };
@@ -49,7 +53,7 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   scene.environmentIntensity = 0.35;
 
   // The night lightmap is not needed for the first view: it streams in after the first frame (loadNight).
-  const lmSunset = await loadTexture(`/assets/lightmap_sunset${LM}.webp`);
+  const lmSunset = await (lmSunsetP ?? loadTexture(LM_SUNSET));
   const baked = !!lmSunset && !!cabin;
   const prepLM = (t: THREE.Texture | null) => { if (t) { t.flipY = false; t.channel = 1; t.needsUpdate = true; } return t; };
   prepLM(lmSunset);
@@ -159,7 +163,7 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   setNight(0);
 
   let nightLoad: Promise<void> | null = null;
-  const loadNight = () => nightLoad ??= loadTexture(`/assets/lightmap_night${LM}.webp`).then(t => {
+  const loadNight = () => nightLoad ??= loadTexture(LM_NIGHT).then(t => {
     if (!t || !lmSunset) return;
     prepLM(t);
     nightU.lightMapNight.value = t;

@@ -224,6 +224,9 @@ export class Outside {
     this.centre.y = lerp(box.min.y, box.max.y, 0.36);
   }
 
+  /** Fetch the galleon in the background so the Outside view opens without a wait. */
+  preload(): Promise<boolean> { return this.ensureShip(); }
+
   private ensureShip(): Promise<boolean> {
     if (this.holder) return Promise.resolve(true);
     return this.loading ??= loadGLB(FULL ? '/assets/galleon.glb' : '/assets/galleon_lite.glb').then(g => { this.setShip(g); return !!this.holder; });

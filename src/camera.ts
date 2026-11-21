@@ -140,6 +140,14 @@ export class CameraRig {
     }
   }
 
+  /** Landing: start with a wider field of view (factor f) and settle into the authored framing. */
+  async zoomInFrom(f: number, dur: number) {
+    if (reducedMotion || this.lim.mode !== 'look') return;
+    const set = (z: number) => { this.zoom = this.zoomCur = z; this.updateFov(); };
+    set(f);
+    await tween(dur, k => { if (this.view === 'overview') set(f + (1 - f) * k); }, { ease: ease.outCubic, key: 'zoom-in' });
+  }
+
   get isGliding() { return this.gliding; }
 
   async glide(view: ViewName, dur = 1.1): Promise<void> {

@@ -149,6 +149,10 @@ const HAZE_VERT = /* glsl */`
     return clamp(k + uStorm * (0.22 + 0.3 * k), 0.0, 0.97);   // a storm thickens the air
   }`;
 
+let sunsetP: Promise<THREE.Texture | null> | null = null;
+/** Start fetching the sunset backdrop before the cabin has arrived (main.ts calls this first thing). */
+export function prefetchSky() { sunsetP ??= loadTexture('/assets/sky_sunset.jpg'); }
+
 export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promise<Sky> {
   const group = new THREE.Group();
   group.name = 'Sky';
@@ -156,7 +160,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
   scene.add(group);
 
   // Only the sunset backdrop is needed for the first view; night and storm stream in later.
-  const sunsetTex = await loadTexture('/assets/sky_sunset.jpg');
+  const sunsetTex = await (sunsetP ?? loadTexture('/assets/sky_sunset.jpg'));
   const prep = (t: THREE.Texture | null) => { if (t) { t.wrapS = THREE.MirroredRepeatWrapping; t.needsUpdate = true; } return t; };
   prep(sunsetTex);
   const lin = (hex: string, gain = 1) => new THREE.Color(hex).multiplyScalar(gain);

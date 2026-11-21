@@ -19,7 +19,9 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 
 **Camera:** drag to turn, scroll / pinch to zoom, right-drag / shift-drag / two-finger drag / shift+arrows to pan, double-click / double-tap / `0` to reset, arrow keys and `+`/`-` too. Limits per view live in `LIMITS` in `src/camera.ts`; the camera never leaves the room box (`ROOM`).
 
-**Tiers:** phones get the light build (baked light only); larger screens add bloom, a colour grade, a richer sky and, on the first visit, an opening shot of the galleon (`src/tier.ts`, `src/fx.ts`, `src/intro.ts`). `?tier=lite`, `?tier=full` and `?intro=1` force them.
+**Tiers:** phones get the light build (baked light only); larger screens add bloom, a colour grade and a richer sky (`src/tier.ts`, `src/fx.ts`). `?tier=lite` and `?tier=full` force a tier.
+
+**Loading:** visitors land straight in the cabin with a short zoom in. The first view needs only `cabin.glb`, `collectibles.glb`, the sunset lightmap and sky; they start together (preload hints in `index.html`, early fetches in `main.ts`). The captain follows right after, and the galleon (Outside view) streams in after the first frame on larger screens and on first use on phones. The old opening shot plays only with `?intro=1`. `bun run build` gives every file from `public/assets` a content-hashed copy (`scripts/hash-assets.ts`), so a CDN may cache `/assets/*` for a year. After replacing `art/models/captain.glb`, run `bun scripts/build-captain.ts`.
 
 **Sound:** fully synthesised (no audio files) in `src/sound/engine.ts`, a separate ~4 KB chunk loaded only when the visitor turns sound on. The button cycles Off → Ambient (wind, creaks, rain, music, ship's bells) → Full (plus interaction sounds). Ship's bells strike on the half hour by the watch.
 
