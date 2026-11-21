@@ -1,6 +1,7 @@
 // The welcome letter: clicking the envelope on the chart table (or the first visit, or the header's "Letter" link)
 // draws a tri-folded sheet out of it, flies it up to the camera (inspect.ts) and unfolds it, large enough to read.
-// The text is painted on the paper at high resolution; screen readers get the same text in a labelled dialog.
+// The text is painted on the paper at high resolution; screen readers get the same text in a labelled dialog, which
+// small screens (where the painted text would be a few pixels tall) also show, as a paper bottom sheet.
 // Closing: click elsewhere, Esc, Back, or the small floating ✕ by the sheet's corner.
 import * as THREE from 'three';
 import type { Content } from './types';
@@ -111,15 +112,17 @@ export class LetterView {
     this.el.setAttribute('aria-labelledby', 'letter-title');
     this.el.hidden = true;
     this.el.innerHTML = `
-      <div class="sr-only" aria-live="polite">
+      <div class="letter-text" aria-live="polite">
+        <button type="button" class="icon-btn letter-text-close" aria-label="Close the letter">${CLOSE}</button>
         <h2 id="letter-title" tabindex="-1">${e(wel.title)}</h2>
         ${paras.map(p => `<p>${e(p)}</p>`).join('')}
-        ${signoff ? `<p>${e(signoff)}</p>` : ''}
+        ${signoff ? `<p class="signoff">${e(signoff)}</p>` : ''}
       </div>
       <button type="button" class="icon-btn letter-close" aria-label="Close the letter">${CLOSE}</button>`;
     this.heading = this.el.querySelector('#letter-title')!;
     this.closeBtn = this.el.querySelector('.letter-close')!;
     this.closeBtn.addEventListener('click', ev => { ev.stopPropagation(); this.onClose(); });
+    this.el.querySelector('.letter-text-close')!.addEventListener('click', ev => { ev.stopPropagation(); this.onClose(); });
     this.el.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); this.onClose(); } });
     parent.appendChild(this.el);
   }

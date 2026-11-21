@@ -119,3 +119,7 @@
   .st-root, .st-palette { transition: none; }
   .st-palette, .st-open .st-palette { transform: none; }
 }
+
+@supports (height: 1dvh) {
+  .st-palette { max-height: min(80dvh, 720px); }
+}
