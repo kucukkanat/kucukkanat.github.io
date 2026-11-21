@@ -8,7 +8,7 @@ import { uNight, uStorm, uTime, uFlash } from './lighting';
  *  them for comparing looks. */
 const tune = (k: string, d: number) => { const v = parseFloat(new URLSearchParams(location.search).get(k) ?? ''); return Number.isFinite(v) ? v : d; };
 export const GLOW = tune('glow', 0.7);
-export const CONTRAST = tune('contrast', 1.1);
+export const CONTRAST = tune('contrast', 1.15);
 
 // Window layout (docs/SCENE_CONTRACT.md, blender/kit/layout.py): posts on an arc of radius 3.6 around (0, *, 1).
 const ARC_R = 3.6, ARC_CZ = 1.0, SILL = 0.95, TOP = 2.55;
