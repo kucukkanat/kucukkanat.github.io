@@ -6,6 +6,7 @@
 // Models: /assets/sky.glb (both tiers) and /assets/sky_full.glb (full tier only, loaded here).
 // They carry painted vertex colours (sRGB bytes; alpha 0 = glows at night) and no normals: shaded flat here.
 import * as THREE from 'three';
+import { SKY } from './look';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { loadTexture, loadGLB } from './scene';
 import { uNight, uStorm, uFlash } from './lighting';
@@ -167,6 +168,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
   // One set of uniform objects shared by every sky material.
   const U = {
     uNight, uStorm, uFlash,
+    uSkyGain: { value: SKY },
     tSunset: { value: sunsetTex },
     tNight: { value: sunsetTex },
     tStorm: { value: sunsetTex },
@@ -204,6 +206,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
       varying vec2 vUv;
       void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */`
+      uniform float uSkyGain;
       uniform sampler2D tSunset; uniform sampler2D tNight; uniform sampler2D tStorm;
       uniform float uNight; uniform float uStorm; uniform float uFlash;
       uniform float uHasSunset; uniform float uHasNight; uniform float uHasStorm; uniform float uYaw;
@@ -243,6 +246,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         c = mix(c, s, uStorm);
         c += uFlash * vec3(0.75, 0.8, 0.95) * (0.4 + 0.6 * uv.y);
         gl_FragColor = vec4(c, 1.0);
+        gl_FragColor.rgb *= uSkyGain;
         #include <colorspace_fragment>
       }`,
   });
@@ -271,6 +275,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
+      uniform float uSkyGain;
       uniform float uNight; uniform float uStorm; uniform float uFlash; uniform float uFade;
       uniform vec3 uSunDir; uniform vec3 uLitSun; uniform vec3 uShadeSun; uniform vec3 uBounce;
       uniform vec3 uLitNight; uniform vec3 uShadeNight; uniform vec3 uLitStorm; uniform vec3 uShadeStorm; uniform vec3 uGlowCol;
@@ -295,6 +300,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         c = mix(c, vHaze, vHazeK * (1.0 - 0.55 * glow * on));
         c = mix(vHaze, c, uFade);   // arriving after the first frame: they come out of the haze
         gl_FragColor = vec4(c, 1.0);
+        gl_FragColor.rgb *= uSkyGain;
         #include <colorspace_fragment>
       }`,
   });
@@ -323,6 +329,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
+      uniform float uSkyGain;
       uniform sampler2D tClouds; uniform vec3 uCloud[9];
       uniform float uNight; uniform float uStorm; uniform float uFlash; uniform float uFade;
       varying vec2 vUv; varying float vA; varying vec3 vHaze; varying float vHazeK;
@@ -339,6 +346,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         // far banks take the colour of the painting behind them, keeping a little of their own light
         c = mix(c, vHaze * (0.84 + 0.34 * s), vHazeK * 0.65);
         gl_FragColor = vec4(c, a);
+        gl_FragColor.rgb *= uSkyGain;
         #include <colorspace_fragment>
       }`,
   });
@@ -363,11 +371,13 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
+      uniform float uSkyGain;
       uniform vec3 uBird; uniform float uNight; uniform float uFade;
       varying vec3 vHaze; varying float vHazeK;
       void main() {
         if (uFade < 0.5) discard;
         gl_FragColor = vec4(mix(uBird * (1.0 - 0.6 * uNight), vHaze, max(vHazeK, 0.25)), 1.0);
+        gl_FragColor.rgb *= uSkyGain;
         #include <colorspace_fragment>
       }`,
   });
@@ -391,6 +401,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
+      uniform float uSkyGain;
       uniform vec3 uGlowCol; uniform float uNight; uniform float uStorm; uniform float uFade;
       varying float vK;
       void main() {
@@ -398,6 +409,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
         float a = max(exp(-dot(q, q) * 5.0) - 0.007, 0.0) * 0.8;
         float on = 0.08 + 0.92 * max(uNight, uStorm * 0.6);
         gl_FragColor = vec4(uGlowCol * a * on * vK * uFade, 1.0);
+        gl_FragColor.rgb *= uSkyGain;
         #include <colorspace_fragment>
       }`,
   });
