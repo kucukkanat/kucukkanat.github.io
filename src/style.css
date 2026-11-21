@@ -338,3 +338,29 @@ a { color: inherit; }
   .bezel .btn, .elsewhere .btn { min-height: 44px; }
   .intro-skip { min-height: 44px; }
 }
+
+/* Phones held sideways: the dock becomes a two-column rail on the left edge (a bottom bar would eat a sixth of the
+   screen height), clear of the notch */
+@media (orientation: landscape) and (max-height: 500px) {
+  .dock { left: calc(8px + var(--safe-l)); right: auto; bottom: calc(8px + var(--safe-b)); top: auto; transform: none;
+    display: grid; grid-template-columns: auto auto; gap: 2px; padding: 5px; border-radius: 20px; width: auto;
+    max-width: none; max-height: calc(100vh - 84px); overflow-y: auto; }
+  @supports (height: 1dvh) { .dock { max-height: calc(100dvh - 84px); } }
+  .dock nav { display: contents; }
+  .dock .sep, .plain-link, .dock .nav::before { display: none; }
+  .dock .nav { padding: 8px 10px; font-size: .78rem; justify-content: flex-start; }
+  .dock .icon-btn { justify-self: center; }
+  .brand { max-width: calc(100vw - 180px); }
+  .brand h1 { font-size: 1rem; }
+  .brand p { font-size: .7rem; }
+  .cam-hint { bottom: calc(12px + var(--safe-b)); }
+  body:has(.letter-view.on) .dock, body:has(.panel.open) .dock { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+/* On-screen keyboard (pwa.ts sets --kb / --vvh): bottom sheets ride above it; 16px fields (no iOS focus zoom) */
+.bottle-form textarea, .bottle-form input { font-size: 1rem; }
+@media (max-width: 720px) {
+  .panel, .sheet, .sheet-letter { bottom: var(--kb, 0px); }
+  .sheet { max-height: min(72dvh, calc(var(--vvh, 100dvh) - 16px)); }
+}
+@media (max-width: 720px) { .cam-hint { white-space: normal; text-align: center; border-radius: 16px; width: max-content; } }

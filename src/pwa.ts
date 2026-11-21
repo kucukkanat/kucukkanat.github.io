@@ -12,6 +12,22 @@ export function lockZoom(): void {
   // double-tap zoom is off via `touch-action: manipulation` in the CSS (cancelling touchend would eat clicks)
 }
 
+/** The on-screen keyboard: iOS overlays it without resizing the page, so publish how much of the bottom it covers
+ *  (--kb) and the visible height (--vvh) for the bottom sheets and search to stay above it. */
+export function trackKeyboard(): void {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const root = document.documentElement.style;
+  const update = () => {
+    const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+    root.setProperty('--kb', `${kb > 60 ? kb : 0}px`); // small differences are toolbars, not a keyboard
+    root.setProperty('--vvh', `${Math.round(vv.height)}px`);
+  };
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  update();
+}
+
 export function registerSW(): void {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
   if (new URLSearchParams(location.search).has('nosw')) {

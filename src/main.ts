@@ -32,9 +32,10 @@ import { Hanging, addTestRigs } from './hang';
 import { LetterView } from './letter';
 import { ShipClock } from './clock';
 import { uRainSlant } from './lighting';
-import { lockZoom, registerSW } from './pwa';
+import { lockZoom, registerSW, trackKeyboard } from './pwa';
 
 lockZoom();
+trackKeyboard();
 registerSW();
 
 const LETTER_KEY = 'kk-letter';
@@ -55,7 +56,7 @@ const showHint = () => {
   hintEl = document.createElement('div');
   hintEl.className = 'cam-hint';
   hintEl.setAttribute('role', 'status');
-  hintEl.textContent = touch ? 'Drag to look · two fingers to zoom and pan · double-tap to reset' : 'Drag to look · scroll to zoom · right-drag to pan · double-click to reset';
+  hintEl.textContent = touch ? 'Drag to look · two fingers to zoom · double-tap to reset · flick down to go back' : 'Drag to look · scroll to zoom · right-drag to pan · double-click to reset';
   document.body.appendChild(hintEl);
   requestAnimationFrame(() => hintEl?.classList.add('on'));
   setTimeout(hideHint, 6000);

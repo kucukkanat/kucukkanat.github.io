@@ -118,8 +118,8 @@ export class Sheets {
       <form class="bottle-form" novalidate>
         <label><span>Message</span><textarea name="message" rows="4" maxlength="4000" required placeholder="Ahoy, HT…"></textarea></label>
         <div class="row">
-          <label><span>Your name <em>(optional)</em></span><input name="name" maxlength="120" autocomplete="name" /></label>
-          <label><span>How can I reach you back? <em>(optional)</em></span><input name="reach" maxlength="200" placeholder="email, @handle, npub…" /></label>
+          <label><span>Your name <em>(optional)</em></span><input name="name" maxlength="120" autocomplete="name" enterkeyhint="next" /></label>
+          <label><span>How can I reach you back? <em>(optional)</em></span><input name="reach" maxlength="200" placeholder="email, @handle, npub…" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" /></label>
         </div>
         <div class="actions"><button type="submit" class="btn primary">Cork it and send</button></div>
         <p class="status" role="status" aria-live="polite"></p>
