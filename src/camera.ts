@@ -16,18 +16,19 @@ const ROOM = new THREE.Box3(new THREE.Vector3(-2.75, 0.35, -2.35), new THREE.Vec
  * Angles in degrees relative to the authored viewpoint; zoom is a factor (1 = authored framing, <1 = closer).
  * panX/panY: how far (metres) the camera and its target may slide sideways / up-down from the authored framing.
  */
+// panX/panY: raised 40% in the captain round (visitors wanted to slide further).
 type Limits = { mode: 'look' | 'orbit' | 'none'; yaw: number; pitchDown: number; pitchUp: number; zoomIn: number; zoomOut: number; panX: number; panY: number };
 const LIMITS: Record<ViewName, Limits> = {
-  overview: { mode: 'look', yaw: 45, pitchDown: 22, pitchUp: 18, zoomIn: 0.45, zoomOut: 1.05, panX: 0.6, panY: 0.25 },
-  chest:    { mode: 'orbit', yaw: 32, pitchDown: 12, pitchUp: 22, zoomIn: 0.5, zoomOut: 1.3, panX: 0.18, panY: 0.1 },
-  table:    { mode: 'orbit', yaw: 45, pitchDown: 12, pitchUp: 18, zoomIn: 0.5, zoomOut: 1.25, panX: 0.3, panY: 0.2 },
-  rack:     { mode: 'orbit', yaw: 28, pitchDown: 14, pitchUp: 14, zoomIn: 0.5, zoomOut: 1.25, panX: 0.2, panY: 0.15 },
-  shelf:    { mode: 'orbit', yaw: 28, pitchDown: 14, pitchUp: 14, zoomIn: 0.5, zoomOut: 1.25, panX: 0.2, panY: 0.2 },
-  handheld: { mode: 'orbit', yaw: 40, pitchDown: 15, pitchUp: 25, zoomIn: 0.55, zoomOut: 1.5, panX: 0.08, panY: 0.05 },
-  screen:   { mode: 'none', yaw: 0, pitchDown: 0, pitchUp: 0, zoomIn: 1, zoomOut: 1, panX: 0, panY: 0 },
-  portrait: { mode: 'orbit', yaw: 18, pitchDown: 10, pitchUp: 10, zoomIn: 0.6, zoomOut: 1.15, panX: 0.08, panY: 0.08 },
-  letter:   { mode: 'orbit', yaw: 22, pitchDown: 8, pitchUp: 14, zoomIn: 0.6, zoomOut: 1.2, panX: 0.06, panY: 0.05 },
-  clock:    { mode: 'orbit', yaw: 20, pitchDown: 10, pitchUp: 10, zoomIn: 0.6, zoomOut: 1.6, panX: 0.06, panY: 0.06 },
+  overview: { mode: 'look', yaw: 45, pitchDown: 22, pitchUp: 18, zoomIn: 0.45, zoomOut: 1.05, panX: 0.84, panY: 0.35 },
+  chest:    { mode: 'orbit', yaw: 32, pitchDown: 12, pitchUp: 22, zoomIn: 0.5, zoomOut: 1.3, panX: 0.252, panY: 0.14 },
+  table:    { mode: 'orbit', yaw: 45, pitchDown: 12, pitchUp: 18, zoomIn: 0.5, zoomOut: 1.25, panX: 0.42, panY: 0.28 },
+  rack:     { mode: 'orbit', yaw: 28, pitchDown: 14, pitchUp: 14, zoomIn: 0.5, zoomOut: 1.25, panX: 0.28, panY: 0.21 },
+  shelf:    { mode: 'orbit', yaw: 28, pitchDown: 14, pitchUp: 14, zoomIn: 0.5, zoomOut: 1.25, panX: 0.28, panY: 0.28 },
+  handheld: { mode: 'orbit', yaw: 40, pitchDown: 15, pitchUp: 25, zoomIn: 0.55, zoomOut: 1.5, panX: 0.112, panY: 0.07 },
+  screen:   { mode: 'none', yaw: 0, pitchDown: 0, pitchUp: 0, zoomIn: 1, zoomOut: 1, panX: 0.0, panY: 0.0 },
+  portrait: { mode: 'orbit', yaw: 18, pitchDown: 10, pitchUp: 10, zoomIn: 0.6, zoomOut: 1.15, panX: 0.112, panY: 0.112 },
+  letter:   { mode: 'orbit', yaw: 22, pitchDown: 8, pitchUp: 14, zoomIn: 0.6, zoomOut: 1.2, panX: 0.084, panY: 0.07 },
+  clock:    { mode: 'orbit', yaw: 20, pitchDown: 10, pitchUp: 10, zoomIn: 0.6, zoomOut: 1.6, panX: 0.084, panY: 0.084 },
 };
 
 export class CameraRig {

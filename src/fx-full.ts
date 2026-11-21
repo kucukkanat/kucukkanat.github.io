@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { uNight, uStorm } from './lighting';
-import type { Fx } from './fx';
+import { GLOW, CONTRAST, type Fx } from './fx';
 
 /** Before the bloom: no NaN, no negatives, no runaway highlights (one bad pixel would smear over the whole frame). */
 const SanitizeShader = {
@@ -22,10 +22,10 @@ const SanitizeShader = {
 };
 
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null as THREE.Texture | null }, uNight, uStorm, uVignette: { value: 0.34 } },
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null }, uNight, uStorm, uVignette: { value: 0.34 }, uContrast: { value: CONTRAST } },
   vertexShader: /* glsl */`varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D tDiffuse; uniform float uNight; uniform float uStorm; uniform float uVignette; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float uNight; uniform float uStorm; uniform float uVignette; uniform float uContrast; varying vec2 vUv;
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
       c.rgb = max(c.rgb, vec3(0.0));
@@ -36,6 +36,8 @@ const GradeShader = {
       c.rgb *= mix(shadow, light, smoothstep(0.02, 0.55, l));
       // a little more colour, like gouache
       c.rgb = mix(vec3(l), c.rgb, 1.12);
+      // contrast around mid grey (linear 0.18): darks deeper, lights brighter, mid tones unchanged
+      c.rgb = 0.18 * pow(max(c.rgb, vec3(1e-4)) / 0.18, vec3(uContrast));
       vec2 d = vUv - 0.5;
       c.rgb *= 1.0 - uVignette * smoothstep(0.25, 0.95, dot(d, d) * 2.2);
       gl_FragColor = c;
@@ -57,7 +59,7 @@ export function setupFullFx(renderer: THREE.WebGLRenderer, scene: THREE.Scene, c
     render: (s, c) => {
       if (cheap) { renderer.render(s, c); return; }
       // lantern, screen and stars bloom more at night; the bright sunset sky only a little
-      bloom.strength = 0.24 - 0.04 * uNight.value;
+      bloom.strength = (0.24 - 0.04 * uNight.value) * GLOW;
       bloom.threshold = 1.0;
       composer.render();
     },
