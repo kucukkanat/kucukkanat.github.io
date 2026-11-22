@@ -481,9 +481,11 @@ async function main() {
     if (firstLetter) { firstLetter = false; afterWelcome(); }
   }
 
+  let aboutIntent = false;
   async function openAbout() {
     if (play.overlayOn || play.busy) return;
-    if (rig.view !== 'portrait') await goto('portrait');
+    aboutIntent = true; // the address says "about" from the first frame of the glide
+    try { if (rig.view !== 'portrait') await goto('portrait'); } finally { aboutIntent = false; }
     openSheet('about');
   }
 
@@ -526,13 +528,16 @@ async function main() {
     await tween(reducedMotion ? 0 : 1.6, k => lighting.setNight(from + (to - from) * k), { key: 'night' });
   }
 
+  let playIntent: Collectible | null = null; // a cartridge on its way into the handheld (for the address)
   async function insert(c: Collectible) {
+    if (play.busy) return;
     ui.closePanel(true);
     pulled = null;
     inspector.release(c.item.id); // flies on from the inspected pose
     ui.setView('handheld');
     ui.setItemButtons([]);
-    await play.insert(c);
+    playIntent = c;
+    try { await play.insert(c); } finally { playIntent = null; }
   }
 
   // Input
@@ -634,24 +639,26 @@ async function main() {
   if (params.get('storm') === '1') void weather.set(true);
   const pTime = params.get('time')?.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
   if (pTime) { const d = new Date(); d.setHours(+pTime[1], +pTime[2], +(pTime[3] ?? 0), 0); clock.setFixed(d.getTime()); }
+  // the address is only written once the shared link's state is up (deepP), so it is not tidied away half-way
+  let deepP: Promise<unknown> = Promise.resolve();
   if (pPlay && coll.byId.get(pPlay)) {
     rig.jump('handheld');
     ui.setView('handheld');
-    setTimeout(() => insert(coll.byId.get(pPlay)!), 300);
+    deepP = new Promise<void>(res => setTimeout(() => { void insert(coll.byId.get(pPlay)!).finally(res); }, 300));
   } else if (pv && cabin.views[pv]) {
     rig.jump(pv);
-    goto(pv).then(() => {
+    deepP = goto(pv).then(() => {
       if (pItem) { const c = coll.byId.get(pItem) ?? (findItem(content, pItem) ? coll.byId.get(`${pItem}--island`) : undefined); if (c) select(c); }
     });
   } else {
     ui.setView('overview');
   }
-  if (pOpen) setTimeout(() => {
-    if (pOpen === 'letter') void openLetter(true);
-    else if (pOpen === 'about') void openAbout();
+  if (pOpen) deepP = Promise.all([deepP, new Promise<void>(res => setTimeout(res, 400))]).then(() => {
+    if (pOpen === 'letter') return openLetter(true);
+    else if (pOpen === 'about') return openAbout();
     else if (pOpen === 'contact' || pOpen === 'story') openSheet(pOpen);
     else if ((pOpen as string) === 'clock') activateHit('clock');
-  }, 400);
+  });
   // First visit: the letter lifts off the table and says hello (once; deep links skip it).
   let seenLetter = false;
   try { seenLetter = localStorage.getItem(LETTER_KEY) === '1'; } catch { /* private mode */ }
@@ -813,16 +820,20 @@ async function main() {
     outsideRef = o;
     return o;
   });
+  let outIntent = false; // the flight out has started: the address says outside at once
   const goOutsideP = () => {
     if (letterOpen) tuckLetter();
+    outIntent = true;
     ui.setView('overview'); // the flight out starts from whatever view is on screen
-    return getOutside().then(o => o.goOutside()).then(ok => { if (!ok) showNote('The ship could not be loaded'); }, () => showNote('The ship could not be loaded'));
+    return getOutside().then(o => o.goOutside()).then(ok => { if (!ok) showNote('The ship could not be loaded'); }, () => showNote('The ship could not be loaded'))
+      .finally(() => { outIntent = false; });
   };
   goOutside = () => { void goOutsideP(); };
 
   // ----- the address bar (nav.ts): what is on screen, kept in the URL; Back / Forward replay it -----
-  const isOut = () => !!outsideRef && outsideRef.mode !== 'inside';
-  const playing = () => !!play.inserted && (play.overlayOn || rig.view === 'handheld' || rig.view === 'screen');
+  // the address follows what the visitor asked for, at once: a view mid-glide, a cartridge on its way in, the flight out
+  const isOut = () => outIntent || (!!outsideRef && outsideRef.mode !== 'inside');
+  const playing = () => !!playIntent || (!!play.inserted && !play.ejecting && (play.overlayOn || rig.view === 'handheld' || rig.view === 'screen'));
   const snapshot = (): nav.CabinState => {
     const s: nav.CabinState = {};
     if (night) s.night = '1';
@@ -830,12 +841,13 @@ async function main() {
     if (searchRef?.isOpen) s.search = searchRef.query;
     if (whalesRef?.cardKey) s.whale = whalesRef.cardKey;
     if (isOut()) { s.outside = '1'; return s; }
-    if (playing()) s.play = play.inserted!.item.id;
+    if (playing()) s.play = (playIntent ?? play.inserted)!.item.id;
     else {
-      if (rig.view !== 'overview') s.view = rig.view;
+      const v = play.ejecting ? 'handheld' : rig.view; // eject ends at the handheld
+      if (v !== 'overview') s.view = v;
       if (pulled) s.item = pulled.item.id;
     }
-    const open = letterOpen ? 'letter' : sheets.kind ?? (clock.isOpen ? 'clock' : null);
+    const open = letterOpen ? 'letter' : sheets.kind ?? (clock.isOpen ? 'clock' : aboutIntent ? 'about' : null);
     if (open) s.open = open;
     return s;
   };
@@ -850,7 +862,7 @@ async function main() {
     return s.view ? VIEW_TITLE[s.view as ViewName] ?? null : null;
   };
   let navOn = false, applying = false, pendingNav: nav.CabinState | null = null, nightP: Promise<void> | null = null;
-  const navBusy = () => !navOn || applying || play.busy || !!outsideRef?.busy || rig.isGliding || !!nightP;
+  const navBusy = () => !navOn || applying;
   /** Resolves once cond() holds (checked each frame-ish), or after ms. */
   const until = (cond: () => boolean, ms = 15000) => new Promise<void>(res => {
     const t0 = performance.now();
@@ -898,16 +910,21 @@ async function main() {
     } catch (err) { console.warn('nav', err); } finally { applying = false; }
   }
   nav.onPop(t => { void goNav(t); });
-  // settle, then write: a state is committed once it has held still for a moment and nothing is moving
-  let lastSnap = '', lastTitle: string | null | undefined;
-  setInterval(() => {
-    if (navBusy()) { lastSnap = ''; return; }
-    const s = snapshot(), k = JSON.stringify(s);
-    if (k !== lastSnap) { lastSnap = k; return; }
+  // write the state as soon as it changes: right after each click / key (and on a short poll for everything else)
+  let lastTitle: string | null | undefined;
+  const syncNav = () => {
+    if (navBusy()) return;
+    const s = snapshot();
     nav.commit(s);
     if (!writing.isOpen) { const tt = titleOf(s); if (tt !== lastTitle) { lastTitle = tt; setTitle(tt); } }
     else lastTitle = undefined;
-  }, 150);
+  };
+  setInterval(syncNav, 120);
+  for (const ev of ['click', 'pointerup', 'keydown', 'keyup']) {
+    // right after the event's own handlers have run (bubbling to the window), and again as a task in case one stopped it
+    addEventListener(ev, () => queueMicrotask(syncNav), { passive: true });
+    addEventListener(ev, () => { setTimeout(syncNav, 0); }, { capture: true, passive: true });
+  }
   let introDone: Promise<void> = Promise.resolve();
   if (introOn && galleonGltf) introDone = getOutside().then(o => o.playIntro());
 
@@ -936,7 +953,7 @@ async function main() {
       tryCard();
     }
   }
-  setTimeout(() => { navOn = true; }, 1200);
+  void Promise.all([deepP, new Promise(res => setTimeout(res, 1200))]).then(() => { navOn = true; });
   if (firstLetter) setTimeout(() => { if (!sheets.isOpen && !play.overlayOn && !letterOpen) void openLetter(false); else if (!letterOpen) { firstLetter = false; afterWelcome(); } }, 1100);
   else {
     if (rig.view === 'overview') setTimeout(() => { void rig.introSweep(); }, 900);
