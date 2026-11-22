@@ -9,7 +9,7 @@
 //   wing fins        bank against each other in a turn, lift together in a climb, sweep back with speed
 //   nacelles         tilt the propellers up when slow or climbing; propellers spin with the throttle
 //   yards, spanker   brace into the turn, a little behind it (as a crew would)
-//   sails            set in stages with the throttle (furled at a stop), billow with airspeed, luff in hard turns
+//   sails            set in stages with the throttle (furled at a stop), a steady belly that fills with speed
 //   flags, pennants  cloth in the apparent wind, lagging the ship's turns (ship-air.ts)
 //   kite             flies on a springy line from the main top (ship-air.ts)
 //   lift stone, gyro spin up when climbing / turning; figurehead wings spread with speed
@@ -37,7 +37,7 @@ export interface RigInput {
 
 interface Joint { o: THREE.Object3D; q0: THREE.Quaternion; axis: THREE.Vector3; sign: number; min: number; max: number; v: number; rpm: number }
 interface Cloth { mesh: THREE.Mesh; pos: THREE.BufferAttribute; base: Float32Array; kind: 'square' | 'fore-aft'; furl: number; furlT: number;
-  /** per vertex: belly weight 0..1, highest mid-sail */ w: Float32Array; thin: 0 | 1 | 2; size: number; belly: number; phase: number }
+  /** per vertex: belly weight 0..1, highest mid-sail */ w: Float32Array; thin: 0 | 1 | 2; size: number; belly: number; side: number }
 
 const q = new THREE.Quaternion();
 
@@ -88,7 +88,7 @@ export class ShipRig {
       w[i] = k;
     }
     const size2 = Math.max(...dims);
-    return { mesh, pos, base, kind, furl: 0, furlT: 0, w, thin, size: size2, belly: 0, phase: Math.random() * 6 };
+    return { mesh, pos, base, kind, furl: 0, furlT: 0, w, thin, size: size2, belly: 0, side: 1 };
   }
 
   /** Set a joint's value (degrees), clamped to its range; mirrored twins pass the same value. */
@@ -165,22 +165,17 @@ export class ShipRig {
     this.kite?.update(h, this.air);
   }
 
-  /** Push the cloth out along its thin axis: a full belly that fills with the wind and breathes in the gusts, and a
-   *  luffing ripple along the leech when slow or turning hard. */
-  private billow(s: Cloth, sp: number, turn: number, t: number, dt: number) {
+  /** Push the cloth out along its thin axis: a steady belly that fills with speed (no flapping). */
+  private billow(s: Cloth, sp: number, _turn: number, _t: number, dt: number) {
     const a = s.pos.array as Float32Array, b = s.base, open = 1 - s.furl;
-    const wind = clamp(this.air.wind.length() / 22, 0, 1.2);
-    // square sails fill toward the bow (the wind is behind them); fore-and-aft sails fill to leeward of the turn
-    const dir = s.kind === 'square' ? 1 : (turn >= 0 ? 1 : -1);
-    const gust = 0.85 + 0.15 * this.air.gust + 0.06 * Math.sin(t * 1.4 + s.phase);
-    const target = open * s.size * (0.1 + 0.3 * Math.max(wind, sp)) * gust * dir;
-    s.belly += (target - s.belly) * (1 - Math.exp(-3 * dt)); // the cloth takes a moment to fill
-    const luff = open * s.size * 0.018 * (0.3 + 1.4 * (1 - sp) + 1.5 * Math.abs(turn));
-    const ax = s.thin, ua = ax === 1 ? 0 : 1;
-    for (let i = 0; i < s.pos.count; i++) {
-      const w = s.w[i], u = b[i * 3 + ua] / Math.max(s.size, 1e-3) * 6;
-      a[i * 3 + ax] = b[i * 3 + ax] + w * s.belly + Math.sqrt(w) * luff * Math.sin(u * 2.1 - t * (4 + 5 * sp) + s.phase);
-    }
+    // square sails fill toward the bow (the wind is behind them); fore-and-aft sails to leeward of the turn, and
+    // only change sides in a real turn (a helm hovering around centre must not flip them back and forth)
+    if (s.kind === 'fore-aft' && Math.abs(this.turnL) > 0.2) s.side = Math.sign(this.turnL);
+    const dir = s.kind === 'square' ? 1 : s.side;
+    const target = open * s.size * (0.1 + 0.3 * sp) * dir;
+    s.belly += (target - s.belly) * (1 - Math.exp(-1.5 * dt)); // the cloth fills and empties slowly
+    const ax = s.thin;
+    for (let i = 0; i < s.pos.count; i++) a[i * 3 + ax] = b[i * 3 + ax] + s.w[i] * s.belly;
     s.pos.needsUpdate = true;
     s.mesh.geometry.computeVertexNormals();
   }

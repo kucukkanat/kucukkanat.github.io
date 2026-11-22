@@ -142,7 +142,7 @@ export class FlagCloth {
       v1.fromArray(p, i * 3).applyQuaternion(air.turn).toArray(p, i * 3);
       v1.fromArray(o, i * 3).applyQuaternion(air.turn).toArray(o, i * 3);
     }
-    const g = 9.8, drag = 0.045, flutter = 0.06 * ws * air.gust, speedK = clamp(ws / 24, 0, 1);
+    const g = 9.8, drag = 0.3, flutter = 0.06 * ws * air.gust, speedK = clamp(ws / 24, 0, 1);
     const freq = 3 + 9 * speedK;
     for (let s = 0; s < steps; s++) {
       for (let i = 0; i < n; i++) {
@@ -234,7 +234,7 @@ export class Kite {
     // the ship turns under the kite: it lags, and the line pulls it round
     this.p.applyQuaternion(air.turn); this.v.applyQuaternion(air.turn);
     const steps = Math.max(1, Math.ceil(dt / (1 / 120))), h = dt / steps;
-    const LD = 1.7, aero = 0.11, g = 3.2, k = 60, c = 3.5;
+    const LD = 1.7, aero = 0.11, g = 3.2, k = 400, c = 20; // the line: stretches ~2% under a full pull, no bounce
     const rel = new THREE.Vector3(), lift = new THREE.Vector3(), acc = new THREE.Vector3(), nrm = new THREE.Vector3();
     for (let s = 0; s < steps; s++) {
       // apparent wind on the kite, with a little turbulence so it dances
