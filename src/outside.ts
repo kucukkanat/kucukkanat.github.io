@@ -1,7 +1,7 @@
 // Outside the ship. The cabin sits inside the sky galleon (the ship's Cabin_anchor is put on the cabin's origin),
 // so the camera can leave and enter through the middle stern window without a cut:
 //   opening shot  → the galleon from astern, in through the window, a turn over the chart table, the landing view;
-//   "Outside"     → the same way out, then an orbit view of the ship; "Take the helm" makes it fly.
+//   "Outside"     → the same way out, then an orbit view of the ship; the visitor can steer and throttle it at any time.
 // The ship itself never moves: flying turns and slides the outside world (and tilts world + camera for the bank),
 // which leaves the baked cabin where it is.
 import * as THREE from 'three';
@@ -17,7 +17,7 @@ import { INTRO_KEY as KEY } from './intro-flag';
 const HOLD = (() => { const v = new URLSearchParams(location.search).get('introT'); return v === null || !Number.isFinite(+v) ? null : +v; })();
 const { clamp, lerp } = THREE.MathUtils;
 
-export type OutsideMode = 'inside' | 'orbit' | 'helm';
+export type OutsideMode = 'inside' | 'orbit';
 
 export interface OutsideHooks {
   /** Where the HUD goes. */
@@ -117,6 +117,12 @@ function islandMaterial(): THREE.ShaderMaterial {
   });
 }
 
+/** Top speed (m/s) at full throttle, and where the throttle sits on the way out (a slow cruise). */
+const MAX_SPEED = 24;
+const CRUISE = 3 / MAX_SPEED;
+/** Thumbstick radius (px): the knob's travel, full deflection at the rim. */
+const STICK_R = 56;
+
 const WORLD_BOX = 1800; // islands repeat in a box this wide around the ship, so there is always something to fly to
 
 export class Outside {
@@ -133,11 +139,15 @@ export class Outside {
   private orbit = { yaw: 2.55, pitch: 0.16, dist: 46, yawT: 2.55, pitchT: 0.16, distT: 46 };
   private ship = { pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, speed: 3, turn: 0, climb: 0 };
   private keys = new Set<string>();
-  private drag = { turn: 0, climb: 0 };
+  private stick = { turn: 0, climb: 0 };
+  private throttle = CRUISE;
   private hud: HTMLElement;
   private layer: HTMLElement;
-  private helmBtn: HTMLButtonElement;
   private hint: HTMLElement;
+  private stickEl: HTMLElement;
+  private knobEl: HTMLElement;
+  private thrEl: HTMLElement;
+  private thrFill: HTMLElement;
   private isOut = false;
   private mixK = 1;
   private rt: THREE.WebGLRenderTarget | null = null;
@@ -179,18 +189,25 @@ export class Outside {
     hud.hidden = true;
     hud.innerHTML = `
       <button type="button" class="btn out-in">Back inside</button>
-      <button type="button" class="btn out-helm" aria-pressed="false">Take the helm</button>
+      <div class="out-throttle" role="slider" tabindex="0" aria-label="Throttle" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100">
+        <span class="out-thr-label">Speed</span><span class="out-thr-track"><span class="out-thr-fill"></span></span>
+      </div>
+      <div class="out-stick" aria-hidden="true"><span class="out-knob"></span></div>
       <p class="out-hint" aria-live="polite"></p>`;
     hooks.root.append(layer, hud);
-    this.helmBtn = hud.querySelector('.out-helm')!;
     this.hint = hud.querySelector('.out-hint')!;
+    this.stickEl = hud.querySelector('.out-stick')!;
+    this.knobEl = hud.querySelector('.out-knob')!;
+    this.thrEl = hud.querySelector('.out-throttle')!;
+    this.thrFill = hud.querySelector('.out-thr-fill')!;
     hud.querySelector('.out-in')!.addEventListener('click', () => { void this.goInside(); });
-    this.helmBtn.addEventListener('click', () => this.setHelm(this.mode !== 'helm'));
     this.bindPointer(layer);
+    this.bindThrottle();
+    this.setThrottle(CRUISE);
     addEventListener('keydown', (e: KeyboardEvent) => {
       if (this.mode === 'inside' || this.busy) return;
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (this.mode === 'helm') this.setHelm(false); else void this.goInside(); return; }
-      if (e.key === 'h' || e.key === 'H') { this.setHelm(this.mode !== 'helm'); return; }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); void this.goInside(); return; }
+      if (e.target === this.thrEl) return; // the slider handles its own keys
       this.keys.add(e.key.toLowerCase());
       if (e.key.startsWith('Arrow')) e.preventDefault();
     }, true);
@@ -480,7 +497,6 @@ export class Outside {
     if (this.busy || this.mode === 'inside') return;
     this.busy = true;
     this.showHud(false);
-    this.setHelm(false, true);
     this.mode = 'inside';
     const o = this.orbit;
     // the swing round the ship, sampled on the orbit sphere so the path never cuts through the hull
@@ -506,27 +522,46 @@ export class Outside {
 
   private resetShip() {
     const s = this.ship;
-    s.pitch = s.roll = s.turn = s.climb = 0; s.speed = 3;
-    this.keys.clear(); this.drag.turn = this.drag.climb = 0;
+    s.pitch = s.roll = s.turn = s.climb = 0; s.speed = CRUISE * MAX_SPEED;
+    this.keys.clear(); this.stick.turn = this.stick.climb = 0;
+    this.setThrottle(CRUISE);
   }
 
-  setHelm(on: boolean, quiet = false) {
-    if (this.mode === 'inside' && !quiet) return;
-    if (this.mode !== 'inside') this.mode = on ? 'helm' : 'orbit';
-    this.helmBtn.setAttribute('aria-pressed', String(on));
-    this.helmBtn.textContent = on ? 'Leave the helm' : 'Take the helm';
-    this.layer.classList.toggle('helm', on);
-    const touch = matchMedia('(pointer: coarse)').matches;
-    this.hint.textContent = on
-      ? (touch ? 'Drag left or right to turn, up or down to climb or dive' : 'A / D or ← → turn · W / S or ↑ ↓ climb and dive · drag also steers · Esc lets go')
-      : (touch ? 'Drag to look around the ship · pinch to zoom' : 'Drag to look around the ship · scroll to zoom · H takes the helm · Esc goes back inside');
-    if (!quiet) this.hooks.mode?.(this.mode);
+  /** Throttle 0..1 (the ship eases toward throttle × MAX_SPEED). */
+  setThrottle(v: number) {
+    this.throttle = clamp(v, 0, 1);
+    const pc = Math.round(this.throttle * 100);
+    this.thrFill.style.height = `${pc}%`;
+    this.thrEl.setAttribute('aria-valuenow', String(pc));
+    this.thrEl.setAttribute('aria-valuetext', `${Math.round(this.throttle * MAX_SPEED)} metres a second`);
   }
 
   private showHud(on: boolean) {
     this.hud.hidden = !on;
     this.layer.hidden = !on;
-    if (on) this.setHelm(false, true);
+    if (!on) return;
+    const touch = matchMedia('(pointer: coarse)').matches;
+    this.hud.classList.toggle('touch', touch);
+    this.hint.textContent = touch
+      ? 'Left thumb steers · drag elsewhere to look · pinch to zoom · slider sets the speed'
+      : 'A / D or ← → turn · W / S or ↑ ↓ climb · Q / E speed · drag to look · scroll to zoom · Esc goes inside';
+  }
+
+  private bindThrottle() {
+    const el = this.thrEl, track = el.querySelector<HTMLElement>('.out-thr-track')!;
+    const at = (e: PointerEvent) => { const r = track.getBoundingClientRect(); this.setThrottle(1 - (e.clientY - r.top) / r.height); };
+    let id = -1;
+    el.addEventListener('pointerdown', e => { e.stopPropagation(); id = e.pointerId; el.setPointerCapture(id); at(e); });
+    el.addEventListener('pointermove', e => { if (e.pointerId === id) at(e); });
+    const end = (e: PointerEvent) => { if (e.pointerId === id) id = -1; };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('keydown', e => {
+      const step = { ArrowUp: 0.05, ArrowRight: 0.05, ArrowDown: -0.05, ArrowLeft: -0.05, PageUp: 0.2, PageDown: -0.2 }[e.key];
+      if (step !== undefined) { e.preventDefault(); this.setThrottle(this.throttle + step); }
+      else if (e.key === 'Home') { e.preventDefault(); this.setThrottle(0); }
+      else if (e.key === 'End') { e.preventDefault(); this.setThrottle(1); }
+    });
   }
 
   // ───────────────────────── input
@@ -535,12 +570,33 @@ export class Outside {
     const pts = new Map<number, { x: number; y: number }>();
     let pinch = 0;
     let down: { x: number; y: number; t: number; moved: boolean } | null = null;
+    // a touch that lands in the lower left becomes a floating thumbstick (centred where it landed); the rest look around
+    let stick: { id: number; x: number; y: number } | null = null;
+    const stickZone = (e: PointerEvent) => e.pointerType === 'touch' && e.clientX > 20 && e.clientX < innerWidth * 0.4 && e.clientY > innerHeight * 0.35;
+    const stickAt = (x: number, y: number) => {
+      const dx = x - stick!.x, dy = y - stick!.y, d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1;
+      this.knobEl.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+      this.stick.turn = clamp(dx / STICK_R, -1, 1);
+      this.stick.climb = clamp(-dy / STICK_R, -1, 1);
+    };
+    const stickEnd = () => {
+      stick = null; this.stick.turn = this.stick.climb = 0;
+      this.stickEl.classList.remove('on'); this.stickEl.style.left = this.stickEl.style.top = ''; this.knobEl.style.transform = '';
+    };
     el.addEventListener('pointerdown', e => {
-      el.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); pinch = 0;
+      el.setPointerCapture(e.pointerId);
+      if (!stick && !this.busy && stickZone(e)) {
+        stick = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        this.stickEl.classList.add('on'); this.stickEl.style.left = `${e.clientX}px`; this.stickEl.style.top = `${e.clientY}px`;
+        stickAt(e.clientX, e.clientY);
+        return;
+      }
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); pinch = 0;
       down = pts.size === 1 ? { x: e.clientX, y: e.clientY, t: performance.now(), moved: false } : null;
     });
-    const up = (e: PointerEvent) => { pts.delete(e.pointerId); pinch = 0; if (!pts.size) this.drag.turn = this.drag.climb = 0; };
+    const up = (e: PointerEvent) => { if (e.pointerId === stick?.id) { stickEnd(); return; } pts.delete(e.pointerId); pinch = 0; };
     el.addEventListener('pointerup', e => {
+      if (e.pointerId === stick?.id) return;
       if (down && !down.moved && e.type === 'pointerup' && performance.now() - down.t < 450 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8)
         this.hooks.click?.(new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1));
       down = null;
@@ -548,6 +604,7 @@ export class Outside {
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
     el.addEventListener('pointermove', e => {
+      if (e.pointerId === stick?.id) { stickAt(e.clientX, e.clientY); return; }
       const p = pts.get(e.pointerId);
       if (!p || this.busy) return;
       const dx = e.clientX - p.x, dy = e.clientY - p.y;
@@ -558,12 +615,6 @@ export class Outside {
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         if (pinch > 0) this.orbit.distT = clamp(this.orbit.distT * pinch / Math.max(d, 1), 16, 110);
         pinch = d;
-        return;
-      }
-      if (this.mode === 'helm') {
-        // the drag is a tiller: how far the pointer is from where it went down sets the turn and the climb
-        this.drag.turn = clamp(dx / (innerWidth * 0.22), -1, 1);
-        this.drag.climb = clamp(-dy / (innerHeight * 0.22), -1, 1);
         return;
       }
       p.x = e.clientX; p.y = e.clientY;
@@ -598,17 +649,15 @@ export class Outside {
     for (const sp of this.spinners) sp.o.rotateOnAxis(sp.axis, sp.rps * Math.PI * 2 * dt);
     if (this.mode === 'inside' || this.busy) { this.layoutWorld(); return; }
     const s = this.ship, o = this.orbit;
-    const helm = this.mode === 'helm';
     const key = (...k: string[]) => k.some(x => this.keys.has(x));
-    let turn = 0, climb = 0;
-    if (helm) {
-      turn = (key('a', 'arrowleft') ? 1 : 0) - (key('d', 'arrowright') ? 1 : 0) - this.drag.turn;
-      climb = (key('w', 'arrowup') ? 1 : 0) - (key('s', 'arrowdown') ? 1 : 0) + this.drag.climb;
-    }
+    const turn = (key('a', 'arrowleft') ? 1 : 0) - (key('d', 'arrowright') ? 1 : 0) - this.stick.turn;
+    const climb = (key('w', 'arrowup') ? 1 : 0) - (key('s', 'arrowdown') ? 1 : 0) + this.stick.climb;
+    const thr = (key('e', '+', '=') ? 1 : 0) - (key('q', '-') ? 1 : 0);
+    if (thr) this.setThrottle(this.throttle + thr * 0.45 * dt);
     const damp = (a: number, b: number, l: number) => lerp(a, b, 1 - Math.exp(-l * dt));
     s.turn = damp(s.turn, clamp(turn, -1, 1), 2.2);
     s.climb = damp(s.climb, clamp(climb, -1, 1), 2.2);
-    s.speed = damp(s.speed, helm ? 17 : 3, 0.8);
+    s.speed = damp(s.speed, this.throttle * MAX_SPEED, 0.8);
     s.yaw += s.turn * 0.38 * dt;
     s.roll = damp(s.roll, -s.turn * 0.3, 2.5);
     s.pitch = damp(s.pitch, -s.climb * 0.16, 2.5);

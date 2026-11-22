@@ -266,7 +266,7 @@ async function main() {
     const act = (id: string, title: string, detail: string, keywords: string[], run: () => void) => items.push({ id: `a-${id}`, group: 'Actions', title, detail, keywords, run: () => { writing.close(); run(); } });
     act('index', 'Open the Ship\u2019s Index', 'Every note, with filters', ['writing', 'blog', 'articles', 'notes', 'yazılar', 'liste'], () => { void writing.openIndex(); });
     act('night', night ? 'Blow out the lantern: back to sunset' : 'Light the lantern: night', 'Switch between sunset and night', ['night', 'day', 'dark', 'gece', 'gündüz', 'lantern'], () => toggleNight());
-    act('outside', 'Go outside', 'See the ship from the air and take the helm', ['ship', 'galleon', 'fly', 'helm', 'dışarı', 'gemi'], () => goOutside());
+    act('outside', 'Go outside', 'See the ship from the air and fly it', ['ship', 'galleon', 'fly', 'helm', 'dışarı', 'gemi'], () => goOutside());
     act('whales', 'Watch the sky whales', 'Six whales carrying their own worlds, in the whale viewer', ['whale', 'whales', 'sky whales', 'balina'], () => { location.href = '/whales/'; });
     act('letter', 'Read the welcome letter', 'The letter on the chart table', ['welcome', 'hello', 'mektup'], () => { void openLetter(true); });
     act('about', 'About HT', 'The portrait on the wall', ['about', 'who', 'bio', 'hakkında'], () => { void openAbout(); });
@@ -803,7 +803,7 @@ async function main() {
       click: ndc => { const k = whalesRef?.pickOutside(camera, ndc); if (k) { whalesRef!.showCard(k); audio.click(); } },
       mode: mo => {
         audio.whoosh();
-        ui.announce(mo === 'orbit' ? 'Outside the ship. Drag to look around it.' : mo === 'helm' ? 'You have the helm.' : 'Back in the cabin.');
+        ui.announce(mo === 'orbit' ? 'Outside the ship. Drag to look around it; steer and set the speed whenever you like.' : 'Back in the cabin.');
       },
     });
     o.setShip(galleonGltf);

@@ -20,7 +20,7 @@ const { clamp, lerp } = THREE.MathUtils;
 export interface OutsideLike {
   worldGroup: THREE.Group;
   shipState: { pos: THREE.Vector3; yaw: number; speed: number };
-  mode: 'inside' | 'orbit' | 'helm';
+  mode: 'inside' | 'orbit';
   isOutside: boolean;
 }
 
@@ -46,6 +46,8 @@ export interface WhalesWorld {
 const WIN = { k: 0.55, x: 11, yLo: -1.0, yHi: 4.0, zNear: -7.6, zFar: -19.5, speed: 0.085, turn: 0.22 };
 /** Outside: giant scale, wander ring around the ship (m), respawn distance, escort. */
 const OUT = { k: 8, rMin: 160, rMax: 480, yLo: -50, yHi: 120, respawn: 1200, speed: 0.095, turn: 0.11 };
+/** The ship faster than this (m/s) counts as under way: whales then come to escort it. */
+const ESCORT_SPEED = 8;
 /** Full-detail LOD within this many whale-lengths of the camera (lite beyond). */
 const NEAR_LEN = 1.7;
 
@@ -402,7 +404,7 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
       if (out) {
         // absolute space: the outside world places everything relative to the ship
         outAbs.position.copy(ship().pos).multiplyScalar(-1);
-        const helm = outside!.mode === 'helm';
+        const helm = ship().speed > ESCORT_SPEED; // under way: a whale may come to swim alongside
         nextEscort -= dt;
         if (helm && nextEscort <= 0) {
           // the nearest whale that isn't already escorting comes to swim alongside for a while
@@ -428,7 +430,7 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
           // keep clear of the ship's hull
           const toShip = b.pos.clone().sub(s.pos); const ds = toShip.length(), clear = b.len * 0.6 + 45;
           if (ds < clear * 1.5) avoid.add(toShip.normalize().multiplyScalar((clear * 1.5 - ds) / clear * 1.5));
-          if (b.escortUntil > t && outside!.mode === 'helm') {
+          if (b.escortUntil > t && ship().speed > ESCORT_SPEED) {
             // swim alongside: a point off the bow quarter, a little below - where the helm camera sees it
             const f = shipFwd(), right = new THREE.Vector3(f.z, 0, -f.x);
             b.target.copy(s.pos).addScaledVector(right, b.escortSide * (b.len * 0.5 + 55)).addScaledVector(f, 90).y -= 14;
