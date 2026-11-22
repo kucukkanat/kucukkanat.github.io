@@ -33,6 +33,8 @@ import { LetterView } from './letter';
 import { ShipClock } from './clock';
 import { uRainSlant } from './lighting';
 import { lockZoom, registerSW, trackKeyboard } from './pwa';
+import * as nav from './nav';
+import { setTitle } from './writing/router';
 
 lockZoom();
 trackKeyboard();
@@ -654,7 +656,7 @@ async function main() {
   let seenLetter = false;
   try { seenLetter = localStorage.getItem(LETTER_KEY) === '1'; } catch { /* private mode */ }
   if (params.get('welcome') === '1') seenLetter = false;
-  const deepLink = !!(pv || pPlay || pOpen || params.get('storm'));
+  const deepLink = !!(pv || pPlay || pOpen || params.get('storm') || params.has('outside') || params.has('whale') || params.has('search'));
   firstLetter = !seenLetter && !deepLink && !!props.get('letter') || params.get('welcome') === '1';
 
   // Loop
@@ -811,11 +813,101 @@ async function main() {
     outsideRef = o;
     return o;
   });
-  goOutside = () => {
+  const goOutsideP = () => {
     if (letterOpen) tuckLetter();
     ui.setView('overview'); // the flight out starts from whatever view is on screen
-    void getOutside().then(o => o.goOutside()).then(ok => { if (!ok) showNote('The ship could not be loaded'); }, () => showNote('The ship could not be loaded'));
+    return getOutside().then(o => o.goOutside()).then(ok => { if (!ok) showNote('The ship could not be loaded'); }, () => showNote('The ship could not be loaded'));
   };
+  goOutside = () => { void goOutsideP(); };
+
+  // ----- the address bar (nav.ts): what is on screen, kept in the URL; Back / Forward replay it -----
+  const isOut = () => !!outsideRef && outsideRef.mode !== 'inside';
+  const playing = () => !!play.inserted && (play.overlayOn || rig.view === 'handheld' || rig.view === 'screen');
+  const snapshot = (): nav.CabinState => {
+    const s: nav.CabinState = {};
+    if (night) s.night = '1';
+    if (weather.storm) s.storm = '1';
+    if (searchRef?.isOpen) s.search = searchRef.query;
+    if (whalesRef?.cardKey) s.whale = whalesRef.cardKey;
+    if (isOut()) { s.outside = '1'; return s; }
+    if (playing()) s.play = play.inserted!.item.id;
+    else {
+      if (rig.view !== 'overview') s.view = rig.view;
+      if (pulled) s.item = pulled.item.id;
+    }
+    const open = letterOpen ? 'letter' : sheets.kind ?? (clock.isOpen ? 'clock' : null);
+    if (open) s.open = open;
+    return s;
+  };
+  const VIEW_TITLE: Partial<Record<ViewName, string>> = { chest: 'The map chest', table: 'The chart table', rack: 'The logbook rack', shelf: 'The bookshelf', handheld: 'KANAT·1', screen: 'KANAT·1', portrait: 'The captain’s portrait', letter: 'The welcome letter', clock: 'The ship’s clock' };
+  const OPEN_TITLE: Record<string, string> = { letter: 'The welcome letter', about: 'About', story: 'The story', contact: 'Send a message', clock: 'The ship’s clock' };
+  const titleOf = (s: nav.CabinState): string | null => {
+    if (s.search !== undefined) return 'Search';
+    if (s.outside) return 'Outside the ship';
+    if (s.open) return OPEN_TITLE[s.open] ?? null;
+    const id = s.play ?? s.item;
+    if (id) return coll.byId.get(id)?.item.title ?? null;
+    return s.view ? VIEW_TITLE[s.view as ViewName] ?? null : null;
+  };
+  let navOn = false, applying = false, pendingNav: nav.CabinState | null = null, nightP: Promise<void> | null = null;
+  const navBusy = () => !navOn || applying || play.busy || !!outsideRef?.busy || rig.isGliding || !!nightP;
+  /** Resolves once cond() holds (checked each frame-ish), or after ms. */
+  const until = (cond: () => boolean, ms = 15000) => new Promise<void>(res => {
+    const t0 = performance.now();
+    const tick = () => (cond() || performance.now() - t0 > ms ? res() : setTimeout(tick, 50));
+    tick();
+  });
+  async function applyNav(t: nav.CabinState) {
+    // Back / Forward pressed mid-move: let the move finish first
+    await until(() => !play.busy && !outsideRef?.busy && !rig.isGliding);
+    const lit = t.night === '1';
+    if (lit !== night) { nightP = toggleNight(); await nightP; nightP = null; }
+    if ((t.storm === '1') !== weather.storm) void weather.set(t.storm === '1');
+    if (t.search === undefined) searchRef?.close();
+    if (t.whale === undefined) whalesRef?.closeCard();
+    if (t.outside) { if (!isOut()) await goOutsideP(); }
+    else {
+      if (isOut()) await outsideRef!.goInside();
+      if (letterOpen && t.open !== 'letter') tuckLetter();
+      if (sheets.isOpen && sheets.kind !== t.open) sheets.close('close', true);
+      if (clock.isOpen && t.open !== 'clock') clock.close();
+      const pc = t.play ? coll.byId.get(t.play) : undefined;
+      if (pc) { if (play.inserted !== pc || !play.overlayOn) { writing.close(); await insert(pc); } }
+      else {
+        if (play.overlayOn || playing()) await play.eject();
+        const v = t.view && t.view in cabin.views ? t.view as ViewName : 'overview';
+        if (rig.view !== v) await goto(v);
+        const ic = t.item ? coll.byId.get(t.item) : undefined;
+        if (ic && pulled !== ic) { await until(() => !ic.detached, 3000); select(ic); }
+        else if (ui.panelOpen) ui.closePanel(); else putBack();
+        if (t.open === 'letter') { if (!letterOpen) await openLetter(true); }
+        else if (t.open === 'about') { if (sheets.kind !== 'about') await openAbout(); }
+        else if (t.open === 'story' || t.open === 'contact') { if (sheets.kind !== t.open) openSheet(t.open); }
+        else if (t.open === 'clock' && !clock.isOpen) activateHit('clock');
+      }
+    }
+    if (t.whale && whalesRef?.cardKey !== t.whale) whalesRef?.showCard(t.whale);
+    if (t.search !== undefined && (!searchRef?.isOpen || searchRef.query !== t.search)) search.open(t.search);
+  }
+  async function goNav(t: nav.CabinState) {
+    if (applying) { pendingNav = t; return; }
+    applying = true;
+    try {
+      await applyNav(t);
+      while (pendingNav) { const n = pendingNav; pendingNav = null; await applyNav(n); }
+    } catch (err) { console.warn('nav', err); } finally { applying = false; }
+  }
+  nav.onPop(t => { void goNav(t); });
+  // settle, then write: a state is committed once it has held still for a moment and nothing is moving
+  let lastSnap = '', lastTitle: string | null | undefined;
+  setInterval(() => {
+    if (navBusy()) { lastSnap = ''; return; }
+    const s = snapshot(), k = JSON.stringify(s);
+    if (k !== lastSnap) { lastSnap = k; return; }
+    nav.commit(s);
+    if (!writing.isOpen) { const tt = titleOf(s); if (tt !== lastTitle) { lastTitle = tt; setTitle(tt); } }
+    else lastTitle = undefined;
+  }, 150);
   let introDone: Promise<void> = Promise.resolve();
   if (introOn && galleonGltf) introDone = getOutside().then(o => o.playIntro());
 
@@ -832,6 +924,19 @@ async function main() {
   await introDone;
   // a note, topic or the index in the address opens over the cabin
   if (await writing.openFromUrl()) firstLetter = false;
+  // the rest of a shared address that the first view does not cover (outside, a whale's card, the palette)
+  {
+    const t = nav.read();
+    if (t.outside) { firstLetter = false; await goOutsideP(); }
+    if (t.search !== undefined) { firstLetter = false; search.open(t.search); }
+    if (t.whale) {
+      firstLetter = false;
+      const key = t.whale, t0 = performance.now();
+      const tryCard = () => { if (whalesRef) whalesRef.showCard(key); else if (performance.now() - t0 < 15000) setTimeout(tryCard, 300); };
+      tryCard();
+    }
+  }
+  setTimeout(() => { navOn = true; }, 1200);
   if (firstLetter) setTimeout(() => { if (!sheets.isOpen && !play.overlayOn && !letterOpen) void openLetter(false); else if (!letterOpen) { firstLetter = false; afterWelcome(); } }, 1100);
   else {
     if (rig.view === 'overview') setTimeout(() => { void rig.introSweep(); }, 900);
@@ -851,7 +956,10 @@ async function main() {
     get whales() { return whalesRef; },
     get outside() { return outsideRef; },
     goOutside: () => goOutside(),
-    goto, openLetter, openAbout, openSheet, ringBell, toggleNight,
+    goto, openLetter, openAbout, openSheet, ringBell, toggleNight, back,
+    select: (id: string) => { const c = coll.byId.get(id); if (c) select(c); },
+    insert: (id: string) => { const c = coll.byId.get(id); if (c) void insert(c); },
+    get navIdle() { return !navBusy() && nav.same(snapshot(), nav.read()); },
     tengwar: (on: boolean) => props.setTengwarLatin(on),
   };
 }
