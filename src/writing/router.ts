@@ -1,5 +1,7 @@
 // The address of what is being read: /?note=<slug>  /?topic=<id>  /?index=1  (optionally &q=<words>).
 // Only these four query keys are touched; everything else in the query string (tier, intro, night, view…) is kept.
+// History entries go through nav.ts, so closing the reader goes back rather than stacking a new entry.
+import { go } from '../nav';
 
 export type Route =
   | { kind: 'note'; slug: string; q?: string }
@@ -32,18 +34,20 @@ export function href(route: Route | null): string {
   return location.pathname + (s ? `?${s}` : '') + location.hash;
 }
 
-const here = () => location.pathname + location.search + location.hash;
-
 /** Add a history entry for the route (nothing happens when the address already says so). */
 export function push(route: Route | null) {
-  const url = href(route);
-  if (url !== here()) history.pushState(history.state, '', url);
+  // closing the reader that this entry opened: back to the entry before it (the cabin as it was, whatever it tidied away)
+  const st = history.state as { kk?: 1; prev?: string | null; by?: string } | null;
+  if (!route && st?.kk === 1 && st.by === 'writing' && st.prev) {
+    const prev = new URL(st.prev, location.href).searchParams;
+    if (!KEYS.some(k => prev.has(k))) { go(st.prev, {}); return; }
+  }
+  go(href(route), { by: 'writing' });
 }
 
 /** Rewrite the current history entry. */
 export function replace(route: Route | null) {
-  const url = href(route);
-  if (url !== here()) history.replaceState(history.state, '', url);
+  go(href(route), { replace: true });
 }
 
 /** Back / Forward: called with the route of the entry that became current. Returns the unsubscribe function. */

@@ -34,6 +34,8 @@ export interface WhalesWorld {
   pickOutside(camera: THREE.Camera, ndc: THREE.Vector2): string | null;
   showCard(key: string): void;
   closeCard(): boolean;
+  /** The species whose card is open (null: none). */
+  readonly cardKey: string | null;
   /** Nearest whale (for sound): distance in its world's units / its length, and pan (-1 left .. 1 right). */
   nearest(camera: THREE.Camera): { key: string; rel: number; pan: number } | null;
   readonly keys: string[];
@@ -394,6 +396,7 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
   let paused = false;
   return {
     get keys() { return whales.map(w => w.entry.key); },
+    get cardKey() { return cardKey; },
     get paused() { return paused; },
     set paused(v: boolean) { paused = v; },
     update(t, dt, camera) {

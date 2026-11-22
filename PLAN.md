@@ -98,7 +98,7 @@ M0–M4 done. M5 done except publishing: creating the GitHub repo, pushing, and 
 - Interactive in ~2.5 s with software WebGL; real GPUs are faster.
 - Phones: the overview can't fit the whole cabin, so it does one slow look left/right on load and visitors swipe sideways to look around.
 - Tested: insert → play (Tilt Town) in a real browser, wheel drag, sound toggle, every viewpoint on desktop and phone, night mode, plain page.
-- Debug deep links: `?view=overview|chest|table|rack|shelf|handheld|screen`, `&item=<id>`, `?play=<id>`, `?night=1`.
+- Shareable URLs (src/nav.ts): `?view=<view>&item=<id>`, `?play=<id>`, `?open=letter|about|story|contact|clock`, `?outside=1`, `?whale=<key>`, `?search=<words>`, `?night=1`, `?storm=1`, plus the reading room's `?note=` / `?topic=` / `?index=1`. The address follows the screen; Back / Forward replay it.
 
 ## Still open
 

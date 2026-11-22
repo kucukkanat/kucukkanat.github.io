@@ -301,6 +301,8 @@ export class Search {
   }
 
   get isOpen(): boolean { return this.open_; }
+  /** The words in the box. */
+  get query(): string { return this.input.value; }
 
   open(initial?: string): void {
     if (!this.open_) {
