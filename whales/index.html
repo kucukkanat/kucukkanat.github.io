@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#cfe0ef">
 <title>Sky Whales</title>
-<meta name="description" content="Six flying whales, each carrying its own world: a forest, a desert oasis, a snowy tundra, a jungle, an autumn grove and a cherry-blossom garden. Built in Blender, swimming in three.js.">
+<meta name="description" content="Flying whales, each carrying a world grown from its seed: forests, oases, tundra, jungles, lava calderas, mushroom groves, coral lagoons. A new pod every day, in three.js.">
 <link rel="icon" href="/favicon.svg">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -51,6 +51,11 @@
     font: 500 12.5px 'DM Sans', sans-serif; cursor: pointer; color: var(--ink); text-decoration: none; }
   .btn:hover { background: #fff; }
   .btn.on { border-color: var(--accent); color: var(--accent); }
+  .seedrow input { flex: 1; min-width: 0; }
+  #panel input, #panel select { border: 1px solid var(--line); background: rgba(255,255,255,0.8); border-radius: 8px; padding: 6px 8px;
+    font: 500 12.5px 'DM Sans', sans-serif; color: var(--ink); }
+  #panel select { flex: 1; min-width: 0; }
+  #panel input:focus-visible, #panel select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
   kbd { font: 700 11px 'DM Sans', sans-serif; background: #fff; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
   .meter { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 6px; align-items: center; font-size: 12px; margin: 3px 0; }
@@ -83,24 +88,42 @@
   <header>
     <button class="btn" id="toggle" aria-expanded="true">Hide</button>
     <h1>Sky Whales</h1>
-    <div class="sub" id="subtitle">Six whales carrying their own worlds</div>
+    <div class="sub" id="subtitle">Whales carrying their own worlds</div>
   </header>
   <p class="fact" id="fact"></p>
-  <div class="label">Whale</div>
+  <div class="label">Today's pod</div>
   <div id="whales"></div>
+  <div class="label">Seed</div>
+  <div class="row seedrow">
+    <input id="seed" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Whale seed" maxlength="40">
+    <button class="btn" id="roll">New whale</button>
+    <button class="btn" id="copy">Copy link</button>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <select id="species" aria-label="Species"></select>
+    <select id="biome" aria-label="Ecosystem"></select>
+  </div>
   <div class="label">Style</div>
   <div class="seg" id="style">
     <button data-s="A" class="on">Stylized-realistic</button>
     <button data-s="B">Ghibli painterly</button>
+  </div>
+  <div class="label">Sky</div>
+  <div class="seg" id="sky">
+    <button data-k="day" class="on">Day</button>
+    <button data-k="sunset">Sunset</button>
+    <button data-k="night">Night</button>
+    <button data-k="storm">Storm</button>
   </div>
   <div class="label">Flight</div>
   <div class="seg" id="mode">
     <button data-m="auto" class="on">Auto-fly</button>
     <button data-m="steer">Steer</button>
   </div>
-  <div class="hint">Steer with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows, <kbd>Shift</kbd> to sprint, <kbd>Space</kbd> to spout. Drag to orbit.</div>
+  <div class="hint">Steer with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows, <kbd>Shift</kbd> to sprint, <kbd>Space</kbd> to spout. Drag to orbit, click the whale to startle its island.</div>
   <div class="row" style="margin-top:10px">
     <button class="btn" id="spout">Spout</button>
+    <button class="btn" id="startle">Startle</button>
     <button class="btn on" id="chase" aria-pressed="true">Chase cam</button>
     <button class="btn on" id="parts" aria-pressed="true">Particles</button>
     <a class="btn home" href="/">← The airship</a>

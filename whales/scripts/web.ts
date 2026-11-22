@@ -2,7 +2,8 @@
 // (scripts/ktx2.ts: 2k colour ETC1S, normals UASTC; maps under 512 px stay WebP).
 //   bun whales/scripts/web.ts [species...]
 // Writes public/assets/whales/<sp>_A.glb (world near + viewer), <sp>_B.glb (viewer), <sp>_lite.glb (world far + phones)
-// and public/assets/whales/manifest.json.
+// and public/assets/whales/manifest.json, then strips them to body-only (web_bodies.ts): the islands are generated in
+// the browser (src/whales/ecosystem.ts).
 import { $ } from 'bun';
 import { mkdirSync, statSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -28,3 +29,5 @@ for (const sp of species) {
 }
 rmSync(tmp, { recursive: true, force: true });
 await $`python3 ${join(root, 'whales/scripts/make_manifest.py')}`;
+// the site grows the ecosystems at runtime: keep only the bodies (and their swim clips) in the web copies
+await $`bun ${join(root, 'whales/scripts/web_bodies.ts')}`;

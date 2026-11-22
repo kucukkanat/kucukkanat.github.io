@@ -1,5 +1,5 @@
 // Sky whales in the airship's world (its own chunk, loaded in idle time after the first view; never on the critical
-// path). Six whales (two on the lite tier) wander:
+// path). Today's pod - six seeded whales, each with an ecosystem grown from its seed (two on the lite tier) - wanders:
 //   * outside the stern windows - inside sky.group at diorama scale, weaving between the island layers;
 //   * around the galleon in the Outside view / at the helm - giant (3-6x the ship), and now and then one turns to
 //     swim alongside when you fly near.
@@ -8,6 +8,8 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SkyWhale, loadManifest, type WhaleEntry } from './whales/sky-whale';
+import { dailyPod, type Genome } from './whales/genome';
+import { SKIN_PARS } from './whales/skin';
 import { HAZE_VERT, type Sky } from './sky';
 import { loadGLB } from './scene';
 import { FULL } from './tier';
@@ -41,6 +43,7 @@ export interface WhalesWorld {
   readonly keys: string[];
   /** Debug: stop steering/animating (positions can then be set by hand). */
   paused: boolean;
+  readonly debug: unknown;
 }
 
 // ───────────────────────────────────────────────────────── tunables
@@ -50,8 +53,11 @@ const WIN = { k: 0.55, x: 11, yLo: -1.0, yHi: 4.0, zNear: -7.6, zFar: -19.5, spe
 const OUT = { k: 8, rMin: 160, rMax: 480, yLo: -50, yHi: 120, respawn: 1200, speed: 0.095, turn: 0.11 };
 /** The ship faster than this (m/s) counts as under way: whales then come to escort it. */
 const ESCORT_SPEED = 8;
-/** Full-detail LOD within this many whale-lengths of the camera (lite beyond). */
-const NEAR_LEN = 1.7;
+/** Full detail (the 2k body and the simulated ecosystem) within this many whale-lengths of the camera, for at most
+ *  MAX_FULL whales at a time; the rest keep the light body and the merged, static island. */
+const NEAR_LEN = 3.2, MAX_FULL = 2;
+/** Seconds of dithered cross-fade between the two. */
+const LOD_FADE = 0.7;
 
 // ───────────────────────────────────────────────────────── painted, skinned material
 const WHALE_VERT = /* glsl */`
@@ -60,14 +66,26 @@ const WHALE_VERT = /* glsl */`
   uniform vec4 uMapXf; uniform vec4 uAlphaXf; uniform float uHazeMode; uniform float uOutHaze;
   ${HAZE_VERT}
   varying vec2 vUvMap; varying vec2 vUvA; varying vec3 vNrm; varying vec3 vCol; varying vec3 vHaze; varying float vHazeK; varying float vLamp;
+  varying vec3 vView;
+  #ifdef SKIN
+    uniform mat4 uSkinRest; varying vec3 vSkinRest;
+  #endif
   void main() {
     #include <beginnormal_vertex>
     #include <skinbase_vertex>
     #include <skinnormal_vertex>
     #include <begin_vertex>
     #include <skinning_vertex>
+    #ifdef SKIN
+      vSkinRest = (uSkinRest * vec4(position, 1.0)).xyz;
+    #endif
+    #ifdef USE_INSTANCING
+      transformed = (instanceMatrix * vec4(transformed, 1.0)).xyz;
+      objectNormal = mat3(instanceMatrix) * objectNormal;
+    #endif
     vec4 wp = modelMatrix * vec4(transformed, 1.0);
     vec4 mv = viewMatrix * wp;
+    vView = mv.xyz;
     vNrm = normalize(normalMatrix * objectNormal);
     vUvMap = uv * uMapXf.xy + uMapXf.zw;
     vUvA = uv * uAlphaXf.xy + uAlphaXf.zw;
@@ -75,6 +93,9 @@ const WHALE_VERT = /* glsl */`
       vCol = color.rgb;
       // lantern windows are painted one exact warm colour in the generator (props.lantern): they glow at night
       vLamp = step(length(color.rgb - vec3(1.0, 0.694, 0.214)), 0.03);
+      #ifdef USE_INSTANCING_COLOR
+        vCol *= instanceColor;
+      #endif
     #else
       vCol = vec3(1.0); vLamp = 0.0;
     #endif
@@ -98,10 +119,35 @@ const WHALE_FRAG = /* glsl */`
   #ifdef HAS_ALPHAMAP
     uniform sampler2D alphaMap;
   #endif
+  #ifdef HAS_NORMALMAP
+    uniform sampler2D normalMap;
+  #endif
+  uniform float uLod; uniform float uLodSide;
   varying vec2 vUvMap; varying vec2 vUvA; varying vec3 vNrm; varying vec3 vCol; varying vec3 vHaze; varying float vHazeK; varying float vLamp;
+  varying vec3 vView;
+  #ifdef SKIN
+    varying vec3 vSkinRest;
+    ${SKIN_PARS}
+  #endif
+  float bayer4(vec2 p) {
+    ivec2 i = ivec2(mod(p, 4.0));
+    const float m[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+    return (m[i.x + i.y * 4] + 0.5) / 16.0;
+  }
   void main() {
+    // LOD cross-fade: the incoming model fills the screen-door pattern the outgoing one leaves
+    if (uLod < 1.0) { float b = bayer4(gl_FragCoord.xy); if (uLodSide > 0.5 ? b < 1.0 - uLod : b >= uLod) discard; }
     vec3 n = normalize(vNrm);
     if (!gl_FrontFacing) n = -n;
+    #ifdef HAS_NORMALMAP
+      // tangent frame from screen-space derivatives (the bodies carry no tangents)
+      vec3 q0 = dFdx(vView), q1 = dFdy(vView); vec2 st0 = dFdx(vUvMap), st1 = dFdy(vUvMap);
+      vec3 q1p = cross(q1, n), q0p = cross(n, q0);
+      vec3 T = q1p * st0.x + q0p * st1.x, B = q1p * st0.y + q0p * st1.y;
+      float det = max(dot(T, T), dot(B, B)), sc = det == 0.0 ? 0.0 : inversesqrt(det);
+      vec3 mN = texture2D(normalMap, vUvMap).xyz * 2.0 - 1.0;
+      n = normalize(T * (mN.x * sc) + B * (mN.y * sc) + n * mN.z);
+    #endif
     vec3 sunW = uHazeMode < 0.5 ? uSunDir : uOutSun;
     vec3 L = normalize((viewMatrix * vec4(sunW, 0.0)).xyz);
     float up = dot(n, normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz));
@@ -113,11 +159,18 @@ const WHALE_FRAG = /* glsl */`
     #ifdef HAS_ALPHAMAP
       a *= texture2D(alphaMap, vUvA).g;
     #endif
+    float gloss = 0.0;
+    #ifdef SKIN
+      gloss = 1.0 - skinDetail(vSkinRest, alb);
+    #endif
     float dim = mix(1.0, 0.5, uNight);
     vec3 litC = mix(mix(uLitSun, uLitNight, uNight), uLitStorm * dim, uStorm);
     vec3 shC = mix(mix(uShadeSun, uShadeNight, uNight), uShadeStorm * dim, uStorm);
     vec3 c = alb * (mix(shC, litC, lit) + uBounce * max(-up, 0.0) * (1.0 - uNight) * (1.0 - uStorm));
     c += alb * uFlash * 0.7;
+    // wet skin: a soft highlight towards the light
+    vec3 Hh = normalize(L + vec3(0.0, 0.0, 1.0));
+    c += litC * pow(max(dot(n, Hh), 0.0), 36.0) * gloss * 0.28 * (1.0 - uStorm * 0.5);
     float on = max(uNight, uStorm * 0.7);
     c = mix(c, vec3(1.0, 0.72, 0.38) * (0.85 + 1.9 * on), vLamp);
     // a thin rim of backdrop light, so the silhouette reads against the painting
@@ -135,32 +188,51 @@ function texXf(t: THREE.Texture | null | undefined) {
   return new THREE.Vector4(t?.repeat.x ?? 1, t?.repeat.y ?? 1, t?.offset.x ?? 0, t?.offset.y ?? 0);
 }
 
-/** Swap every material of a whale for the painted sky shader. Returns a per-frame uniform sync. */
-function paintWhale(w: SkyWhale, sky: Sky, wu: WorldUniforms, fade: { value: number }): () => void {
+/** Swap every lit material of a whale (body and generated island) for the painted sky shader. Returns a per-frame
+ *  uniform sync. Water, falls and particles keep their own materials: those read the whale's `env` (see syncEnv). */
+function paintWhale(w: SkyWhale, sky: Sky, wu: WorldUniforms, fade: { value: number }, lod: { uLod: { value: number }; uLodSide: { value: number } }): () => void {
   const syncs: (() => void)[] = [];
-  w.object.traverse(o => {
-    const mesh = o as THREE.SkinnedMesh;
-    if (!mesh.isSkinnedMesh) return;
+  const paint = (mesh: THREE.Mesh) => {
+    if (!mesh.isMesh || mesh.userData.ecoCustom) return;
     const src = mesh.material as THREE.MeshStandardMaterial;
-    const role = (src.userData?.role as string | undefined) ?? (mesh.name.includes('Falls') ? 'waterfall' : '');
-    const map = src.map ?? null, alphaMap = src.alphaMap ?? null;
-    const transparent = src.transparent || role === 'water' || role === 'waterfall';
+    const body = mesh === w.body;
+    const map = src.map ?? null, alphaMap = src.alphaMap ?? null, normalMap = body ? src.normalMap ?? null : null;
     const U = sky.uniforms;
     const uMapXf = { value: texXf(map) }, uAlphaXf = { value: texXf(alphaMap) };
+    const skin = body ? w.skin : null;
     const mat = new THREE.ShaderMaterial({
       uniforms: {
-        ...U, ...wu, uFadeIn: fade, uOpacity: { value: role === 'water' ? 0.85 : 1 },
-        map: { value: map }, alphaMap: { value: alphaMap }, uMapXf, uAlphaXf,
+        ...U, ...wu, ...lod, ...(skin ?? {}), uFadeIn: fade, uOpacity: { value: 1 },
+        map: { value: map }, alphaMap: { value: alphaMap }, normalMap: { value: normalMap }, uMapXf, uAlphaXf,
       },
-      defines: { ...(map ? { HAS_MAP: '' } : {}), ...(alphaMap ? { HAS_ALPHAMAP: '' } : {}) },
+      defines: { ...(map ? { HAS_MAP: '' } : {}), ...(alphaMap ? { HAS_ALPHAMAP: '' } : {}), ...(normalMap ? { HAS_NORMALMAP: '' } : {}), ...(skin ? { SKIN: '' } : {}) },
       vertexShader: WHALE_VERT, fragmentShader: WHALE_FRAG,
       vertexColors: !!src.vertexColors,
-      transparent, depthWrite: !transparent, side: src.side, fog: false,
+      transparent: src.transparent, depthWrite: !src.transparent, side: src.side, fog: false,
     });
     mesh.material = mat;
     if (map || alphaMap) syncs.push(() => { uMapXf.value.copy(texXf(map)); uAlphaXf.value.copy(texXf(alphaMap)); });
-  });
+  };
+  if (w.body) paint(w.body);
+  for (const m of w.eco?.solids ?? []) paint(m);
   return () => { for (const s of syncs) s(); };
+}
+
+const _lit = new THREE.Color(), _sh = new THREE.Color(), _c0 = new THREE.Color();
+/** Light the whale's own materials (lakes, waterfalls, mist) like the painted world: the same sun, palette and haze. */
+function syncEnv(w: SkyWhale, sky: Sky, wu: WorldUniforms, dist: number, fade: number, outside: boolean) {
+  const U = sky.uniforms as Record<string, { value: unknown }>, E = w.env;
+  const night = U.uNight.value as number, storm = U.uStorm.value as number, dim = 1 - 0.5 * night;
+  _lit.copy(U.uLitSun.value as THREE.Color).lerp(U.uLitNight.value as THREE.Color, night).lerp(_c0.copy(U.uLitStorm.value as THREE.Color).multiplyScalar(dim), storm);
+  _sh.copy(U.uShadeSun.value as THREE.Color).lerp(U.uShadeNight.value as THREE.Color, night).lerp(_c0.copy(U.uShadeStorm.value as THREE.Color).multiplyScalar(dim), storm);
+  E.uSun.value.copy(outside ? wu.uOutSun.value : U.uSunDir.value as THREE.Vector3).normalize();
+  E.uSky.value.copy(_sh); E.uGround.value.copy(_sh).multiplyScalar(0.85);
+  E.uSunCol.value.copy(_lit).sub(_sh); E.uSunCol.value.r = Math.max(0, E.uSunCol.value.r); E.uSunCol.value.g = Math.max(0, E.uSunCol.value.g); E.uSunCol.value.b = Math.max(0, E.uSunCol.value.b);
+  E.uHaze.value.setRGB(0.93, 0.6, 0.52).lerp(_c0.setRGB(0.06, 0.08, 0.2), night).lerp(_c0.setRGB(0.45, 0.5, 0.6), storm * 0.7);
+  const hz = U.uHaze.value as THREE.Vector3;
+  E.uHazeK.value = outside ? THREE.MathUtils.smoothstep(dist, wu.uOutHaze.value * 0.11, wu.uOutHaze.value) * 0.9 : THREE.MathUtils.smoothstep(dist, hz.x, hz.y) * hz.z;
+  E.uFade.value = fade;
+  w.setEnvironment(night, storm);
 }
 
 // ───────────────────────────────────────────────────────── steering
@@ -204,10 +276,14 @@ class Brain {
 }
 
 // ───────────────────────────────────────────────────────── one whale (two LODs, two worlds)
+type Lod = { uLod: { value: number }; uLodSide: { value: number } };
 interface Whale {
-  entry: WhaleEntry;
+  entry: WhaleEntry; genome: Genome;
   lite: SkyWhale | null; full: SkyWhale | null; fullLoading: boolean;
   active: SkyWhale | null;
+  /** The model fading out during a LOD swap, and the seconds left. */
+  leaving: SkyWhale | null; leaveT: number;
+  lods: Map<SkyWhale, Lod>;
   win: Brain; out: Brain | null;
   fade: { value: number };
   syncs: Map<SkyWhale, () => void>;
@@ -253,10 +329,13 @@ function makeCard() {
 
 // ───────────────────────────────────────────────────────── setup
 export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesWorld | null> {
-  let manifest = await loadManifest();
+  const manifest = await loadManifest();
   if (!manifest.length) return null;
-  // the lite tier keeps the phone budget: two whales, light models only, no particles
-  if (!FULL) manifest = [...manifest].sort(() => Math.random() - 0.5).slice(0, 2);
+  // today's pod: the same six individuals for every visitor on a day (each on its own species body)
+  // the lite tier keeps the phone budget: two whales, light models and static islands only, no particles
+  let pod = dailyPod().filter(g => manifest.some(m => m.key === g.species));
+  if (!FULL) pod = [...pod].sort(() => Math.random() - 0.5).slice(0, 2);
+  if (!pod.length) return null;
   const wu: WorldUniforms = { uHazeMode: { value: 0 }, uOutSun: { value: new THREE.Vector3(0.3, 0.35, -1).normalize() }, uOutHaze: { value: 1100 } };
   const winGroup = new THREE.Group(); winGroup.name = 'Whales';
   sky.group.add(winGroup);
@@ -266,7 +345,15 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
   const card = makeCard();
   let cardKey: string | null = null;
 
-  const newSky = (gltf: GLTF) => new SkyWhale(gltf, { particles: FULL, spouts: FULL, space: winGroup, reactionGain: 1.2 });
+  const newSky = (gltf: GLTF, genome: Genome, detail: 'cheap' | 'full') =>
+    new SkyWhale(gltf, { genome, detail, particles: FULL, spouts: FULL, space: winGroup, reactionGain: 1.2 });
+  const register = (w: Whale, sw: SkyWhale) => {
+    const lod: Lod = { uLod: { value: 1 }, uLodSide: { value: 0 } };
+    w.lods.set(sw, lod);
+    w.syncs.set(sw, paintWhale(sw, sky, wu, w.fade, lod));
+    w.proxies.set(sw, proxyFor(sw, w.genome.seed));
+  };
+  const detach = (sw: SkyWhale) => { sw.object.removeFromParent(); sw.removeEffectsFrom(); };
 
   // spread the starting positions across the window box, alternating near/far lanes
   const seedWin = (b: Brain, i: number, n: number) => {
@@ -316,56 +403,62 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
   let nextEscort = 12;
 
   // ── LOD management
-  const setActive = (w: Whale, next: SkyWhale) => {
+  const attach = (w: Whale, sw: SkyWhale) => {
+    const parent = outside ? outAbs : winGroup;
+    sw.setSpace(parent);
+    sw.setScale(outside ? OUT.k : WIN.k);
+    parent.add(sw.object); sw.addEffectsTo(parent);
+    sw.setParticlesVisible(!outside && FULL);
+    sw.setMistVisible(FULL);          // mist, rain and spouts are a full-tier effect
+    (outside ? w.out! : w.win).apply(sw.object);
+    sw.resetMotion();
+  };
+  /** Make `next` the whale's model. With `fade`, the old one screen-door fades out while the new one fades in. */
+  const setActive = (w: Whale, next: SkyWhale, fade = false) => {
     const prev = w.active;
     if (prev === next) return;
-    const parent = outside ? outAbs : winGroup;
+    if (w.leaving) { detach(w.leaving); w.leaving = null; }
     if (prev) {
-      prev.object.removeFromParent(); prev.removeEffectsFrom(prev.object.parent ?? parent);
-      if (prev.particles) prev.particles.pts.removeFromParent();
-      prev.spout.pts.removeFromParent();
       next.cruise.time = prev.cruise.time;
+      if (fade && !reducedMotion) { w.leaving = prev; w.leaveT = LOD_FADE; } else detach(prev);
     }
     w.active = next;
-    next.setSpace(outside ? outAbs : winGroup);
-    next.setScale(outside ? OUT.k : WIN.k);
-    parent.add(next.object); next.addEffectsTo(parent);
-    next.setParticlesVisible(!outside && FULL);
-    next.spout.pts.visible = FULL;   // spouts are a full-tier effect: don't draw empty emitters on phones
-    (outside ? w.out! : w.win).apply(next.object);
-    next.resetMotion();
+    const ln = w.lods.get(next)!; ln.uLodSide.value = 0; ln.uLod.value = w.leaving ? 0 : 1;
+    if (w.leaving) { const lp = w.lods.get(w.leaving)!; lp.uLodSide.value = 1; lp.uLod.value = 1; }
+    attach(w, next);
   };
   const ensureFull = (w: Whale) => {
     if (!FULL || w.full || w.fullLoading || !w.entry.files.A) return;
     w.fullLoading = true;
     void loadGLB(w.entry.files.A).then(g => {
       if (!g) return;
-      const sw = newSky(g);
-      w.syncs.set(sw, paintWhale(sw, sky, wu, w.fade));
-      w.proxies.set(sw, proxyFor(sw, w.entry.key));
+      const sw = newSky(g, w.genome, 'full');
+      register(w, sw);
       w.full = sw;
     });
   };
 
   // ── load the light versions one by one (the first whale appears as soon as it arrives)
-  const loadLite = async (entry: WhaleEntry, i: number, n: number) => {
+  const loadLite = async (genome: Genome, i: number, n: number) => {
+    const entry = manifest.find(m => m.key === genome.species)!;
     const url = entry.files.lite ?? entry.files.A; if (!url) return;
     const g = await loadGLB(url); if (!g) return;
-    const sw = newSky(g);
+    const sw = newSky(g, genome, 'cheap');
     const fade = { value: 0 };
-    const len = (sw.info.length || 12);
+    const len = (sw.info.length || 12) * genome.size;
     const w: Whale = {
-      entry, lite: sw, full: null, fullLoading: false, active: null,
+      entry, genome, lite: sw, full: null, fullLoading: false, active: null, leaving: null, leaveT: 0, lods: new Map(),
       win: new Brain(len * WIN.k, { kind: 'window' }), out: null, fade,
-      syncs: new Map([[sw, paintWhale(sw, sky, wu, fade)]]), proxies: new Map([[sw, proxyFor(sw, entry.key)]]), len,
+      syncs: new Map(), proxies: new Map(), len,
     };
+    register(w, sw);
     seedWin(w.win, i, n);
     if (outside) { w.out = new Brain(len * OUT.k, { kind: 'outside' }); placeOut(w.out, false); }
     whales.push(w);
     setActive(w, sw);
     void tween(reducedMotion ? 0 : 2.2, k => { fade.value = k; });
   };
-  void (async () => { for (let i = 0; i < manifest.length; i++) await loadLite(manifest[i], i, manifest.length); })();
+  void (async () => { for (let i = 0; i < pod.length; i++) await loadLite(pod[i], i, pod.length); })();
 
   // ── card
   const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -376,13 +469,15 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
     return true;
   };
   const showCard = (key: string) => {
-    const w = whales.find(x => x.entry.key === key); if (!w) return;
-    const e = w.entry; cardKey = key;
-    card.setAttribute('aria-label', `${e.name}: ${e.biomeLabel}`);
+    // (a species key still opens that species' whale of today's pod: old links, the command palette)
+    const w = whales.find(x => x.genome.seed === key) ?? whales.find(x => x.entry.key === key); if (!w) return;
+    const e = w.entry, g = w.genome; cardKey = g.seed;
+    card.setAttribute('aria-label', `${g.name}, ${e.name}: ${g.biome.label}`);
     card.innerHTML = `<button type="button" class="btn x" aria-label="Close">✕</button>
-      <p class="meta"><span class="swatch" style="background:${esc(e.color)}"></span>Sky whale</p>
-      <h2>${esc(e.name)}</h2><p class="sub">${esc(e.biomeLabel)}</p><p class="fact">${esc(e.fact)}</p>
-      <a class="btn primary" href="/whales/?whale=${encodeURIComponent(e.key)}" target="_blank" rel="noopener">Watch it in the whale viewer ↗</a>`;
+      <p class="meta"><span class="swatch" style="background:${esc(g.biome.ground[0])}"></span>Sky whale · today's pod</p>
+      <h2>${esc(g.name)} the ${esc(e.name)}</h2><p class="sub">${esc(g.biome.label)}</p><p class="fact">${esc(e.fact)}</p>
+      <a class="btn primary" href="/whales/?seed=${encodeURIComponent(g.seed)}" target="_blank" rel="noopener">Watch it in the whale viewer ↗</a>`;
+    w.active?.startle(1);   // being looked at closely: the island notices
     card.querySelector('.x')!.addEventListener('click', () => closeCard());
     card.hidden = false;
     requestAnimationFrame(() => card.classList.add('open'));
@@ -393,9 +488,18 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
   // ── per frame
   const camPos = new THREE.Vector3(), wp = new THREE.Vector3(), tmp = new THREE.Vector3();
   const ray = new THREE.Raycaster();
-  let paused = false;
+  let paused = false, fullCount = 0;
+  const reattach = () => {
+    for (const w of whales) {
+      if (w.leaving) { detach(w.leaving); w.leaving = null; }
+      const a = w.active ?? w.lite!; w.active = null; detach(a);
+      setActive(w, a);
+    }
+  };
   return {
-    get keys() { return whales.map(w => w.entry.key); },
+    get keys() { return whales.map(w => w.genome.seed); },
+    /** Debug: the whale records (brains, models). */
+    get debug() { return whales; },
     get cardKey() { return cardKey; },
     get paused() { return paused; },
     set paused(v: boolean) { paused = v; },
@@ -417,6 +521,7 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
           nextEscort = 30 + Math.random() * 20;
         }
       }
+      let nextFull = 0;
       for (const w of whales) {
         const b = out ? w.out : w.win;
         if (!b || !w.active) continue;
@@ -448,15 +553,32 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
         }
         b.step(dt, cruise, turn, avoid);
         b.apply(w.active.object);
-        // LOD: full detail when near the camera (loaded on demand), lite otherwise
+        // LOD: full detail for the nearest whales (loaded on demand), the light model otherwise
         w.active.object.getWorldPosition(wp);
-        const rel = wp.distanceTo(camPos) / (w.len * w.active.scale);
-        if (rel < NEAR_LEN) ensureFull(w);
-        const want = w.full && rel < NEAR_LEN ? w.full : w.full && rel > NEAR_LEN * 1.2 ? w.lite! : w.active;
-        if (want !== w.active) setActive(w, want);
+        const dist = wp.distanceTo(camPos), rel = dist / (w.len * (out ? OUT.k : WIN.k));
+        const mayFull = rel < NEAR_LEN && (w.active === w.full || fullCount < MAX_FULL);
+        if (mayFull) ensureFull(w);
+        const want = w.full && mayFull ? w.full : w.full && rel > NEAR_LEN * 1.2 ? w.lite! : w.active;
+        if (want !== w.active) { setActive(w, want, true); b.apply(w.active.object); }
+        if (w.active === w.full) nextFull++;
+        w.active.setVisitor(rel < 4 ? camPos : null);
+        syncEnv(w.active, sky, wu, dist, w.fade.value, out);
         w.active.update(dt, !out || rel < 25);
         w.syncs.get(w.active)?.();
+        if (w.leaving) {
+          // the outgoing model keeps pace while it dissolves
+          w.leaveT -= dt;
+          const k = clamp(1 - w.leaveT / LOD_FADE, 0, 1);
+          w.lods.get(w.active)!.uLod.value = k; w.lods.get(w.leaving)!.uLod.value = k;
+          b.apply(w.leaving.object);
+          syncEnv(w.leaving, sky, wu, dist, w.fade.value * (1 - k), out);
+          w.active.env.uFade.value *= k;
+          w.leaving.update(dt, true);
+          w.syncs.get(w.leaving)?.();
+          if (w.leaveT <= 0) { detach(w.leaving); w.leaving = null; w.lods.get(w.active)!.uLod.value = 1; }
+        }
       }
+      fullCount = nextFull;
     },
     setOutside(o) {
       outside = o && o.isOutside ? o : null;
@@ -464,17 +586,9 @@ export async function setupWhales(sky: Sky, scene: THREE.Scene): Promise<WhalesW
       if (outside) {
         if (!outAbs.parent) outside.worldGroup.add(outAbs);
         nextEscort = 10;
-        for (const w of whales) {
-          if (!w.out) { w.out = new Brain(w.len * OUT.k, { kind: 'outside' }); placeOut(w.out, false); }
-          const a = w.active; w.active = null; if (a) { a.object.removeFromParent(); a.particles?.pts.removeFromParent(); a.spout.pts.removeFromParent(); }
-          setActive(w, a ?? w.lite!);
-        }
-      } else {
-        for (const w of whales) {
-          const a = w.active; w.active = null; if (a) { a.object.removeFromParent(); a.spout.pts.removeFromParent(); }
-          setActive(w, a ?? w.lite!);
-        }
+        for (const w of whales) if (!w.out) { w.out = new Brain(w.len * OUT.k, { kind: 'outside' }); placeOut(w.out, false); }
       }
+      reattach();
     },
     pickables() {
       if (outside) return [];
