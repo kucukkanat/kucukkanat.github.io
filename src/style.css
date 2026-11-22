@@ -270,15 +270,33 @@ a { color: inherit; }
 .outside-layer[hidden], .outside-hud[hidden] { display: none; }
 .outside-layer { position: fixed; inset: 0; z-index: 30; cursor: grab; touch-action: none; }
 .outside-layer:active { cursor: grabbing; }
-.outside-layer.helm { cursor: move; }
-.outside-hud { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 31;
-  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; max-width: min(94vw, 720px); }
+.outside-hud { position: fixed; inset: 0; z-index: 31; pointer-events: none; }
+.outside-hud > * { pointer-events: auto; }
 .outside-hud .btn { padding: 10px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.3); background: rgba(42,23,18,.55);
   color: #fff; font: 600 .9rem var(--sans, system-ui); cursor: pointer; backdrop-filter: blur(8px); }
 .outside-hud .btn:hover, .outside-hud .btn:focus-visible { background: rgba(42,23,18,.8); }
-.outside-hud .out-helm[aria-pressed="true"] { background: #e8652b; border-color: #e8652b; }
-.outside-hud .out-hint { flex-basis: 100%; margin: 0; text-align: center; color: #fff; font: 500 .8rem var(--sans, system-ui);
-  text-shadow: 0 1px 6px rgba(42,23,18,.8); }
+.outside-hud .out-in { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); }
+.outside-hud .out-hint { position: absolute; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  width: max-content; max-width: min(80vw, 760px); margin: 0; text-align: center; color: #fff; font: 500 .8rem var(--sans, system-ui);
+  text-shadow: 0 1px 6px rgba(42,23,18,.8); pointer-events: none; }
+/* throttle: a vertical slider, bottom right */
+.outside-hud .out-throttle { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 22px; cursor: ns-resize; touch-action: none;
+  background: rgba(42,23,18,.45); border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(8px); }
+.outside-hud .out-throttle:focus-visible { outline: 2px solid var(--brass, #e2b468); outline-offset: 2px; }
+.outside-hud .out-thr-label { color: #fff; font: 600 .7rem var(--sans, system-ui); letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.outside-hud .out-thr-track { position: relative; width: 14px; height: 150px; border-radius: 7px; background: rgba(255,255,255,.18); overflow: hidden; }
+.outside-hud .out-thr-fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #e2b468, #e8652b); border-radius: 7px; }
+.outside-hud.touch .out-thr-track { width: 22px; height: min(180px, 34vh); border-radius: 11px; }
+/* floating thumbstick (touch): a faint ring marks the zone; it jumps to the thumb */
+.outside-hud .out-stick { position: absolute; left: calc(70px + env(safe-area-inset-left, 0px)); top: calc(100% - 110px - env(safe-area-inset-bottom, 0px));
+  width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; display: none; pointer-events: none;
+  border: 2px solid rgba(255,255,255,.35); background: rgba(42,23,18,.25); opacity: .45; }
+.outside-hud.touch .out-stick { display: block; }
+.outside-hud .out-stick.on { opacity: 1; }
+.outside-hud .out-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: rgba(255,255,255,.75); box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.outside-hud.touch .out-hint { top: calc(20px + env(safe-area-inset-top, 0px)); bottom: auto; left: 16px; transform: none; max-width: calc(100vw - 170px); text-align: left; }
 
 /* Touch screens, late overrides (after the rules they widen) */
 @media (pointer: coarse) {
