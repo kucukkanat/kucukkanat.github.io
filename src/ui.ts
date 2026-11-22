@@ -29,10 +29,10 @@ export interface UIHandlers {
 export interface Spot { id: string; label: string; world: THREE.Vector3; }
 
 const NAV: { view: ViewName; label: string }[] = [
-  { view: 'chest', label: 'Chest' },
+  { view: 'chest', label: 'Projects' },
   { view: 'table', label: 'Table' },
-  { view: 'rack', label: 'Rack' },
-  { view: 'shelf', label: 'Shelf' },
+  { view: 'rack', label: 'Resume' },
+  { view: 'shelf', label: 'Blog' },
   { view: 'handheld', label: 'Handheld' },
 ];
 
@@ -76,7 +76,7 @@ export class UI {
       <div class="dock" role="toolbar" aria-label="Cabin">
         <nav aria-label="Viewpoints"></nav>
         <span class="sep" aria-hidden="true"></span>
-        <button class="nav writing-btn" type="button" aria-label="Writing: open the Ship's Index">Writing</button>
+        <button class="nav writing-btn" type="button" aria-label="Index: open the Ship's Index">Index</button>
         <button class="nav outside-btn" type="button" aria-label="Go outside and see the ship">Outside</button>
         <span class="sep" aria-hidden="true"></span>
         <button class="icon-btn search" type="button" aria-label="Search (press / or Ctrl+K)" aria-keyshortcuts="/ Control+K Meta+K"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
@@ -168,6 +168,7 @@ export class UI {
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'hotspot' + (pulse ? ' pulse' : '');
+      el.dataset.passGestures = '';
       el.setAttribute('aria-label', spot.label);
       // "Map chest — projects you can play": phones show only the name part
       const [name, more] = spot.label.split(' — ');

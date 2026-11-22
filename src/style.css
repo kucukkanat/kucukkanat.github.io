@@ -76,7 +76,7 @@ a { color: inherit; }
 
 /* Hotspots */
 .hotspot { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%;
-  border: 0; padding: 0; background: none; cursor: pointer; transition: opacity .3s; }
+  border: 0; padding: 0; background: none; cursor: pointer; transition: opacity .3s; touch-action: none; }
 .hotspot::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: #ffe2b0; box-shadow: 0 0 0 3px rgba(240,122,42,.45), 0 0 18px 6px rgba(255,180,90,.55); }
 .hotspot.pulse::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #ffd59a; animation: ring 1.6s ease-out 2; opacity: 0; }
 @keyframes ring { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(2.1); opacity: 0; } }
@@ -85,7 +85,9 @@ a { color: inherit; }
 .hotspot:hover .tip, .hotspot:focus-visible .tip, .hotspot.show-tip .tip { opacity: 1; }
 .hotspot[hidden] { display: none; }
 .item-btn { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 6px; border: 0; padding: 0;
-  background: transparent; opacity: 0; cursor: pointer; }
+  background: transparent; opacity: 0; cursor: pointer; pointer-events: none; }
+/* invisible keyboard twins of the 3D items: pointers go to the canvas (a finger on one used to block pinch / orbit) */
+.item-btn:focus-visible { pointer-events: auto; }
 .item-btn:focus-visible { opacity: 1; outline: 2px solid var(--brass); box-shadow: 0 0 0 4px rgba(0,0,0,.35); }
 
 /* Info panel (dialog) */

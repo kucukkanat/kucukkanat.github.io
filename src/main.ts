@@ -468,7 +468,8 @@ async function main() {
     try { localStorage.setItem(LETTER_KEY, '1'); } catch { /* private mode */ }
     audio.tick(0.9);
     audio.paper();
-    inspector.open(letterView.target(LETTER_ID, () => { /* back in the envelope */ }));
+    // small screens read the letter on its paper bottom sheet: flying the 3D sheet up as well showed two letters
+    if (!matchMedia('(max-width: 720px), (max-height: 500px)').matches) inspector.open(letterView.target(LETTER_ID, () => { /* back in the envelope */ }));
     letterView.show();
     ui.announce('The welcome letter, unfolded. Press Escape or the close button to put it back.');
   }

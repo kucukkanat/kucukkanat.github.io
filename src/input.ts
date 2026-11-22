@@ -29,7 +29,7 @@ const EDGE = 20;
 export class Input {
   private ray = new THREE.Raycaster();
   private ndc = new THREE.Vector2();
-  private down: { x: number; y: number; t: number; id: number; type: string; pan: boolean; edge: boolean } | null = null;
+  private down: { x: number; y: number; t: number; id: number; type: string; pan: boolean; edge: boolean; overlay: boolean } | null = null;
   private pinchMid = { x: 0, y: 0 };
   private captured = false;
   private moved = false;
@@ -40,6 +40,11 @@ export class Input {
   private pinched = false;
   private lastTap = 0;
   private lastTapAt = { x: 0, y: 0 };
+  /** Touches that landed on a control drawn over the canvas (a hotspot dot): they still count for gestures. */
+  private overlay = new Set<number>();
+  /** Overlay touches that turned into a gesture: their button must not click when they lift. */
+  private gestured = new Set<number>();
+  private suppressClickUntil = 0;
 
   constructor(private el: HTMLElement, private camera: THREE.Camera, private h: InputHandlers) {
     el.style.touchAction = 'none'; // we handle pan/pinch ourselves
@@ -61,6 +66,17 @@ export class Input {
       h.zoom(Math.exp(THREE.MathUtils.clamp(e.deltaY, -120, 120) * k));
     }, { passive: false });
     el.addEventListener('dblclick', () => h.reset());
+    // A finger on a control over the canvas ([data-pass-gestures], e.g. a hotspot dot) never reached the canvas, so
+    // a pinch / pan / orbit with one finger there was seen as one finger or none. Route those touches here too:
+    // a tap still clicks the button, anything more becomes a camera gesture and the click is swallowed.
+    const through = (e: PointerEvent) => e.pointerType !== 'mouse' && e.target instanceof Element && e.target !== el && !!e.target.closest('[data-pass-gestures]');
+    window.addEventListener('pointerdown', e => { if (through(e)) { this.overlay.add(e.pointerId); this.onDown(e); } }, true);
+    window.addEventListener('pointermove', e => { if (this.overlay.has(e.pointerId) && e.target !== el) this.onMove(e); }, true);
+    window.addEventListener('pointerup', e => { if (this.overlay.has(e.pointerId) && e.target !== el) this.onUp(e); }, true);
+    window.addEventListener('pointercancel', e => { if (this.overlay.has(e.pointerId) && e.target !== el) this.end(e); }, true);
+    window.addEventListener('click', e => {
+      if (performance.now() < this.suppressClickUntil) { e.preventDefault(); e.stopPropagation(); this.suppressClickUntil = 0; }
+    }, true);
     window.addEventListener('keydown', e => {
       if (e.key === 'Escape') { h.escape(); return; }
       // camera keys only when nothing else (a panel, a button) has focus
@@ -96,6 +112,18 @@ export class Input {
     return hits.find(x => x.object.userData.inspected) ?? hits.find(x => x.object.userData.collectible) ?? hits.find(x => x.object.userData.egg) ?? hits[0] ?? null;
   }
 
+  /** An overlay touch became a gesture: send its events to the canvas from now on (its button won't click). */
+  private takeOver(id: number) {
+    if (!this.overlay.has(id) || this.gestured.has(id)) return;
+    this.gestured.add(id);
+    try { this.el.setPointerCapture(id); } catch { /* already lifted */ }
+  }
+
+  private release(id: number) {
+    if (this.gestured.delete(id)) this.suppressClickUntil = performance.now() + 450;
+    this.overlay.delete(id);
+  }
+
   private mid() {
     const [a, b] = [...this.touches.values()];
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -108,8 +136,12 @@ export class Input {
 
   private onDown = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') {
+      // the first finger of a new touch: forget any finger whose lift we never saw (a ghost would turn the next
+      // single-finger drag into a pinch, or a real pinch into nothing)
+      if (e.isPrimary) { for (const id of this.touches.keys()) if (id !== e.pointerId) this.touches.delete(id); }
       this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.touches.size === 2) {
+        for (const id of this.touches.keys()) this.takeOver(id);
         // second finger: switch to pinch, cancel any drag/click in progress
         this.pinchDist = this.pinchSpan();
         this.pinchMid = this.mid();
@@ -127,7 +159,9 @@ export class Input {
     // a touch that starts at a side edge belongs to the system's back / app-switch gesture: it may still tap, but
     // it never turns the camera (no lurch while the browser takes the swipe)
     const edge = e.pointerType === 'touch' && (e.clientX < EDGE || e.clientX > innerWidth - EDGE);
-    this.down = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, type: e.pointerType, pan, edge };
+    const overlay = this.overlay.has(e.pointerId);
+    this.down = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, type: e.pointerType, pan, edge, overlay };
+    if (overlay) { this.lastMove = { x: e.clientX, y: e.clientY }; this.moved = false; return; } // its button handles a tap
     if (pan) { this.moved = false; this.lastMove = { x: e.clientX, y: e.clientY }; this.el.setPointerCapture?.(e.pointerId); return; }
     this.lastMove = { x: e.clientX, y: e.clientY };
     this.moved = false;
@@ -153,7 +187,7 @@ export class Input {
     if (!e.isPrimary) return;
     if (this.down) {
       const dx = e.clientX - this.down.x, dy = e.clientY - this.down.y;
-      if (Math.hypot(dx, dy) > 8) this.moved = true;
+      if (Math.hypot(dx, dy) > 8) { this.moved = true; if (this.down.overlay) this.takeOver(e.pointerId); }
       const mx = e.clientX - this.lastMove.x, my = e.clientY - this.lastMove.y;
       if (this.down.pan) { if (this.moved) this.h.pan(mx / this.el.clientWidth, my / this.el.clientHeight); }
       else if (this.captured) this.h.drag(mx, my);
@@ -174,6 +208,7 @@ export class Input {
 
   private end(e: PointerEvent) {
     this.touches.delete(e.pointerId);
+    this.release(e.pointerId);
     if (this.touches.size < 2) this.pinchDist = 0;
     if (e.pointerId === this.down?.id) {
       this.down = null;
@@ -185,12 +220,14 @@ export class Input {
   private onUp = (e: PointerEvent) => {
     const wasPinch = this.pinched;
     this.touches.delete(e.pointerId);
+    this.release(e.pointerId);
     if (this.touches.size < 2) this.pinchDist = 0;
     if (this.touches.size === 0) this.pinched = false;
     if (!e.isPrimary || !this.down || wasPinch) { if (e.pointerId === this.down?.id) this.down = null; return; }
     const d = this.down;
     this.down = null;
     if (d.pan) return; // a pan never clicks
+    if (d.overlay && !this.moved) return; // a tap on a hotspot: the button's own click opens it
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
     const dt = performance.now() - d.t;
     if (this.captured) {
