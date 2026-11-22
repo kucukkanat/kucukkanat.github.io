@@ -654,8 +654,9 @@ export class Outside {
     for (const sp of this.spinners) sp.o.rotateOnAxis(sp.axis, sp.rps * Math.PI * 2 * dt);
     if (this.mode === 'inside' || this.busy) {
       // the opening shot and the way in and out: the ship cruising with its hands off the helm
-      this.parts?.update(dt, { turn: 0, climb: 0, throttle: CRUISE, speed: CRUISE });
-      this.layoutWorld(); return;
+      this.layoutWorld();
+      this.parts?.update(dt, { turn: 0, climb: 0, throttle: CRUISE, speed: CRUISE, worldQ: this.world.quaternion, speedMs: CRUISE * MAX_SPEED, climbMs: 0 });
+      return;
     }
     const s = this.ship, o = this.orbit;
     const key = (...k: string[]) => k.some(x => this.keys.has(x));
@@ -674,10 +675,11 @@ export class Outside {
     s.pitch = damp(s.pitch, -s.climb * 0.16 + Math.sin(performance.now() / 1000 * 0.7) * 0.008, 2.5);
     const fwd = new THREE.Vector3(Math.sin(s.yaw), 0, Math.cos(s.yaw));
     s.pos.addScaledVector(fwd, s.speed * dt);
-    s.pos.y = clamp(s.pos.y + s.climb * (2 + s.speed * 0.4) * dt, -70, 140); // the lift stone climbs even at a stop
-    this.parts?.update(dt, { turn: s.turn, climb: s.climb, throttle: this.throttle, speed: sp });
+    const climbMs = s.climb * (2 + s.speed * 0.4); // the lift stone climbs even at a stop
+    s.pos.y = clamp(s.pos.y + climbMs * dt, -70, 140);
     o.yaw = damp(o.yaw, o.yawT, 8); o.pitch = damp(o.pitch, o.pitchT, 8); o.dist = damp(o.dist, o.distT, 6);
     const att = this.layoutWorld();
+    this.parts?.update(dt, { turn: s.turn, climb: s.climb, throttle: this.throttle, speed: sp, worldQ: this.world.quaternion, speedMs: s.speed, climbMs });
     // level orbit pose, then lean it with the world about the ship's centre
     const p = this.orbitPos();
     this.pose.pos.copy(p).sub(this.centre).applyQuaternion(att).add(this.centre);

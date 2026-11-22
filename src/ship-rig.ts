@@ -10,10 +10,12 @@
 //   nacelles         tilt the propellers up when slow or climbing; propellers spin with the throttle
 //   yards, spanker   brace into the turn, a little behind it (as a crew would)
 //   sails            set in stages with the throttle (furled at a stop), billow with airspeed, luff in hard turns
-//   flags, pennants  stream and flap faster with airspeed
+//   flags, pennants  cloth in the apparent wind, lagging the ship's turns (ship-air.ts)
+//   kite             flies on a springy line from the main top (ship-air.ts)
 //   lift stone, gyro spin up when climbing / turning; figurehead wings spread with speed
 
 import * as THREE from 'three';
+import { AirFrame, FlagCloth, Kite, floatPositions } from './ship-air';
 
 const { clamp, lerp, degToRad } = THREE.MathUtils;
 
@@ -26,23 +28,33 @@ export interface RigInput {
   throttle: number;
   /** 0..1, actual speed over top speed. */
   speed: number;
+  /** The outside world's rotation in the scene (outside.ts world.quaternion), for the air (ship-air.ts). */
+  worldQ: THREE.Quaternion;
+  /** Ship speed ahead and climb rate, m/s. */
+  speedMs: number;
+  climbMs: number;
 }
 
 interface Joint { o: THREE.Object3D; q0: THREE.Quaternion; axis: THREE.Vector3; sign: number; min: number; max: number; v: number; rpm: number }
-interface Cloth { mesh: THREE.Mesh; base: Float32Array; kind: 'square' | 'fore-aft' | 'flag'; furl: number; furlT: number;
-  /** per vertex: belly weight 0..1 (square / fore-aft sails), or distance from the hoist (flags) */ w: Float32Array; thin: 0 | 1 | 2; size: number }
+interface Cloth { mesh: THREE.Mesh; pos: THREE.BufferAttribute; base: Float32Array; kind: 'square' | 'fore-aft'; furl: number; furlT: number;
+  /** per vertex: belly weight 0..1, highest mid-sail */ w: Float32Array; thin: 0 | 1 | 2; size: number; belly: number; phase: number }
 
 const q = new THREE.Quaternion();
 
 export class ShipRig {
   private joints = new Map<string, Joint>();
   private sails: Cloth[] = [];
-  private flags: Cloth[] = [];
+  private flags: FlagCloth[] = [];
+  private kite: Kite | null = null;
+  private air: AirFrame;
   private t = 0;
   // smoothed controls (the parts move at their own pace)
   private turnL = 0; // lagging turn, for the yards and the boom
 
   constructor(ship: THREE.Object3D) {
+    ship.updateMatrixWorld(true);
+    this.air = new AirFrame(ship);
+    const flagMeshes: THREE.Mesh[] = [];
     ship.traverse(o => {
       const e = o.userData as { joint?: string; axis?: number[]; sign?: number; min?: number; max?: number; rpm?: number; morph?: string };
       if (e.joint && e.joint !== 'group' && e.axis)
@@ -51,16 +63,18 @@ export class ShipRig {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
       if (/^Sail_/.test(o.name) || (/^Sail_/.test(o.parent?.name ?? '') && m.morphTargetInfluences)) this.sails.push(this.cloth(m, /jib|spanker/.test(o.name + (o.parent?.name ?? '')) ? 'fore-aft' : 'square'));
-      else if (/_cloth$/.test(o.name)) this.flags.push(this.cloth(m, 'flag'));
+      else if (/_cloth$/.test(o.name)) flagMeshes.push(m);
     });
+    this.flags = flagMeshes.map(m => new FlagCloth(m, ship));
+    const rig = ship.getObjectByName('Kite_rig'), kite = ship.getObjectByName('Kite');
+    if (rig && kite) this.kite = new Kite(rig, kite, ship);
   }
 
   /** Names of the spinners this rig drives (outside.ts leaves them alone). */
   static readonly DRIVEN = new Set(['Prop_L', 'Prop_R', 'Lift_stone', 'Gyro_ring', 'Wheel']);
 
   private cloth(mesh: THREE.Mesh, kind: Cloth['kind']): Cloth {
-    mesh.geometry = mesh.geometry.clone();
-    const pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
+    const pos = floatPositions(mesh); // the web model's positions are int16: small offsets would round away
     const base = Float32Array.from(pos.array as ArrayLike<number>);
     mesh.geometry.computeBoundingBox();
     const bb = mesh.geometry.boundingBox!, size = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
@@ -68,14 +82,13 @@ export class ShipRig {
     const thin = dims.indexOf(Math.min(...dims)) as 0 | 1 | 2;
     const w = new Float32Array(pos.count);
     for (let i = 0; i < pos.count; i++) {
-      if (kind === 'flag') { w[i] = base[i * 3]; continue; } // the hoist is at x = 0 (airship/rig.py)
       // belly: 1 in the middle of the cloth, 0 at its edges (the two axes that span the sail)
       let k = 1;
       for (let a = 0; a < 3; a++) if (a !== thin) { const u = (base[i * 3 + a] - (a === 0 ? c.x : a === 1 ? c.y : c.z)) / Math.max(dims[a] / 2, 1e-3); k *= clamp(1 - u * u, 0, 1); }
       w[i] = k;
     }
     const size2 = Math.max(...dims);
-    return { mesh, base, kind, furl: 0, furlT: 0, w, thin, size: size2 };
+    return { mesh, pos, base, kind, furl: 0, furlT: 0, w, thin, size: size2, belly: 0, phase: Math.random() * 6 };
   }
 
   /** Set a joint's value (degrees), clamped to its range; mirrored twins pass the same value. */
@@ -143,39 +156,32 @@ export class ShipRig {
       s.furlT = thr > setAt ? 0 : 1;
       s.furl = lerp(s.furl, s.furlT, 1 - Math.exp(-1.1 * dt));
       if (s.mesh.morphTargetInfluences) s.mesh.morphTargetInfluences[0] = s.furl;
-      this.billow(s, sp, turn, t);
+      this.billow(s, sp, turn, t, dt);
     }
-    // flags and pennants: stream harder and flap faster with the airspeed
-    for (const f of this.flags) this.flap(f, sp, t);
+    // the air: flags and pennants as cloth, the kite on its line
+    this.air.update({ dt, t, worldQ: c.worldQ, speed: c.speedMs, climb: c.climbMs });
+    const h = Math.min(dt, 1 / 20); // a long frame (tab switch) must not fling the cloth
+    for (const f of this.flags) f.update(h, this.air);
+    this.kite?.update(h, this.air);
   }
 
-  /** Push the cloth out along its thin axis: a full belly with airspeed, a luffing ripple when slow or turning hard. */
-  private billow(s: Cloth, sp: number, turn: number, t: number) {
-    const pos = s.mesh.geometry.attributes.position as THREE.BufferAttribute;
-    const a = pos.array as Float32Array, b = s.base, open = 1 - s.furl;
-    // square sails fill toward the bow (wind from astern); fore-and-aft sails fill to leeward of the turn
+  /** Push the cloth out along its thin axis: a full belly that fills with the wind and breathes in the gusts, and a
+   *  luffing ripple along the leech when slow or turning hard. */
+  private billow(s: Cloth, sp: number, turn: number, t: number, dt: number) {
+    const a = s.pos.array as Float32Array, b = s.base, open = 1 - s.furl;
+    const wind = clamp(this.air.wind.length() / 22, 0, 1.2);
+    // square sails fill toward the bow (the wind is behind them); fore-and-aft sails fill to leeward of the turn
     const dir = s.kind === 'square' ? 1 : (turn >= 0 ? 1 : -1);
-    const belly = open * s.size * (0.03 + 0.09 * sp) * dir;
-    const luff = open * s.size * 0.012 * (0.4 + 1.6 * (1 - sp) + 1.2 * Math.abs(turn));
-    const ax = s.thin;
-    for (let i = 0; i < pos.count; i++) {
-      const w = s.w[i], u = b[i * 3 + (ax === 1 ? 0 : 1)];
-      a[i * 3 + ax] = b[i * 3 + ax] + w * belly + w * luff * Math.sin(u * 2.3 + t * (3 + 4 * sp));
+    const gust = 0.85 + 0.15 * this.air.gust + 0.06 * Math.sin(t * 1.4 + s.phase);
+    const target = open * s.size * (0.1 + 0.3 * Math.max(wind, sp)) * gust * dir;
+    s.belly += (target - s.belly) * (1 - Math.exp(-3 * dt)); // the cloth takes a moment to fill
+    const luff = open * s.size * 0.018 * (0.3 + 1.4 * (1 - sp) + 1.5 * Math.abs(turn));
+    const ax = s.thin, ua = ax === 1 ? 0 : 1;
+    for (let i = 0; i < s.pos.count; i++) {
+      const w = s.w[i], u = b[i * 3 + ua] / Math.max(s.size, 1e-3) * 6;
+      a[i * 3 + ax] = b[i * 3 + ax] + w * s.belly + Math.sqrt(w) * luff * Math.sin(u * 2.1 - t * (4 + 5 * sp) + s.phase);
     }
-    pos.needsUpdate = true;
+    s.pos.needsUpdate = true;
     s.mesh.geometry.computeVertexNormals();
-  }
-
-  private flap(f: Cloth, sp: number, t: number) {
-    const pos = f.mesh.geometry.attributes.position as THREE.BufferAttribute;
-    const a = pos.array as Float32Array, b = f.base;
-    const amp = 0.08 + 0.12 * sp, freq = 3 + 6 * sp;
-    for (let i = 0; i < pos.count; i++) {
-      const d = Math.abs(f.w[i]), k = Math.min(1, d * 0.6);
-      a[i * 3 + 2] = b[i * 3 + 2] + Math.sin(d * 2.6 - t * freq) * amp * 1.4 * k;
-      a[i * 3 + 1] = b[i * 3 + 1] + Math.sin(d * 1.7 - t * freq * 0.75) * amp * 0.5 * k - sp * 0.08 * d * (1 - sp * 0.5);
-    }
-    pos.needsUpdate = true;
-    f.mesh.geometry.computeVertexNormals();
   }
 }
