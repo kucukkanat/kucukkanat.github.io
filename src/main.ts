@@ -11,7 +11,7 @@ import './style.css';
 import * as THREE from 'three';
 import { loadContent, findItem } from './content';
 import { loadCaptain } from './captain';
-import { loadGLB, indexCabin, makeManager, type ViewName, type Cabin, type EggId } from './scene';
+import { loadGLB, indexCabin, makeManager, initKTX2, type ViewName, type Cabin, type EggId } from './scene';
 import { setupLighting, prefetchLightmap } from './lighting';
 import { setupSky, prefetchSky } from './sky';
 import { Collectibles, type Collectible, type Place } from './collectibles';
@@ -100,6 +100,7 @@ async function main() {
     location.replace('/plain/');
     return;
   }
+  initKTX2(renderer); // starts the Basis transcoder download now, in parallel with the first view's files
   const touch = matchMedia('(pointer: coarse)').matches;
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, touch ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;

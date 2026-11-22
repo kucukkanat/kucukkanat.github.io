@@ -38,7 +38,7 @@ export interface Sky {
 /** Backdrop cylinder radius around the anchor (m). */
 const R = 22;
 const ARC = 3.2, BACKDROP_Y = 1.5, BACKDROP_H = R * 1.3;
-/** Where the painted sun sits on sky_sunset.jpg (u from the left, v from the bottom). */
+/** Where the painted sun sits on the sunset backdrop, sky_sunset.ktx2 (u from the left, v from the bottom). */
 const SUN_UV: [number, number] = [0.655, 0.416];
 /** Distance from the camera (m) where the haze starts / is complete, and how much of it is ever applied. */
 const HAZE_NEAR = 11, HAZE_FAR = 34, HAZE_MAX = 0.9;
@@ -156,7 +156,7 @@ export const HAZE_VERT = /* glsl */`
 
 let sunsetP: Promise<THREE.Texture | null> | null = null;
 /** Start fetching the sunset backdrop before the cabin has arrived (main.ts calls this first thing). */
-export function prefetchSky() { sunsetP ??= loadTexture('/assets/sky_sunset.jpg'); }
+export function prefetchSky() { sunsetP ??= loadTexture('/assets/sky_sunset.ktx2'); }
 
 export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promise<Sky> {
   const group = new THREE.Group();
@@ -165,7 +165,7 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
   scene.add(group);
 
   // Only the sunset backdrop is needed for the first view; night and storm stream in later.
-  const sunsetTex = await (sunsetP ?? loadTexture('/assets/sky_sunset.jpg'));
+  const sunsetTex = await (sunsetP ?? loadTexture('/assets/sky_sunset.ktx2'));
   const prep = (t: THREE.Texture | null) => { if (t) { t.wrapS = THREE.MirroredRepeatWrapping; t.needsUpdate = true; } return t; };
   prep(sunsetTex);
   const lin = (hex: string, gain = 1) => new THREE.Color(hex).multiplyScalar(gain);
@@ -609,11 +609,11 @@ export async function setupSky(scene: THREE.Scene, anchor: THREE.Vector3): Promi
     pose(t);
   };
   let nightLoad: Promise<void> | null = null, stormLoad: Promise<void> | null = null;
-  const loadNight = () => nightLoad ??= loadTexture('/assets/sky_night.jpg').then(t => {
+  const loadNight = () => nightLoad ??= loadTexture('/assets/sky_night.ktx2').then(t => {
     if (!prep(t)) return;
     U.tNight.value = t; U.uHasNight.value = 1;
   });
-  const loadStorm = () => stormLoad ??= loadTexture('/assets/sky_storm.jpg').then(t => {
+  const loadStorm = () => stormLoad ??= loadTexture('/assets/sky_storm.ktx2').then(t => {
     if (!prep(t)) return;
     U.tStorm.value = t; U.uHasStorm.value = 1;
   });

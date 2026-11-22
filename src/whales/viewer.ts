@@ -1,11 +1,10 @@
 // /whales/ - the sky-whale viewer: pick a whale and a style, auto-fly or steer, watch the reactions.
 // ?whale=<key>&style=A|B preselects; ?embed=1 is the compact layout used inside the KANAT·1 handheld.
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SkyWhale, AutoPilot, loadManifest, type WhaleEntry } from './sky-whale';
+import { initKTX2, gltfLoader } from '../scene';
 import '../fonts.css';
 import { lockZoom, registerSW } from '../pwa';
 
@@ -29,6 +28,7 @@ async function start() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = !EMBED; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.prepend(renderer.domElement);
+  initKTX2(renderer); // whale textures are KTX2 (Basis)
 
   const scene = new THREE.Scene();
   const HORIZON = new THREE.Color('#f1dcc8');
@@ -70,7 +70,7 @@ async function start() {
   }
 
   // ---------------------------------------------------------------- whales
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = await gltfLoader();
   const cache = new Map<string, SkyWhale>();
   let whale: SkyWhale | null = null;
   let current: { key: string; style: Style } = { key: manifest[0].key, style: 'A' };

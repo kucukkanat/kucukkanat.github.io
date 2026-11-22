@@ -1,5 +1,5 @@
 // Web copy of the captain: art/models/captain.glb → public/assets/captain.glb.
-// Full mesh (simplifying it spoiled the face and hands), every map 1024 px WebP q80, meshopt. Run after replacing the source model: bun scripts/build-captain.ts
+// Full mesh (simplifying it spoiled the face and hands), every map 1024 px KTX2 (scripts/ktx2.ts), meshopt. Run after replacing the source model: bun scripts/build-captain.ts
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, prune, meshopt } from '@gltf-transform/functions';
@@ -7,6 +7,7 @@ import { MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { join } from 'node:path';
 import { statSync } from 'node:fs';
+import { ktx2GLB } from './ktx2';
 
 const root = join(import.meta.dir, '..');
 const src = join(root, 'art/models/captain.glb'), dst = join(root, 'public/assets/captain.glb');
@@ -26,4 +27,5 @@ await doc.transform(
   meshopt({ encoder: MeshoptEncoder, level: 'high' }),
 );
 await io.write(dst, doc);
+await ktx2GLB(dst);
 console.log(`captain.glb: ${(statSync(dst).size / 1024).toFixed(0)} KB`);

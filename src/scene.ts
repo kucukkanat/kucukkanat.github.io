@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 export type ViewName = 'overview' | 'chest' | 'table' | 'rack' | 'shelf' | 'handheld' | 'screen' | 'portrait' | 'letter' | 'clock';
@@ -31,19 +32,39 @@ export function makeManager(onProgress: (p: number) => void) {
   return m;
 }
 
+// One KTX2 (Basis Universal) loader for every GLB and .ktx2 texture: the transcoder (public/basis/, ~0.6 MB) is
+// fetched once, from our own origin, as soon as the renderer exists, so it arrives alongside the cabin.
+let ktx2: KTX2Loader | null = null;
+let ktx2Ready: (l: KTX2Loader) => void;
+const ktx2P = new Promise<KTX2Loader>(r => { ktx2Ready = r; });
+/** Call once with the page's renderer (it picks the GPU's compressed formats) — before loading any model. */
+export function initKTX2(renderer: THREE.WebGLRenderer) {
+  if (ktx2) return ktx2;
+  ktx2 = new KTX2Loader().setTranscoderPath('/basis/').setWorkerLimit(2).detectSupport(renderer);
+  void ktx2.init();
+  ktx2Ready(ktx2);
+  return ktx2;
+}
+
+/** A GLTFLoader with the meshopt decoder and the shared KTX2 loader (waits for initKTX2). */
+export async function gltfLoader(manager?: THREE.LoadingManager): Promise<GLTFLoader> {
+  return new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder).setKTX2Loader(await ktx2P);
+}
+
 export async function loadGLB(url: string, manager?: THREE.LoadingManager): Promise<GLTF | null> {
-  const loader = new GLTFLoader(manager);
-  loader.setMeshoptDecoder(MeshoptDecoder);
   try {
-    return await loader.loadAsync(url);
+    return await (await gltfLoader(manager)).loadAsync(url);
   } catch (e) {
     console.warn(`[scene] ${url} not available`, e);
     return null;
   }
 }
 
+/** A plain texture (.ktx2 through the shared KTX2 loader: its colour space comes from the file, and it cannot be
+ *  flipped at load time — scripts/textures-ktx2.ts flips at encode time where an image needs it). */
 export async function loadTexture(url: string, srgb = true): Promise<THREE.Texture | null> {
   try {
+    if (url.endsWith('.ktx2')) return await (await ktx2P).loadAsync(url);
     const tex = await new THREE.TextureLoader().loadAsync(url);
     if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
     return tex;

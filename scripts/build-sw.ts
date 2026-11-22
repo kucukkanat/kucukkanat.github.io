@@ -29,8 +29,10 @@ for (let i = 0; i < fromHtml.length; i++) {
 }
 const shell = ['/', '/content.json', '/notes.json', '/manifest.webmanifest', '/favicon.svg',
   '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/plain/', '/whales/', '/assets/whales/manifest.json'];
-const firstView = ['fonts/fraunces-latin.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/dmsans-latin.woff2', 'cabin.glb', 'collectibles.glb', 'captain.glb', 'sky.glb', 'sky_sunset.jpg', 'lightmap_sunset_1k.webp', 'lightmaps.json'].map(hashed);
-const precache = [...new Set([...shell, ...fromHtml, ...firstView])].filter(u => existsSync(join(dist, u === '/' || u.endsWith('/') ? `${u}index.html` : u)));
+const firstView = ['fonts/fraunces-latin.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/dmsans-latin.woff2', 'cabin.glb', 'collectibles.glb', 'captain.glb', 'sky.glb', 'sky_sunset.ktx2', 'lightmap_sunset_1k.ktx2', 'lightmaps.json'].map(hashed);
+// the Basis transcoder that turns the KTX2 textures into the GPU's own compressed format (src/scene.ts initKTX2)
+const basis = ['/basis/basis_transcoder.js', '/basis/basis_transcoder.wasm'];
+const precache = [...new Set([...shell, ...fromHtml, ...firstView, ...basis])].filter(u => existsSync(join(dist, u === '/' || u.endsWith('/') ? `${u}index.html` : u)));
 
 // a new worker whenever a precached file or this script (the worker's logic) changes
 const version = createHash('sha256').update(readFileSync(import.meta.path)).update(precache.map(u => {
