@@ -11,6 +11,7 @@ import { reducedMotion } from './anim';
 import { FULL } from './tier';
 import { loadGLB } from './scene';
 import { uNight, uStorm } from './lighting';
+import { ShipRig } from './ship-rig';
 import { Flight, PACE, type Key } from './flight';
 
 import { INTRO_KEY as KEY } from './intro-flag';
@@ -134,6 +135,8 @@ export class Outside {
   private dome = skyDome();
   private islands: { o: THREE.Object3D; base: THREE.Vector3 }[] = [];
   private spinners: { o: THREE.Object3D; axis: THREE.Vector3; rps: number }[] = [];
+  /** The ship's moving parts: rudder, fins, sails… (ship-rig.ts) */
+  private parts: ShipRig | null = null;
   private centre = new THREE.Vector3(0, 6, 9);
   private pose = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0) };
   private orbit = { yaw: 2.55, pitch: 0.16, dist: 46, yawT: 2.55, pitchT: 0.16, distT: 46 };
@@ -207,7 +210,8 @@ export class Outside {
     addEventListener('keydown', (e: KeyboardEvent) => {
       if (this.mode === 'inside' || this.busy) return;
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); void this.goInside(); return; }
-      if (e.target === this.thrEl) return; // the slider handles its own keys
+      // a slider focused with Tab keeps its own keys (arrows, Page Up/Down, Home/End); every other key still flies
+      if (e.target === this.thrEl && /^(Arrow|Page|Home$|End$)/.test(e.key)) return;
       this.keys.add(e.key.toLowerCase());
       if (e.key.startsWith('Arrow')) e.preventDefault();
     }, true);
@@ -271,12 +275,13 @@ export class Outside {
     holder.visible = false;
     ship.traverse(o => {
       const e = o.userData as { joint?: string; axis?: number[]; rpm?: number };
-      if (e.joint === 'spin' && e.axis && e.rpm) this.spinners.push({ o, axis: new THREE.Vector3(...e.axis).normalize(), rps: e.rpm / 60 });
+      if (e.joint === 'spin' && e.axis && e.rpm && !ShipRig.DRIVEN.has(o.name)) this.spinners.push({ o, axis: new THREE.Vector3(...e.axis).normalize(), rps: e.rpm / 60 });
       // the cabin brings its own stern windows: the ship's glass (opaque, glowing) and frames would cover them
       if (/^Gallery_(glass|frames)/.test(o.name)) o.visible = false;
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) mesh.frustumCulled = false;
     });
+    this.parts = new ShipRig(ship);
     this.scene.add(holder);
     holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(holder);
@@ -551,7 +556,7 @@ export class Outside {
     const el = this.thrEl, track = el.querySelector<HTMLElement>('.out-thr-track')!;
     const at = (e: PointerEvent) => { const r = track.getBoundingClientRect(); this.setThrottle(1 - (e.clientY - r.top) / r.height); };
     let id = -1;
-    el.addEventListener('pointerdown', e => { e.stopPropagation(); id = e.pointerId; el.setPointerCapture(id); at(e); });
+    el.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); /* no focus: keys keep flying */ id = e.pointerId; el.setPointerCapture(id); at(e); });
     el.addEventListener('pointermove', e => { if (e.pointerId === id) at(e); });
     const end = (e: PointerEvent) => { if (e.pointerId === id) id = -1; };
     el.addEventListener('pointerup', end);
@@ -647,7 +652,11 @@ export class Outside {
   update(dt: number) {
     if (this.mixK >= 1 && this.mode === 'inside') return;
     for (const sp of this.spinners) sp.o.rotateOnAxis(sp.axis, sp.rps * Math.PI * 2 * dt);
-    if (this.mode === 'inside' || this.busy) { this.layoutWorld(); return; }
+    if (this.mode === 'inside' || this.busy) {
+      // the opening shot and the way in and out: the ship cruising with its hands off the helm
+      this.parts?.update(dt, { turn: 0, climb: 0, throttle: CRUISE, speed: CRUISE });
+      this.layoutWorld(); return;
+    }
     const s = this.ship, o = this.orbit;
     const key = (...k: string[]) => k.some(x => this.keys.has(x));
     const turn = (key('a', 'arrowleft') ? 1 : 0) - (key('d', 'arrowright') ? 1 : 0) - this.stick.turn;
@@ -658,12 +667,15 @@ export class Outside {
     s.turn = damp(s.turn, clamp(turn, -1, 1), 2.2);
     s.climb = damp(s.climb, clamp(climb, -1, 1), 2.2);
     s.speed = damp(s.speed, this.throttle * MAX_SPEED, 0.8);
-    s.yaw += s.turn * 0.38 * dt;
-    s.roll = damp(s.roll, -s.turn * 0.3, 2.5);
-    s.pitch = damp(s.pitch, -s.climb * 0.16, 2.5);
+    const sp = s.speed / MAX_SPEED;
+    // she answers the helm at any speed, crisper with way on; heels harder the faster she goes
+    s.yaw += s.turn * 0.38 * (0.45 + 0.55 * sp) * dt;
+    s.roll = damp(s.roll, -s.turn * 0.3 * (0.35 + 0.65 * sp), 2.5);
+    s.pitch = damp(s.pitch, -s.climb * 0.16 + Math.sin(performance.now() / 1000 * 0.7) * 0.008, 2.5);
     const fwd = new THREE.Vector3(Math.sin(s.yaw), 0, Math.cos(s.yaw));
     s.pos.addScaledVector(fwd, s.speed * dt);
-    s.pos.y = clamp(s.pos.y + s.climb * s.speed * 0.45 * dt, -70, 140);
+    s.pos.y = clamp(s.pos.y + s.climb * (2 + s.speed * 0.4) * dt, -70, 140); // the lift stone climbs even at a stop
+    this.parts?.update(dt, { turn: s.turn, climb: s.climb, throttle: this.throttle, speed: sp });
     o.yaw = damp(o.yaw, o.yawT, 8); o.pitch = damp(o.pitch, o.pitchT, 8); o.dist = damp(o.dist, o.distT, 6);
     const att = this.layoutWorld();
     // level orbit pose, then lean it with the world about the ship's centre

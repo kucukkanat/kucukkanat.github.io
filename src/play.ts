@@ -14,6 +14,8 @@ type ScreenMode = 'idle' | 'boot' | 'nosignal' | 'playing' | 'off';
 
 export class Play {
   inserted: Collectible | null = null;
+  /** Eject under way (the cartridge is still flying home). */
+  ejecting = false;
   overlayOn = false;
   busy = false;
   private canvas = document.createElement('canvas');
@@ -272,6 +274,7 @@ export class Play {
   async eject() {
     if (this.busy || !this.inserted) return;
     this.busy = true;
+    this.ejecting = true;
     try {
       const c = this.inserted;
       if (this.overlayOn) {
@@ -290,6 +293,7 @@ export class Play {
       await this.returnCartridge(c);
     } finally {
       this.busy = false;
+      this.ejecting = false;
     }
   }
 
