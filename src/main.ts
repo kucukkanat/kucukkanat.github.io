@@ -269,7 +269,7 @@ async function main() {
     act('index', 'Open the Ship\u2019s Index', 'Every note, with filters', ['writing', 'blog', 'articles', 'notes', 'yazılar', 'liste'], () => { void writing.openIndex(); });
     act('night', night ? 'Blow out the lantern: back to sunset' : 'Light the lantern: night', 'Switch between sunset and night', ['night', 'day', 'dark', 'gece', 'gündüz', 'lantern'], () => toggleNight());
     act('outside', 'Go outside', 'See the ship from the air and fly it', ['ship', 'galleon', 'fly', 'helm', 'dışarı', 'gemi'], () => goOutside());
-    act('whales', 'Watch the sky whales', 'Six whales carrying their own worlds, in the whale viewer', ['whale', 'whales', 'sky whales', 'balina'], () => { location.href = '/whales/'; });
+    act('whales', 'Watch the sky whales', "Today's pod of whales carrying their own worlds, in the whale viewer", ['whale', 'whales', 'sky whales', 'balina'], () => { location.href = '/whales/'; });
     act('letter', 'Read the welcome letter', 'The letter on the chart table', ['welcome', 'hello', 'mektup'], () => { void openLetter(true); });
     act('about', 'About HT', 'The portrait on the wall', ['about', 'who', 'bio', 'hakkında'], () => { void openAbout(); });
     act('contact', 'Send a message', 'The message bottle', ['contact', 'email', 'mail', 'iletişim', 'mesaj'], () => openSheet('contact'));

@@ -13,9 +13,9 @@
    "lite": "/assets/whales/blue_lite.glb"
   },
   "sizes": {
-   "A": 1.29,
-   "B": 1.12,
-   "lite": 0.54
+   "A": 0.77,
+   "B": 0.78,
+   "lite": 0.22
   }
  },
  {
@@ -32,9 +32,9 @@
    "lite": "/assets/whales/sperm_lite.glb"
   },
   "sizes": {
-   "A": 1.17,
-   "B": 1.06,
-   "lite": 0.47
+   "A": 0.83,
+   "B": 0.78,
+   "lite": 0.22
   }
  },
  {
@@ -51,9 +51,9 @@
    "lite": "/assets/whales/beluga_lite.glb"
   },
   "sizes": {
-   "A": 1.02,
-   "B": 0.83,
-   "lite": 0.51
+   "A": 0.63,
+   "B": 0.61,
+   "lite": 0.21
   }
  },
  {
@@ -70,9 +70,9 @@
    "lite": "/assets/whales/humpback_lite.glb"
   },
   "sizes": {
-   "A": 1.28,
-   "B": 1.11,
-   "lite": 0.52
+   "A": 0.78,
+   "B": 0.75,
+   "lite": 0.22
   }
  },
  {
@@ -89,9 +89,9 @@
    "lite": "/assets/whales/bowhead_lite.glb"
   },
   "sizes": {
-   "A": 1.13,
-   "B": 1.03,
-   "lite": 0.5
+   "A": 0.7,
+   "B": 0.72,
+   "lite": 0.21
   }
  },
  {
@@ -108,9 +108,9 @@
    "lite": "/assets/whales/minke_lite.glb"
   },
   "sizes": {
-   "A": 1.11,
-   "B": 0.99,
-   "lite": 0.43
+   "A": 0.74,
+   "B": 0.71,
+   "lite": 0.21
   }
  }
 ]
