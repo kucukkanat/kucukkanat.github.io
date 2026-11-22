@@ -14,7 +14,7 @@ export async function fontsReady() {
         document.fonts.load(`500 40px ${DISPLAY}`),
         document.fonts.load(`500 20px ${SANS}`),
       ]),
-      new Promise(r => setTimeout(r, 2500)),
+      new Promise(r => setTimeout(r, 1200)), // self-hosted + preloaded: normally ready long before this
     ]);
   } catch { /* ignore */ }
 }

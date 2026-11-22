@@ -22,11 +22,14 @@ export interface InputHandlers {
   reset(): void;
 }
 
+/** Touches starting this close (px) to a side edge don't orbit (system back / app-switch gestures live there). */
+const EDGE = 20;
+
 /** Pointer, wheel, pinch and keyboard input over the canvas. */
 export class Input {
   private ray = new THREE.Raycaster();
   private ndc = new THREE.Vector2();
-  private down: { x: number; y: number; t: number; id: number; type: string; pan: boolean } | null = null;
+  private down: { x: number; y: number; t: number; id: number; type: string; pan: boolean; edge: boolean } | null = null;
   private pinchMid = { x: 0, y: 0 };
   private captured = false;
   private moved = false;
@@ -36,6 +39,7 @@ export class Input {
   private pinchDist = 0;
   private pinched = false;
   private lastTap = 0;
+  private lastTapAt = { x: 0, y: 0 };
 
   constructor(private el: HTMLElement, private camera: THREE.Camera, private h: InputHandlers) {
     el.style.touchAction = 'none'; // we handle pan/pinch ourselves
@@ -120,7 +124,10 @@ export class Input {
     const pan = e.pointerType === 'mouse' && (e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey));
     if (e.pointerType === 'mouse' && e.button !== 0 && !pan) return;
     this.pinched = false;
-    this.down = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, type: e.pointerType, pan };
+    // a touch that starts at a side edge belongs to the system's back / app-switch gesture: it may still tap, but
+    // it never turns the camera (no lurch while the browser takes the swipe)
+    const edge = e.pointerType === 'touch' && (e.clientX < EDGE || e.clientX > innerWidth - EDGE);
+    this.down = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, type: e.pointerType, pan, edge };
     if (pan) { this.moved = false; this.lastMove = { x: e.clientX, y: e.clientY }; this.el.setPointerCapture?.(e.pointerId); return; }
     this.lastMove = { x: e.clientX, y: e.clientY };
     this.moved = false;
@@ -150,7 +157,7 @@ export class Input {
       const mx = e.clientX - this.lastMove.x, my = e.clientY - this.lastMove.y;
       if (this.down.pan) { if (this.moved) this.h.pan(mx / this.el.clientWidth, my / this.el.clientHeight); }
       else if (this.captured) this.h.drag(mx, my);
-      else if (this.moved) this.h.orbit(mx / this.el.clientWidth, my / this.el.clientHeight);
+      else if (this.moved && !this.down.edge) this.h.orbit(mx / this.el.clientWidth, my / this.el.clientHeight);
     }
     this.lastMove = { x: e.clientX, y: e.clientY };
     if (e.pointerType === 'mouse') {
@@ -193,11 +200,17 @@ export class Input {
       return;
     }
     if (!this.moved) {
-      // double-tap on touch resets the camera (dblclick covers the mouse)
+      // double-tap on empty space resets the camera (dblclick covers the mouse); a tap on something always acts on
+      // it at once and never counts towards a double-tap, so the reset can't follow an item opening
       const now = performance.now();
-      if (d.type !== 'mouse' && now - this.lastTap < 300) { this.h.reset(); this.lastTap = 0; return; }
-      this.lastTap = now;
-      this.h.click(this.pick(e.clientX, e.clientY));
+      const hit = this.pick(e.clientX, e.clientY);
+      if (d.type !== 'mouse' && !hit) {
+        if (now - this.lastTap < 300 && Math.hypot(e.clientX - this.lastTapAt.x, e.clientY - this.lastTapAt.y) < 40) {
+          this.h.reset(); this.lastTap = 0; return;
+        }
+        this.lastTap = now; this.lastTapAt = { x: e.clientX, y: e.clientY };
+      } else this.lastTap = 0;
+      this.h.click(hit);
       return;
     }
     // a quick single-finger flick down → back (slow vertical drags tilt the camera instead)

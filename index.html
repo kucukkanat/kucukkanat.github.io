@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Hilmi Tolga Şahin — kucukkanat</title>
   <meta name="description" content="The airship cabin of Hilmi Tolga Şahin (HT): engineering manager and game maker. Pull a cartridge from the map chest and play it on the KANAT·1 handheld, read the books, follow the career voyage on the sky map." />
   <meta name="theme-color" content="#2a1712" />
   <meta name="color-scheme" content="dark" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="kucukkanat" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
   <link rel="canonical" href="https://kucukkanat.com/" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://kucukkanat.com/" />
@@ -19,11 +25,12 @@
   <meta name="twitter:title" content="Hilmi Tolga Şahin — kucukkanat" />
   <meta name="twitter:description" content="Curious, engineer, maker, mathematician. Projects you can play, in an airship cabin at sunset." />
   <!-- the first view's models: fetched while the app script downloads (same request mode as three's loader) -->
-  <link rel="preload" href="/assets/cabin.glb" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/assets/cabin.glb" as="fetch" crossorigin="anonymous" fetchpriority="high" />
   <link rel="preload" href="/assets/collectibles.glb" as="fetch" crossorigin="anonymous" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=DM+Sans:wght@400;500;700&display=swap" />
+  <!-- self-hosted fonts (src/fonts.css): the subsets the first screen draws with -->
+  <link rel="preload" href="/assets/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/assets/fonts/fraunces-latin-ext.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/assets/fonts/dmsans-latin.woff2" as="font" type="font/woff2" crossorigin />
   <script>
     // No WebGL → the plain HTML site.
     (function () {
@@ -31,6 +38,27 @@
         var c = document.createElement('canvas');
         if (!(c.getContext('webgl2') || c.getContext('webgl'))) location.replace('/plain/');
       } catch (e) { location.replace('/plain/'); }
+    })();
+    // The first view's sunset sky and lightmap (KTX2) and the Basis transcoder that unpacks them, fetched alongside the app
+    // script (main.ts asks for the same URLs; the lightmap's size follows src/tier.ts — tablets are left to main.ts,
+    // since their tier needs the GPU check)
+    (function () {
+      var add = function (href) {
+        var l = document.createElement('link');
+        l.rel = 'preload'; l.as = 'fetch'; l.href = href; l.crossOrigin = 'anonymous';
+        document.head.appendChild(l);
+      };
+      try {
+        add('/basis/basis_transcoder.js');
+        add('/basis/basis_transcoder.wasm');
+        add('/assets/sky_sunset.ktx2');
+        var q = new URLSearchParams(location.search).get('tier');
+        var coarse = matchMedia('(pointer: coarse)').matches, small = Math.min(screen.width, screen.height) < 700;
+        var mem = navigator.deviceMemory, save = navigator.connection && navigator.connection.saveData;
+        var lite = q === 'lite' || (q !== 'full' && (save || (mem !== undefined && mem < 4) || (coarse && small)));
+        if (lite) add('/assets/lightmap_sunset_1k.ktx2');
+        else if (q === 'full' || !coarse) add('/assets/lightmap_sunset.ktx2');
+      } catch (e) { /* hints only */ }
     })();
   </script>
 </head>

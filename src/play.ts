@@ -232,26 +232,34 @@ export class Play {
       <div class="bezel">
         <span class="logo" aria-hidden="true">KANAT·1</span>
         <span class="title">${e(it.title)}</span>
-        <button class="btn" type="button" data-eject>⏏ <span class="label-hide">Eject</span></button>
+        <button class="btn eject" type="button" data-eject aria-label="Eject">⏏ <span class="label-hide">Eject</span></button>
         <a class="btn" href="${e(it.url!)}" target="_blank" rel="noopener" aria-label="Open in new tab">↗ <span class="label-hide">Open in new tab</span></a>
-        <button class="btn" type="button" data-fs aria-label="Fullscreen">⛶ <span class="label-hide">Fullscreen</span></button>
+        ${document.fullscreenEnabled ? '<button class="btn" type="button" data-fs aria-label="Fullscreen">⛶ <span class="label-hide">Fullscreen</span></button>' : ''}
       </div>`;
     const wait = document.createElement('div');
     wait.className = 'play-wait';
-    wait.textContent = `Loading ${it.title}…`;
+    const src = it.embed ?? it.url!;
+    const remote = new URL(src, location.href).origin !== location.origin;
+    // cartridges hosted elsewhere can't come from our offline cache
+    wait.textContent = remote && !navigator.onLine ? `No signal — ${it.title} needs an internet connection.` : `Loading ${it.title}…`;
     o.appendChild(wait);
     const f = document.createElement('iframe');
     f.title = it.title;
     f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-pointer-lock allow-popups allow-forms');
     f.setAttribute('allow', 'fullscreen; gamepad; autoplay; xr-spatial-tracking');
     f.setAttribute('allowfullscreen', '');
-    f.src = it.embed ?? it.url!;
+    f.src = src;
     o.appendChild(f);
     this.iframe = f;
     o.querySelector('[data-eject]')!.addEventListener('click', () => this.eject());
-    o.querySelector('[data-fs]')!.addEventListener('click', () => {
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      else o.requestFullscreen?.().catch(() => {});
+    // (iPhone Safari has no element fullscreen: the button is left out there)
+    o.querySelector('[data-fs]')?.addEventListener('click', () => {
+      if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+      void o.requestFullscreen?.().then(() => {
+        // a cartridge that wants a particular orientation gets it while fullscreen (Android; others ignore it)
+        const lock = (screen.orientation as { lock?: (o: string) => Promise<void> } | undefined)?.lock;
+        if (it.orientation && lock) lock.call(screen.orientation, it.orientation).catch(() => {});
+      }).catch(() => {});
     });
     o.hidden = false;
     requestAnimationFrame(() => requestAnimationFrame(() => o.classList.add('on')));

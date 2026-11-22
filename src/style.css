@@ -11,10 +11,16 @@
   --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #2a1712; color: var(--ink); font-family: var(--sans); overflow: hidden; overscroll-behavior: none; }
-body { -webkit-tap-highlight-color: transparent; }
+body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* app, not document: no double-tap zoom, no text selection or callouts on the chrome (form fields and reading panes opt back in) */
+html { touch-action: manipulation; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable], .panel .body, .selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 a { color: inherit; }
 .noscript { padding: 2rem; }
 #app { position: fixed; inset: 0; }
@@ -36,11 +42,11 @@ a { color: inherit; }
 /* Chrome */
 .ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 .ui > * { pointer-events: auto; }
-.brand { position: absolute; top: calc(16px + var(--safe-t)); left: 20px; max-width: min(520px, calc(100vw - 40px)); pointer-events: none;
+.brand { position: absolute; top: calc(16px + var(--safe-t)); left: calc(20px + var(--safe-l)); max-width: min(520px, calc(100vw - 40px)); pointer-events: none;
   text-shadow: 0 1px 12px rgba(30, 12, 6, .65); }
 .brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(1.15rem, 2.4vw, 1.6rem); letter-spacing: .005em; }
 .brand p { margin: 2px 0 0; font-size: clamp(.78rem, 1.4vw, .92rem); color: var(--ink-dim); }
-.back { position: absolute; top: calc(16px + var(--safe-t)); right: 20px; }
+.back { position: absolute; top: calc(16px + var(--safe-t)); right: calc(20px + var(--safe-r)); }
 .btn { font: 500 .9rem/1 var(--sans); color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-radius: 999px;
   padding: 10px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background .2s, transform .15s, border-color .2s; min-height: 40px; }
@@ -136,6 +142,17 @@ a { color: inherit; }
   .dock { gap: 0; padding: 4px; }
   .dock .nav { padding: 8px 6px; }
   .icon-btn { width: 34px; height: 34px; }
+}
+/* Touch screens: every control at least 44px to the finger (the visible dot or label can stay small) */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .bezel .btn { min-height: 40px; }
+  .icon-btn, .dock .icon-btn { width: 44px; height: 44px; }
+  .dock .nav { min-height: 44px; }
+  .hotspot { width: 48px; height: 48px; }
+  .hotspot::before { inset: 17px; }
+  .item-btn { width: 44px; height: 44px; }
+  .icon-btn:active, .dock .nav:not([aria-current="true"]):active { background: rgba(255,255,255,.12); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -262,3 +279,103 @@ a { color: inherit; }
 .outside-hud .out-helm[aria-pressed="true"] { background: #e8652b; border-color: #e8652b; }
 .outside-hud .out-hint { flex-basis: 100%; margin: 0; text-align: center; color: #fff; font: 500 .8rem var(--sans, system-ui);
   text-shadow: 0 1px 6px rgba(42,23,18,.8); }
+
+/* Touch screens, late overrides (after the rules they widen) */
+@media (pointer: coarse) {
+  .dock .nav { min-width: 44px; justify-content: center; }
+  .brand .linkish, .brand a { display: inline-block; padding: 12px 6px; margin: -12px -6px; }
+  .letter-view .letter-close { width: 44px; height: 44px; }
+}
+
+/* The letter's text twin: screen-reader only on large screens, a readable paper sheet on small ones */
+.letter-view .letter-text { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.letter-view .letter-text-close { display: none; }
+@media (max-width: 720px), (max-height: 500px) {
+  .letter-view .letter-close { display: none; }
+  .letter-view .letter-text { clip: auto; white-space: normal; margin: 0; width: auto; height: auto; pointer-events: auto;
+    left: max(0px, calc(50vw - 300px)); right: max(0px, calc(50vw - 300px)); bottom: 0; max-height: 72vh; max-height: 72dvh; overflow: auto;
+    overscroll-behavior: contain; -webkit-user-select: text; user-select: text;
+    padding: 24px calc(22px + var(--safe-r)) calc(20px + var(--safe-b)) calc(22px + var(--safe-l));
+    color: #2b1a10; border-radius: 18px 18px 0 0; border: 1px solid rgba(120, 80, 40, .35); border-bottom: 0;
+    background: radial-gradient(ellipse at 20% 10%, rgba(255,255,255,.35), rgba(255,255,255,0) 55%), linear-gradient(180deg, #f6ead0, #ecdbb6);
+    box-shadow: 0 -18px 60px rgba(20, 8, 4, .5); font: 500 1.02rem/1.55 var(--display);
+    opacity: 0; transform: translateY(24px); transition: opacity .3s ease .45s, transform .3s ease .45s; }
+  .letter-view.on .letter-text { opacity: 1; transform: none; }
+  .letter-view .letter-text h2 { font: 700 1.6rem/1.15 var(--display); margin: 0 44px 10px 0; outline: none; }
+  .letter-view .letter-text p { margin: 0 0 .7em; }
+  .letter-view .letter-text .signoff { font-style: italic; text-align: right; font-size: 1.12rem; }
+  .letter-view .letter-text-close { display: grid; position: absolute; top: 10px; right: calc(10px + var(--safe-r)); color: #5a3a22; }
+  body:has(.letter-view.on) .dock { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+@media (hover: none) {
+  .hotspot .tip { transition: opacity .35s ease; }
+}
+@media (max-width: 720px) { .hotspot .tip-more { display: none; } }
+
+/* Dynamic viewport units where supported: vh is the largest viewport on phones, so sheets sized in vh run under the
+   browser's toolbars; dvh follows them. */
+@supports (height: 1dvh) {
+  .panel { max-height: min(70dvh, 560px); }
+  .sheet { top: max(72px, calc(50dvh - 280px)); max-height: min(78dvh, 620px); }
+  .sheet-letter { top: max(64px, calc(50dvh - 300px)); max-height: min(82dvh, 640px); }
+  @media (max-width: 720px) {
+    .panel { max-height: 62dvh; }
+    .sheet, .sheet-letter { max-height: 72dvh; }
+  }
+}
+
+/* Notches and rounded corners in landscape */
+.bezel { padding-left: calc(10px + var(--safe-l)); padding-right: calc(10px + var(--safe-r)); }
+.intro-skip { right: calc(20px + var(--safe-r)); bottom: calc(20px + var(--safe-b)); }
+.sheet { right: calc(28px + var(--safe-r)); }
+@media (max-width: 720px) {
+  .panel, .sheet { padding-left: calc(20px + var(--safe-l)); padding-right: calc(20px + var(--safe-r)); }
+  .sheet { right: auto; }
+}
+
+/* The remaining small touch targets */
+@media (pointer: coarse) {
+  .bezel .btn, .elsewhere .btn { min-height: 44px; }
+  .intro-skip { min-height: 44px; }
+}
+
+/* Phones held sideways: the dock becomes a two-column rail on the left edge (a bottom bar would eat a sixth of the
+   screen height), clear of the notch */
+@media (orientation: landscape) and (max-height: 500px) {
+  .dock { left: calc(8px + var(--safe-l)); right: auto; bottom: calc(8px + var(--safe-b)); top: auto; transform: none;
+    display: grid; grid-template-columns: auto auto; gap: 2px; padding: 5px; border-radius: 20px; width: auto;
+    max-width: none; max-height: calc(100vh - 84px); overflow-y: auto; }
+  @supports (height: 1dvh) { .dock { max-height: calc(100dvh - 84px); } }
+  .dock nav { display: contents; }
+  .dock .sep, .plain-link, .dock .nav::before { display: none; }
+  .dock .nav { padding: 8px 10px; font-size: .78rem; justify-content: flex-start; }
+  .dock .icon-btn { justify-self: center; }
+  .brand { max-width: calc(100vw - 180px); }
+  .brand h1 { font-size: 1rem; }
+  .brand p { font-size: .7rem; }
+  .cam-hint { bottom: calc(12px + var(--safe-b)); }
+  body:has(.letter-view.on) .dock, body:has(.panel.open) .dock { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+/* On-screen keyboard (pwa.ts sets --kb / --vvh): bottom sheets ride above it; 16px fields (no iOS focus zoom) */
+.bottle-form textarea, .bottle-form input { font-size: 1rem; }
+@media (max-width: 720px) {
+  .panel, .sheet, .sheet-letter { bottom: var(--kb, 0px); }
+  .sheet { max-height: min(72dvh, calc(var(--vvh, 100dvh) - 16px)); }
+}
+@media (max-width: 720px) { .cam-hint { white-space: normal; text-align: center; border-radius: 16px; width: max-content; } }
+
+/* Cartridge bezel: Eject is the one way out on touch screens, so it reads as the main button */
+.bezel .btn.eject { background: #2a1206; color: #f6e2c4; border-color: transparent; font-weight: 700; }
+.bezel .btn.eject:hover { background: #45200c; }
+@media (pointer: coarse) { .bezel .btn.eject { min-width: 56px; justify-content: center; } }
+
+/* "New cabin ready" (pwa.ts) */
+.update-toast { position: fixed; left: 50%; top: calc(12px + var(--safe-t)); transform: translate(-50%, -8px); z-index: 60; opacity: 0;
+  display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 16px; border-radius: 999px; font: 500 .88rem/1.2 var(--sans, system-ui);
+  color: #fbeedd; background: rgba(32, 18, 14, .92); border: 1px solid rgba(255, 214, 170, .3); box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  transition: opacity .3s, transform .3s; max-width: calc(100vw - 24px); }
+.update-toast.on { opacity: 1; transform: translate(-50%, 0); }
+.update-toast button { font: 700 .85rem/1 var(--sans, system-ui); border: 0; border-radius: 999px; padding: 0 16px; min-height: 40px; cursor: pointer;
+  background: #f07a2a; color: #2a1206; }
+.update-toast .x { background: none; color: #fbeedd; padding: 0 10px; font-weight: 500; }

@@ -23,6 +23,8 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 
 **Loading:** visitors land straight in the cabin with a short zoom in. The first view needs only `cabin.glb`, `collectibles.glb`, the sunset lightmap and sky; they start together (preload hints in `index.html`, early fetches in `main.ts`). The captain follows right after, and the galleon (Outside view) streams in after the first frame on larger screens and on first use on phones. The old opening shot plays only with `?intro=1`. `bun run build` gives every file from `public/assets` a content-hashed copy (`scripts/hash-assets.ts`), so a CDN may cache `/assets/*` for a year. After replacing `art/models/captain.glb`, run `bun scripts/build-captain.ts`.
 
+**Textures:** the models, lightmaps and sky backdrops ship as KTX2 (Basis Universal ETC1S), which the GPU keeps compressed: roughly 4–8x less GPU memory than WebP/JPEG, which it holds uncompressed. `scripts/ktx2.ts` encodes them with the `ktx2-encoder` devDependency (Basis compiled to WASM, so there's nothing to install: no `toktx`/KTX-Software). It runs from `bun run blender` (`scripts/compress-glb.ts`: models + lightmaps + sky), `bun scripts/build-captain.ts` and `whales/scripts/web.ts`. Maps smaller than half of 512² stay WebP. The browser side is the `KTX2Loader` in `src/scene.ts` (`initKTX2`, `gltfLoader`, `loadTexture`), with the Basis transcoder served from `public/basis/` (copied from `node_modules/three/examples/jsm/libs/basis/`; copy it again after a three.js upgrade). Compressed textures can't be read back or flipped at load time, so the bake brightness goes to `lightmaps.json` (`mean`) and the sky backdrops are flipped when they're encoded. The sources stay next to them (`lightmap_*.webp` from the bake, `sky_*.jpg`).
+
 **Sound:** fully synthesised (no audio files) in `src/sound/engine.ts`, a separate ~4 KB chunk loaded only when the visitor turns sound on. The button cycles Off → Ambient (wind, creaks, rain, music, ship's bells) → Full (plus interaction sounds). Ship's bells strike on the half hour by the watch.
 
 | Where | What |
@@ -34,7 +36,8 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 | `whales/` | Six sky whales with ecosystems on their backs: generator scripts, master GLBs, renders (`bun run whales`), see [whales/README.md](whales/README.md) |
 | `blender/mcp/server.py` | Stdio MCP server for Blender Lab's MCP extension (registered in `.mcp.json`) |
 | `art/` | Painted textures, labels and sky art made with OpenRouter (`scripts/gen-art.ts`), see [docs/ART.md](docs/ART.md) |
-| `public/assets/` | Exported `.glb` files, lightmaps, sky images |
+| `public/assets/` | Exported `.glb` files, lightmaps, sky images (KTX2 + their sources) |
+| `public/basis/` | Basis Universal transcoder for the KTX2 textures (from three.js) |
 | `docs/SCENE_CONTRACT.md` | The names and conventions Blender and the app agree on |
 | `design/` | Concept art and earlier prototypes |
 | [PLAN.md](PLAN.md) | Decisions and milestones |

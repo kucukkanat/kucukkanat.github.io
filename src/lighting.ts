@@ -6,12 +6,16 @@ import { lerp } from './anim';
 import { SIDE } from './look';
 import { FULL } from './tier';
 
-/** Phones use the half-resolution bakes (scripts/lightmap-lite.ts). */
-const LM_SUNSET = FULL ? '/assets/lightmap_sunset.webp' : '/assets/lightmap_sunset_1k.webp';
-const LM_NIGHT = FULL ? '/assets/lightmap_night.webp' : '/assets/lightmap_night_1k.webp';
+/** KTX2 bakes (scripts/ktx2.ts); phones use the half-resolution ones. */
+const LM_SUNSET = FULL ? '/assets/lightmap_sunset.ktx2' : '/assets/lightmap_sunset_1k.ktx2';
+const LM_NIGHT = FULL ? '/assets/lightmap_night.ktx2' : '/assets/lightmap_night_1k.ktx2';
 let lmSunsetP: Promise<THREE.Texture | null> | null = null;
+/** Mean brightness of each bake, measured at build time (a compressed texture can't be read back here). */
+type LmMeta = Partial<Record<'sunset' | 'night', { mean?: number }>>;
+let lmMetaP: Promise<LmMeta> | null = null;
+const lmMeta = () => lmMetaP ??= fetch('/assets/lightmaps.json').then(r => r.json() as Promise<LmMeta>).catch((): LmMeta => ({}));
 /** Start fetching the sunset lightmap before the cabin has arrived (main.ts calls this first thing). */
-export function prefetchLightmap() { lmSunsetP ??= loadTexture(LM_SUNSET); }
+export function prefetchLightmap() { lmSunsetP ??= loadTexture(LM_SUNSET); void lmMeta(); }
 
 /** Shared night uniform (0 = sunset, 1 = night). */
 export const uNight = { value: 0 };
@@ -54,7 +58,7 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   scene.environmentIntensity = 0.35;
 
   // The night lightmap is not needed for the first view: it streams in after the first frame (loadNight).
-  const lmSunset = await (lmSunsetP ?? loadTexture(LM_SUNSET));
+  const [lmSunset, meta] = await Promise.all([lmSunsetP ?? loadTexture(LM_SUNSET), lmMeta()]);
   const baked = !!lmSunset && !!cabin;
   const prepLM = (t: THREE.Texture | null) => { if (t) { t.flipY = false; t.channel = 1; t.needsUpdate = true; } return t; };
   prepLM(lmSunset);
@@ -109,7 +113,7 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   });
   // Normalise bake exposure so a darker/brighter bake still reads well.
   const gains = {
-    sunset: lmSunset ? clampGain(0.5 / meanLit(lmSunset), 1, 2.6) : 1,
+    sunset: lmSunset ? clampGain(0.5 / meanLit(lmSunset, meta.sunset?.mean), 1, 2.6) : 1,
   };
   // Until the night bake arrives, night = the sunset bake, dimmed.
   const nightU: NightUniforms = { lightMapNight: { value: lmSunset }, uNightGain: { value: 0.25 / gains.sunset } };
@@ -183,7 +187,7 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
     if (!t || !lmSunset) return;
     prepLM(t);
     nightU.lightMapNight.value = t;
-    nightU.uNightGain.value = clampGain(0.22 / meanLit(t), 1, 5) / gains.sunset;
+    nightU.uNightGain.value = clampGain(0.22 / meanLit(t, meta.night?.mean), 1, 5) / gains.sunset;
   });
   return { baked, setNight, setStorm, setFlash, loadNight, lanternWorld, flicker };
 }
@@ -232,8 +236,10 @@ function rainGlassMaterial(): THREE.ShaderMaterial {
 
 const clampGain = (g: number, a: number, b: number) => (Number.isFinite(g) ? Math.max(a, Math.min(b, g)) : a);
 
-/** Mean luminance (0..1, sRGB-ish) of the non-empty texels of a lightmap atlas. */
-function meanLit(tex: THREE.Texture): number {
+/** Mean luminance (0..1, sRGB-ish) of the non-empty texels of a lightmap atlas: the build-time value for a compressed
+ *  (KTX2) bake, else measured from the image. */
+function meanLit(tex: THREE.Texture, known?: number): number {
+  if ((tex as THREE.CompressedTexture).isCompressedTexture) return known ?? 0.5;
   try {
     const img = tex.image as CanvasImageSource & { width: number; height: number };
     const c = document.createElement('canvas');

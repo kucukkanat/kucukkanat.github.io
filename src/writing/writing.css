@@ -302,3 +302,5 @@
   .wr-page, .wr-index, .wr-scrim, .wr-progress i, .wr-crumb, .wr-step { transition: none; }
   .wr-page, .wr-index { transform: none; }
 }
+
+@media (pointer: coarse) { .wr-chip { min-height: 44px; } }

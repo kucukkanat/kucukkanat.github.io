@@ -110,6 +110,7 @@ export class UI {
     this.panel.addEventListener('keydown', e => {
       if (e.key === 'Escape') { e.stopPropagation(); this.closePanel(); }
     });
+    this.watchLongPress();
   }
 
   announce(text: string) { this.live.textContent = text; }
@@ -121,6 +122,28 @@ export class UI {
     for (const [v, b] of this.dockBtns) b.setAttribute('aria-current', String(v === view || (view === 'screen' && v === 'handheld')));
     this.backBtn.hidden = view === 'overview';
     for (const s of this.spots) s.el.hidden = view !== 'overview';
+    if (view === 'overview') this.flashTips();
+  }
+
+  /** Touch screens have no hover: show every hotspot's label for a few seconds (on arrival, and on a long press). */
+  private tipTimer = 0;
+  flashTips(ms = 3200) {
+    if (!matchMedia('(hover: none)').matches || !this.spots.length) return;
+    for (const s of this.spots) s.el.classList.add('show-tip');
+    clearTimeout(this.tipTimer);
+    this.tipTimer = window.setTimeout(() => { for (const s of this.spots) s.el.classList.remove('show-tip'); }, ms);
+  }
+  private watchLongPress() {
+    let timer = 0, x = 0, y = 0;
+    const cancel = () => clearTimeout(timer);
+    window.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch' || !e.isPrimary || !(e.target instanceof HTMLCanvasElement)) return;
+      x = e.clientX; y = e.clientY;
+      cancel();
+      timer = window.setTimeout(() => this.flashTips(), 480);
+    }, { passive: true });
+    window.addEventListener('pointermove', e => { if (Math.hypot(e.clientX - x, e.clientY - y) > 10) cancel(); }, { passive: true });
+    for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, cancel, { passive: true });
   }
 
   /** Sound button cycles off → ambient → full. */
@@ -146,11 +169,14 @@ export class UI {
       el.type = 'button';
       el.className = 'hotspot' + (pulse ? ' pulse' : '');
       el.setAttribute('aria-label', spot.label);
-      el.innerHTML = `<span class="tip" aria-hidden="true">${escapeHtml(spot.label)}</span>`;
+      // "Map chest — projects you can play": phones show only the name part
+      const [name, more] = spot.label.split(' — ');
+      el.innerHTML = `<span class="tip" aria-hidden="true">${escapeHtml(name)}${more ? `<span class="tip-more"> — ${escapeHtml(more)}</span>` : ''}</span>`;
       el.addEventListener('click', () => this.h.hotspot(spot.id));
       this.spotLayer.appendChild(el);
       return { spot, el };
     });
+    this.flashTips(4200);
   }
 
   /** Focusable buttons over the collectibles of the current view (keyboard + screen readers). */

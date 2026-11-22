@@ -6,11 +6,12 @@ import { setupPatch } from './patch';
 import type { Writing } from './writing/reader';
 import type { Search, SearchItem } from './writing/search';
 import { loadNotesIndex, shelveTopics, topicOf, topicItemId } from './writing/shelf';
+import './fonts.css';
 import './style.css';
 import * as THREE from 'three';
 import { loadContent, findItem } from './content';
 import { loadCaptain } from './captain';
-import { loadGLB, indexCabin, makeManager, type ViewName, type Cabin, type EggId } from './scene';
+import { loadGLB, indexCabin, makeManager, initKTX2, type ViewName, type Cabin, type EggId } from './scene';
 import { setupLighting, prefetchLightmap } from './lighting';
 import { setupSky, prefetchSky } from './sky';
 import { Collectibles, type Collectible, type Place } from './collectibles';
@@ -31,6 +32,11 @@ import { Hanging, addTestRigs } from './hang';
 import { LetterView } from './letter';
 import { ShipClock } from './clock';
 import { uRainSlant } from './lighting';
+import { lockZoom, registerSW, trackKeyboard } from './pwa';
+
+lockZoom();
+trackKeyboard();
+registerSW();
 
 const LETTER_KEY = 'kk-letter';
 const LETTER_ID = '__letter';
@@ -50,7 +56,7 @@ const showHint = () => {
   hintEl = document.createElement('div');
   hintEl.className = 'cam-hint';
   hintEl.setAttribute('role', 'status');
-  hintEl.textContent = touch ? 'Drag to look · two fingers to zoom and pan · double-tap to reset' : 'Drag to look · scroll to zoom · right-drag to pan · double-click to reset';
+  hintEl.textContent = touch ? 'Drag to look · two fingers to zoom · double-tap to reset · flick down to go back' : 'Drag to look · scroll to zoom · right-drag to pan · double-click to reset';
   document.body.appendChild(hintEl);
   requestAnimationFrame(() => hintEl?.classList.add('on'));
   setTimeout(hideHint, 6000);
@@ -88,11 +94,13 @@ async function main() {
   const app = document.getElementById('app')!;
   let renderer: THREE.WebGLRenderer;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    // phones: let the OS pick the GPU and power mode (high-performance drains batteries for little gain on the lite tier)
+    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: FULL ? 'high-performance' : 'default' });
   } catch {
     location.replace('/plain/');
     return;
   }
+  initKTX2(renderer); // starts the Basis transcoder download now, in parallel with the first view's files
   const touch = matchMedia('(pointer: coarse)').matches;
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, touch ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -653,7 +661,12 @@ async function main() {
   let frameMs = 16, slowFor = 0;
   let t = 0, last = -1, busyFrames = 60;
   let whaleCallT = 8;
-  const poke = () => { busyFrames = 30; };
+  // Frame pacing: phones (lite tier) draw at most 30 fps; after a while with no input and nothing animating on its
+  // own (camera moves, tweens), every tier eases down to ~20 fps, which keeps the ambient drift alive at a fraction
+  // of the battery. Any input restores the full rate at once.
+  const ACTIVE_MS = FULL ? 0 : 1000 / 30, IDLE_MS = 1000 / 20, IDLE_AFTER = 15000;
+  let lastInput = performance.now();
+  const poke = () => { busyFrames = 30; lastInput = performance.now(); };
   for (const ev of ['pointermove', 'pointerdown', 'keydown', 'resize', 'focusin', 'wheel', 'touchmove']) addEventListener(ev, poke, { passive: true });
   sky.update(0, 0);
   let firstFrame = true;
@@ -671,7 +684,9 @@ async function main() {
     idle(() => {
       void loadGLB('/assets/sky.glb').then(g => {
         skyGltf = g; outsideRef?.setSkyModels(g); sky.addModels(g);
-        // then the whales: after the sky has arrived, a little later on phones
+        // then the whales: after the sky has arrived, a little later on phones; never on data saver or a slow link
+        const net = (navigator as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+        if (net?.saveData || /(^|-)(2g|3g)$/.test(net?.effectiveType ?? '')) return;
         setTimeout(() => {
           void import('./whales-world').then(m => m.setupWhales(sky, scene)).then(w => {
             whalesRef = w;
@@ -687,18 +702,24 @@ async function main() {
       if (FULL) setTimeout(() => { void loadNightAssets(); void sky.loadStorm(); }, 6000);
     });
   };
+  const wheelSpin = new THREE.Quaternion();
   renderer.setAnimationLoop((now: number) => {
+    const idle = now - lastInput > IDLE_AFTER && !tweensActive() && !wheelHeld && Math.abs(wheelVel) < 0.01 && !outsideRef?.active;
+    const minMs = idle ? IDLE_MS : ACTIVE_MS;
+    // 2 ms of slack: rAF timestamps jitter, and a 60 Hz frame (16.7 ms) must still pass a 33.3 ms gap on the second one
+    if (last >= 0 && minMs && now - last < minMs - 2) return;
     const dt = last < 0 ? 0 : Math.min(Math.max((now - last) / 1000, 0), 0.1);
     last = now;
     t += dt;
     renderer.info.reset();
     // quality governor: if frames stay long for a couple of seconds, render fewer pixels; if that is not enough on
     // the full tier, drop the bloom. It only ever steps down (no see-sawing), and waits out the load-in hitches.
-    if (dt > 0 && dt < 0.1 && t > 4 && !document.hidden && !play.overlayOn) {
+    // (paced frames are judged against their own budget; idle frames not at all)
+    if (dt > 0 && dt < 0.1 && t > 4 && !document.hidden && !play.overlayOn && !idle) {
       frameMs += (dt * 1000 - frameMs) * 0.05;
-      if (frameMs > 25) slowFor += dt; else slowFor = Math.max(0, slowFor - dt * 2);
+      if (frameMs > (ACTIVE_MS ? ACTIVE_MS + 12 : 25)) slowFor += dt; else slowFor = Math.max(0, slowFor - dt * 2);
       if (slowFor > 2.5) {
-        slowFor = 0; frameMs = 18;
+        slowFor = 0; frameMs = ACTIVE_MS || 18;
         if (quality > 0.62) { quality *= 0.85; resize(); }
         else if (!fx.cheap) { fx.cheapen(); quality = 0.8; resize(); }
       }
@@ -709,7 +730,7 @@ async function main() {
       if (!wheelHeld) wheelVel += -wheelAngle * 0.6 * dt;
       wheelVel *= Math.exp(-(wheelHeld ? 6 : 1.2) * dt);
       wheelAngle += wheelVel * dt;
-      wheel.quaternion.copy(wheelBase).premultiply(new THREE.Quaternion().setFromAxisAngle(wheelAxis, wheelAngle));
+      wheel.quaternion.copy(wheelBase).premultiply(wheelSpin.setFromAxisAngle(wheelAxis, wheelAngle));
       sky.setYaw(clamp(wheelAngle * 0.08, -0.7, 0.7));
     }
     if (play.overlayOn) return; // the iframe covers everything: don't burn the GPU
@@ -801,7 +822,7 @@ async function main() {
   // Reveal
   setProgress(1);
   const loader = document.getElementById('loader');
-  requestAnimationFrame(() => { loader?.classList.add('done'); setTimeout(() => loader?.remove(), 800); });
+  requestAnimationFrame(() => { loader?.classList.add('done'); setTimeout(() => loader?.remove(), 800); ui.flashTips(4200); });
   // land in the cabin with a short zoom in (not on deep links, which open somewhere specific)
   if (!introOn && rig.view === 'overview') void rig.zoomInFrom(1.3, 1.8);
   function afterWelcome() {

@@ -1,10 +1,12 @@
-// Web copies of the whales for the site: Blender export (no Draco) -> resample clips -> meshopt + WebP.
+// Web copies of the whales for the site: Blender export (no Draco) -> resample clips -> meshopt -> KTX2 textures
+// (scripts/ktx2.ts: 2k colour ETC1S, normals UASTC; maps under 512 px stay WebP).
 //   bun whales/scripts/web.ts [species...]
 // Writes public/assets/whales/<sp>_A.glb (world near + viewer), <sp>_B.glb (viewer), <sp>_lite.glb (world far + phones)
 // and public/assets/whales/manifest.json.
 import { $ } from 'bun';
 import { mkdirSync, statSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { ktx2GLB } from '../../scripts/ktx2';
 
 const root = join(import.meta.dir, '..', '..');
 const BL = '/Applications/Blender.app/Contents/MacOS/Blender';
@@ -20,6 +22,7 @@ for (const sp of species) {
     await $`${BL} -b ${join(root, 'whales/out/blend', `${sp}_${style}.blend`)} --python ${join(root, 'whales/scripts/export_web.py')} -- ${raw} ${mode}`.quiet();
     await $`bunx gltf-transform resample ${raw} ${rs}`.quiet();
     await $`bunx gltf-transform meshopt ${rs} ${dst} --level high --quantize-position 14 --quantize-texcoord 12 --quantize-normal 10`.quiet();
+    await ktx2GLB(dst);
     console.log(`${name}.glb  ${(statSync(dst).size / 1024).toFixed(0)} KB`);
   }
 }

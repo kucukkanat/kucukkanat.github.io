@@ -12,14 +12,14 @@ Everything on the site comes from `content/`. You never touch 3D files to change
 
 | kind | Appears as | Required fields | Useful fields |
 |---|---|---|---|
-| `cartridge` | A cartridge in the map chest; can be inserted into the handheld | `title`, `group` (`games` \| `ai` \| `tools`) | `subtitle`, `year`, `order`, `colour`, `url`, `playable`, `embed`, `source`, `tags`, `labelPrompt` |
+| `cartridge` | A cartridge in the map chest; can be inserted into the handheld | `title`, `group` (`games` \| `ai` \| `tools`) | `subtitle`, `year`, `order`, `colour`, `url`, `playable`, `embed`, `orientation`, `source`, `tags`, `labelPrompt` |
 | `book` | A book on the shelf | `title` | `subtitle`, `year`, `colour`, `url` |
 | `notebook` | A notebook on the short shelf | `title` | same as book |
 | `memory-card` | A save card on the logbook rack — one per job | `title` | `role`, `period`, `current`, `achievements`, `colour`, `map: { x, y }` |
 
 A `memory-card` with `map: { x, y }` also becomes an island on the chart-table map (x left→right, y bottom→top, both 0–1; keep y between 0.38 and 0.62 to stay on the open band of the chart). The route is drawn through the islands in `order`.
 
-`playable: true` means the `url` can run inside the handheld (it must allow being shown in an iframe — GitHub Pages sites do). `embed` (optional) is the address the handheld loads instead, when the project has a compact embedded mode; `url` stays the link for “Open”.
+`playable: true` means the `url` can run inside the handheld (it must allow being shown in an iframe — GitHub Pages sites do). `embed` (optional) is the address the handheld loads instead, when the project has a compact embedded mode; `url` stays the link for “Open”. `orientation` (`landscape` \| `portrait`, optional) locks the phone to that orientation while the cartridge is fullscreen (Android Chrome; iPhones have no fullscreen for it).
 
 The body (below the second `---`) is short Markdown: paragraphs, lists, links, **bold**, *italic*.
 

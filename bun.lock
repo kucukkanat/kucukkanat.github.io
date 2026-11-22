@@ -13,6 +13,7 @@
         "@gltf-transform/cli": "^4.5.1",
         "@types/three": "^0.187.0",
         "bun-types": "^1.4.5",
+        "ktx2-encoder": "0.6.0",
         "marked": "^18.2.1",
         "marked-footnote": "^1.4.0",
         "pagefind": "^1.6.0",
@@ -351,6 +352,8 @@
     "kleur": ["kleur@3.0.3", "", {}, "sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w=="],
 
     "ktx-parse": ["ktx-parse@1.1.0", "", {}, "sha512-mKp3y+FaYgR7mXWAbyyzpa/r1zDWeaunH+INJO4fou3hb45XuNSwar+7llrRyvpMWafxSIi99RNFJ05MHedaJQ=="],
+
+    "ktx2-encoder": ["ktx2-encoder@0.6.0", "", { "dependencies": { "ktx-parse": "^1.1.0" } }, "sha512-gEWkw2YUlhKO4hXhqVLQQWJ+fGJObsXIwz0pGjJMclnQ4MQU3SAtN1MzutjFxO3ejWvxHyvFk5kr8+RtLmHiTA=="],
 
     "kuler": ["kuler@2.0.0", "", {}, "sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A=="],
 
