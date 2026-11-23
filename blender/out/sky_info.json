@@ -1,8 +1,8 @@
 {
  "files": [
   {
-   "path": "/Users/hilmitolga.sahin/Developer/personal_website/public/assets/sky.glb",
-   "bytes": 238844,
+   "path": "/Users/htolgasahin/Developer/kucukkanat.github.io/public/assets/sky.glb",
+   "bytes": 238356,
    "tris": 12471,
    "nodes": [
     "SKY_island_1",
@@ -65,12 +65,12 @@
     "SKY_clouds": {
      "tris": 2,
      "verts": 4,
-     "bytes": 35580
+     "bytes": 35092
     }
    }
   },
   {
-   "path": "/Users/hilmitolga.sahin/Developer/personal_website/public/assets/sky_full.glb",
+   "path": "/Users/htolgasahin/Developer/kucukkanat.github.io/public/assets/sky_full.glb",
    "bytes": 74128,
    "tris": 4252,
    "nodes": [

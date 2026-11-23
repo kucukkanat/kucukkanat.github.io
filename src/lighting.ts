@@ -27,7 +27,13 @@ export const uTime = { value: 0 };
 /** Lantern position (world) for the painted night highlights on brass. */
 export const uLanternPos = { value: new THREE.Vector3(-0.55, 1.05, -0.25) };
 /** Painted highlight strength per baked material (brass catches the light, polished wood a little). */
-const SHEEN: Record<string, number> = { Brass: 1, Gilt: 1.1, Mahogany: 0.16, Iron: 0.35, Glass: 0.5 };
+const SHEEN: Record<string, number> = { Brass: 1, Gilt: 1.1, Mahogany: 0.2, Iron: 0.35, Glass: 0.5, Leather: 0.1, DarkWood: 0.05 };
+/** Close-up detail: the material's own texture, sampled DETAIL_SCALE times finer, multiplied in (high-passed) and faded out
+ *  with distance, so painted surfaces keep some grain up close instead of going soft. Strength per material. */
+const DETAIL: Record<string, number> = { Planks: 0.32, WallPlanks: 0.3, DarkWood: 0.3, Mahogany: 0.24, Leather: 0.28, Cloth: 0.3, Brass: 0.14, Gilt: 0.14 };
+const DETAIL_SCALE = 4.7;
+/** Low-frequency brightness variation (fraction, ±) over large tiled surfaces, so the repeat of the texture doesn't show. */
+const MACRO: Record<string, number> = { Planks: 0.13, WallPlanks: 0.12, DarkWood: 0.12, Mahogany: 0.07, Leather: 0.06 };
 /** Whites and pale golds that must stay white in the warm, violet-shadowed bake (the cadet tunic and its insignia): how far they
  *  are pulled back to a neutral light. */
 const LIFT: Record<string, number> = { TunicWhite: 0.85, TunicShade: 0.8, PaleGold: 0.6, BrightGold: 0.4 };
@@ -60,7 +66,16 @@ export async function setupLighting(renderer: THREE.WebGLRenderer, scene: THREE.
   // The night lightmap is not needed for the first view: it streams in after the first frame (loadNight).
   const [lmSunset, meta] = await Promise.all([lmSunsetP ?? loadTexture(LM_SUNSET), lmMeta()]);
   const baked = !!lmSunset && !!cabin;
-  const prepLM = (t: THREE.Texture | null) => { if (t) { t.flipY = false; t.channel = 1; t.needsUpdate = true; } return t; };
+  // Anisotropic filtering: floors and walls are mostly seen at grazing angles, where plain mipmapping blurs them.
+  const aniso = Math.min(FULL ? 16 : 4, renderer.capabilities.getMaxAnisotropy());
+  const prepLM = (t: THREE.Texture | null) => { if (t) { t.flipY = false; t.channel = 1; t.anisotropy = aniso; t.needsUpdate = true; } return t; };
+  const seenTex = new Set<THREE.Texture>();
+  cabin?.root.traverse(o => {
+    for (const m of ([] as THREE.Material[]).concat((o as THREE.Mesh).material ?? [])) {
+      const t = (m as THREE.MeshStandardMaterial).map;
+      if (t && !seenTex.has(t)) { seenTex.add(t); t.anisotropy = aniso; t.needsUpdate = true; }
+    }
+  });
   prepLM(lmSunset);
 
   // Lights for dynamic objects (and for everything when there is no bake).
@@ -275,9 +290,13 @@ function bakedMaterial(src: THREE.MeshStandardMaterial, sunset: THREE.Texture, s
   // night texels are multiplied by uNightGain (relative to the sunset gain); the storm cools and dims the bake, lightning lifts it.
   const sheen = { value: SHEEN[src.name] ?? 0 };
   const lift = { value: LIFT[src.name] ?? 0 };
+  const detail = { value: src.map ? DETAIL[src.name] ?? 0 : 0 };
+  const macro = { value: src.map ? MACRO[src.name] ?? 0 : 0 };
   mat.onBeforeCompile = shader => {
     shader.uniforms.uSheen = sheen;
     shader.uniforms.uLift = lift;
+    shader.uniforms.uDetail = detail;
+    shader.uniforms.uMacro = macro;
     shader.uniforms.uLanternPos = uLanternPos;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vPN;\nvarying vec3 vPW;')
@@ -288,7 +307,24 @@ function bakedMaterial(src: THREE.MeshStandardMaterial, sunset: THREE.Texture, s
     shader.uniforms.lightMapNight = nightU.lightMapNight;
     shader.uniforms.uNightGain = nightU.uNightGain;
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <lightmap_pars_fragment>', '#include <lightmap_pars_fragment>\nuniform sampler2D lightMapNight;\nuniform float uNight;\nuniform float uStorm;\nuniform float uFlash;\nuniform float uNightGain;\nuniform float uSheen;\nuniform float uLift;\nuniform vec3 uLanternPos;\nvarying vec3 vPN;\nvarying vec3 vPW;')
+      .replace('#include <lightmap_pars_fragment>', '#include <lightmap_pars_fragment>\nuniform sampler2D lightMapNight;\nuniform float uNight;\nuniform float uStorm;\nuniform float uFlash;\nuniform float uNightGain;\nuniform float uSheen;\nuniform float uLift;\nuniform vec3 uLanternPos;\nuniform float uDetail;\nuniform float uMacro;\nvarying vec3 vPN;\nvarying vec3 vPW;' + TEX_FNS)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        #ifdef USE_MAP
+        if (uMacro > 0.0) {
+          // broad, soft light/dark patches in texture space (a few tiles across): breaks up the visible repeat
+          float m = vnoise(vMapUv * 0.43) * 0.65 + vnoise(vMapUv * 1.13 + 7.1) * 0.35;
+          diffuseColor.rgb *= 1.0 + uMacro * (m - 0.5) * 2.0;
+        }
+        if (uDetail > 0.0) {
+          // the texture itself, finer, divided by its own blurred average: only the grain is added, not a colour shift
+          vec2 dUv = vMapUv * ${DETAIL_SCALE.toFixed(2)} + vec2(0.37, 0.11);
+          float dFine = dot(texture2D(map, dUv).rgb, vec3(0.299, 0.587, 0.114));
+          float dAvg = dot(texture2D(map, dUv, 5.0).rgb, vec3(0.299, 0.587, 0.114));
+          float dTex = clamp(dFine / max(dAvg, 0.02), 0.55, 1.6);
+          float near = 1.0 - smoothstep(0.7, 3.2, length(cameraPosition - vPW));
+          diffuseColor.rgb *= mix(1.0, dTex, uDetail * near);
+        }
+        #endif`)
       .replace('#include <opaque_fragment>', `
         // side walls (bookcase, chest, rack, portrait) a little brighter so they hold their own against the windows
         outgoingLight *= 1.0 + ${SIDE.toFixed(3)} * smoothstep(1.0, 2.1, abs(vPW.x)) * (1.0 - 0.5 * uNight);
@@ -319,6 +355,15 @@ function bakedMaterial(src: THREE.MeshStandardMaterial, sunset: THREE.Texture, s
         lightMapTexel.rgb += uFlash * vec3(0.30, 0.33, 0.42);`,
       );
   };
-  mat.customProgramCacheKey = () => `baked-night-v5-${SIDE}`;
+  mat.customProgramCacheKey = () => `baked-night-v6-${SIDE}`;
   return mat;
 }
+
+/** Value noise for the baked materials (macro variation). */
+const TEX_FNS = /* glsl */`
+float vhash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(vhash(i), vhash(i + vec2(1.0, 0.0)), u.x), mix(vhash(i + vec2(0.0, 1.0)), vhash(i + vec2(1.0, 1.0)), u.x), u.y);
+}`;

@@ -46,3 +46,4 @@ Generated with OpenRouter through `scripts/gen-art.ts` (key in `~/.config/openro
 | Sky: 2 images (default model) | $0.26 |
 | **Labels + sky total** | **$1.63** |
 | Polish round: storm sky + portrait placeholder (default model) | $0.32 |
+| Texture round: wood_planks, mahogany, dark_wood, cloth regenerated with crisper prompts (default model) | $0.90 |

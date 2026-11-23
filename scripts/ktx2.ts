@@ -7,7 +7,7 @@
 // Choices (see README "Textures"): everything is ETC1S, the small-download Basis mode (the GPU gets ETC1/ETC2 on phones,
 // BC1/BC7 on desktop: 4–8 bpp instead of 32). UASTC (+RDO +Zstandard) was tried for the lightmaps and the normal maps:
 // 4–6x the download (a 1k lightmap: 760–950 KB vs 183 KB) with no visible difference in the scene.
-//  - colour / painted maps, sky backdrops, lightmaps: quality 192 (sRGB).
+//  - colour / painted maps, sky backdrops, lightmaps: quality 192 (sRGB); fine wood grain (FINE): 255, slower encoder.
 //  - normal maps: quality 255, normal-map mode, linear.  metallic/roughness/occlusion: stay WebP (see ktx2Textures).
 //  - maps under half of 512² stay WebP: as KTX2 they would download 2x+ bigger for <0.35 MB of GPU memory each.
 //  Sizes are rounded to multiples of 4 (resized, not padded, so UVs still line up); mipmaps are generated.
@@ -27,9 +27,13 @@ const ETC1S_QUALITY = 192;
 /** Normal maps: the full codebook (a few KB more; keeps the shading of the smooth whale skin free of banding). */
 const NORMAL_QUALITY = 255;
 const SMOOTH_QUALITY = ETC1S_QUALITY;
+/** Fine-grained painted wood: ETC1S at quality 192 smears the grain into 4×4 blocks. The full codebook and a slower
+ *  encoder keep it (about +20% on these maps, still a fraction of UASTC). Matched on the texture name or URI. */
+const FINE = /wood|planks|mahogany/i;
+const FINE_QUALITY = 255, FINE_LEVEL = 4;
 
 /** Encode one image (any format sharp reads) to KTX2. flipY: for images three.js would load with flipY = true. */
-export async function encodeImage(src: Uint8Array, kind: Kind, { flipY = false, quality = ETC1S_QUALITY } = {}): Promise<Uint8Array> {
+export async function encodeImage(src: Uint8Array, kind: Kind, { flipY = false, quality = ETC1S_QUALITY, level = 2 } = {}): Promise<Uint8Array> {
   const meta = await sharp(src).metadata();
   const w = Math.ceil(meta.width! / 4) * 4, h = Math.ceil(meta.height! / 4) * 4;
   let img = sharp(src).ensureAlpha();
@@ -39,7 +43,7 @@ export async function encodeImage(src: Uint8Array, kind: Kind, { flipY = false, 
   const imageDecoder = async () => ({ data: new Uint8Array(data), width: info.width, height: info.height });
   const srgb = kind === 'color';
   return encodeToKTX2(src, {
-    imageDecoder, isUASTC: false, generateMipmap: true, compressionLevel: 2,
+    imageDecoder, isUASTC: false, generateMipmap: true, compressionLevel: level,
     isPerceptual: srgb, isSetKTX2SRGBTransferFunc: srgb, isNormalMap: kind === 'normal',
     qualityLevel: kind === 'normal' ? NORMAL_QUALITY : quality,
   });
@@ -72,9 +76,10 @@ export function ktx2Textures({ log = console.log }: { log?: (s: string) => void 
       // ~12x the download (615–695 KB for a 1024² map vs 53 KB).
       if (kind === 'linear') { log(`  ${name} ${size.join('x')}: data map, kept as ${tex.getMimeType()}`); continue; }
       const before = tex.getImage()!.byteLength;
-      tex.setImage(await encodeImage(tex.getImage()!, kind)).setMimeType('image/ktx2');
+      const fine = kind === 'color' && FINE.test(name);
+      tex.setImage(await encodeImage(tex.getImage()!, kind, fine ? { quality: FINE_QUALITY, level: FINE_LEVEL } : {})).setMimeType('image/ktx2');
       if (tex.getURI()) tex.setURI(tex.getURI().replace(/\.\w+$/, '.ktx2'));
-      log(`  ${name} ${size.join('x')} ${kind}: ${kb(before)} → ${kb(tex.getImage()!.byteLength)}`);
+      log(`  ${name} ${size.join('x')} ${kind}${fine ? ' (fine)' : ''}: ${kb(before)} → ${kb(tex.getImage()!.byteLength)}`);
       any = true;
     }
     if (any) doc.createExtension(KHRTextureBasisu).setRequired(true);
