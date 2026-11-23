@@ -13,6 +13,9 @@ import { loadGLB } from './scene';
 import { uNight, uStorm } from './lighting';
 import { ShipRig } from './ship-rig';
 import { Flight, PACE, type Key } from './flight';
+import { Waypoints } from './stations';
+import { Input } from './input';
+import { coach, dismissCoach } from './coach';
 
 import { INTRO_KEY as KEY } from './intro-flag';
 const HOLD = (() => { const v = new URLSearchParams(location.search).get('introT'); return v === null || !Number.isFinite(+v) ? null : +v; })();
@@ -34,6 +37,16 @@ export interface OutsideHooks {
   /** The mix changed: 1 = all window sky (cabin), 0 = all outside world. For things that fade with it (light shafts). */
   mix?(k: number): void;
 }
+
+/** Orbit poses of the stations round the ship (yaw 0 = off the bow, +π/2 = off the port side; no yaw: keep it). */
+const STATIONS = {
+  bow: { yaw: 0.45, pitch: 0.1, dist: 38 },
+  port: { yaw: Math.PI / 2, pitch: 0.08, dist: 40 },
+  starboard: { yaw: -Math.PI / 2, pitch: 0.08, dist: 40 },
+  above: { yaw: undefined, pitch: 0.95, dist: 58 },
+} as const;
+
+const STATION_LABELS = [{ id: 'bow', label: 'Bow' }, { id: 'port', label: 'Port' }, { id: 'starboard', label: 'Starboard' }, { id: 'above', label: 'Above' }];
 
 // Path through the middle stern window, in cabin coordinates (windows face -Z, the bow is toward +Z).
 const WINDOW = new THREE.Vector3(0, 1.8, -2.62);
@@ -147,6 +160,12 @@ export class Outside {
   private hud: HTMLElement;
   private layer: HTMLElement;
   private hint: HTMLElement;
+  private helmBtn: HTMLButtonElement;
+  /**
+   * At the helm: the stick, the speed slider and the flight keys steer the ship. Off (the default) the view works
+   * like the cabin and the library (drag to look, pinch / scroll to zoom, arrow keys turn) and she sails on by herself.
+   */
+  helm = false;
   private stickEl: HTMLElement;
   private knobEl: HTMLElement;
   private thrEl: HTMLElement;
@@ -155,6 +174,9 @@ export class Outside {
   private mixK = 1;
   private rt: THREE.WebGLRenderTarget | null = null;
   private fadeQuad: THREE.Mesh;
+  /** Glowing dots round the ship (stations.ts): fly round to the bow, a side, above, or back in at the stern. */
+  private way: Waypoints;
+  private shipBox = new THREE.Box3(new THREE.Vector3(-6, 0, -4), new THREE.Vector3(6, 14, 22));
 
   constructor(private scene: THREE.Scene, private rig: CameraRig, private hooks: OutsideHooks) {
     this.world.name = 'OutsideWorld';
@@ -191,10 +213,10 @@ export class Outside {
     hud.className = 'outside-hud';
     hud.hidden = true;
     hud.innerHTML = `
-      <button type="button" class="btn out-in">Back inside</button>
       <div class="out-throttle" role="slider" tabindex="0" aria-label="Throttle" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100">
         <span class="out-thr-label">Speed</span><span class="out-thr-track"><span class="out-thr-fill"></span></span>
       </div>
+      <button type="button" class="btn out-helm" aria-pressed="false">Take the helm</button>
       <div class="out-stick" aria-hidden="true"><span class="out-knob"></span></div>
       <p class="out-hint" aria-live="polite"></p>`;
     hooks.root.append(layer, hud);
@@ -203,13 +225,21 @@ export class Outside {
     this.knobEl = hud.querySelector('.out-knob')!;
     this.thrEl = hud.querySelector('.out-throttle')!;
     this.thrFill = hud.querySelector('.out-thr-fill')!;
-    hud.querySelector('.out-in')!.addEventListener('click', () => { void this.goInside(); });
+    this.way = new Waypoints(hud, id => this.goStation(id));
+    this.setupStations();
+    this.helmBtn = hud.querySelector('.out-helm')!;
+    this.helmBtn.addEventListener('click', () => this.setHelm(!this.helm));
     this.bindPointer(layer);
+    this.bindStick();
     this.bindThrottle();
     this.setThrottle(CRUISE);
     addEventListener('keydown', (e: KeyboardEvent) => {
       if (this.mode === 'inside' || this.busy) return;
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); void this.goInside(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (this.helm) this.setHelm(false); else void this.goInside(); return; }
+      const a = document.activeElement;
+      if ((e.key === 'h' || e.key === 'H') && !e.metaKey && !e.ctrlKey && !e.altKey && !(a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement)) { this.setHelm(!this.helm); return; }
+      // away from the helm the keys are the shared camera keys (main.ts passes them to orbitBy / zoomBy)
+      if (!this.helm) return;
       // a slider focused with Tab keeps its own keys (arrows, Page Up/Down, Home/End); every other key still flies
       if (e.target === this.thrEl && /^(Arrow|Page|Home$|End$)/.test(e.key)) return;
       this.keys.add(e.key.toLowerCase());
@@ -285,6 +315,7 @@ export class Outside {
     this.scene.add(holder);
     holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(holder);
+    this.shipBox.copy(box);
     box.getCenter(this.centre);
     this.centre.y = lerp(box.min.y, box.max.y, 0.36);
   }
@@ -544,12 +575,44 @@ export class Outside {
   private showHud(on: boolean) {
     this.hud.hidden = !on;
     this.layer.hidden = !on;
-    if (!on) return;
+    if (!on) { this.setHelm(false); return; }
+    this.hud.classList.toggle('touch', matchMedia('(pointer: coarse)').matches);
+    this.setHint();
+    coach('outside'); // getting around: the same hint as indoors (once)
+  }
+
+  /** The helm's own help, shown while steering (getting around in general is coach.ts's one-time hint). */
+  private setHint() {
     const touch = matchMedia('(pointer: coarse)').matches;
-    this.hud.classList.toggle('touch', touch);
-    this.hint.textContent = touch
-      ? 'Left thumb steers · drag elsewhere to look · pinch to zoom · slider sets the speed'
-      : 'A / D or ← → turn · W / S or ↑ ↓ climb · Q / E speed · drag to look · scroll to zoom · Esc goes inside';
+    this.hint.hidden = !this.helm;
+    this.hint.textContent = !this.helm ? ''
+      : touch ? 'The stick steers · the slider sets the speed'
+        : 'A / D or ← → turn · W / S or ↑ ↓ climb · Q / E speed · the stick works too · Esc leaves the helm';
+  }
+
+  /** Take or leave the helm (see `helm`). */
+  setHelm(on: boolean) {
+    if (on && (this.busy || this.mode !== 'orbit')) return;
+    if (on === this.helm) return;
+    this.helm = on;
+    if (on) dismissCoach();
+    this.hud.classList.toggle('helm', on);
+    this.helmBtn.textContent = on ? 'Leave the helm' : 'Take the helm';
+    this.helmBtn.setAttribute('aria-pressed', String(on));
+    if (!on) { this.keys.clear(); this.stick.turn = this.stick.climb = 0; this.knobEl.style.transform = ''; this.stickEl.classList.remove('on'); }
+    this.setHint();
+  }
+
+  /** The shared camera moves (main.ts forwards the keys; the gestures come from this view's Input). */
+  orbitBy(dx: number, dy: number) {
+    if (this.busy || this.mode !== 'orbit') return;
+    this.way.setCurrent(null);
+    this.orbit.yawT -= dx * 4.2;
+    this.orbit.pitchT = clamp(this.orbit.pitchT + dy * 2.4, -0.5, 1.1);
+  }
+  zoomBy(f: number) {
+    if (this.busy || this.mode !== 'orbit') return;
+    this.orbit.distT = clamp(this.orbit.distT * f, 16, 110);
   }
 
   private bindThrottle() {
@@ -569,64 +632,86 @@ export class Outside {
     });
   }
 
+  // ───────────────────────── stations
+
+  private setupStations() {
+    const b = this.shipBox, c = this.centre, V = THREE.Vector3, at = (f: () => THREE.Vector3) => () => f();
+    // the ship stays put in the scene (the world turns round her), so her points are fixed between setShip calls
+    // on the hull, not at the box's edge: the box takes in the wing fins and the bowsprit
+    const lerpY = (k: number) => lerp(c.y, b.max.y, k);
+    this.way.set([
+      { id: 'bow', label: 'Bow — the figurehead', spot: at(() => new V(c.x, c.y + 1, lerp(c.z, b.max.z, 0.6))), facing: new V(0, 0, 1) },
+      { id: 'port', label: 'Port side', spot: at(() => new V(lerp(c.x, b.max.x, 0.4), c.y, c.z)), facing: new V(1, 0, 0) },
+      { id: 'starboard', label: 'Starboard side', spot: at(() => new V(lerp(c.x, b.min.x, 0.4), c.y, c.z)), facing: new V(-1, 0, 0) },
+      { id: 'above', label: 'Above — the masts and the sails', spot: at(() => new V(c.x, lerpY(0.6), c.z)) },
+      { id: 'inside', label: 'Stern windows — back inside to the cabin', spot: at(() => WINDOW), facing: new V(0, 0, -1) },
+    ]);
+  }
+
+  /** Stations for the dock (going back in is the shared Back button there). */
+  get stations() { return STATION_LABELS; }
+  /** The station the view is at (null: the opening view, or the visitor turned it by hand). */
+  get station() { return this.way.at; }
+
+  /** Swing the orbit round to a station (the shortest way), back to the opening view ('home'), or back inside. */
+  goStation(id: string) {
+    if (this.busy || this.mode !== 'orbit') return;
+    if (id === 'inside') { void this.goInside(); return; }
+    if (id === 'home') {
+      const o = this.orbit;
+      o.yawT += Math.atan2(Math.sin(2.55 - o.yawT), Math.cos(2.55 - o.yawT)); o.pitchT = 0.16; o.distT = 46;
+      this.way.setCurrent(null);
+      return;
+    }
+    const o = this.orbit, P = STATIONS[id as keyof typeof STATIONS];
+    if (!P) return;
+    const yaw = P.yaw ?? o.yawT;
+    o.yawT += Math.atan2(Math.sin(yaw - o.yawT), Math.cos(yaw - o.yawT));
+    o.pitchT = P.pitch; o.distT = P.dist;
+    this.way.setCurrent(id);
+  }
+
   // ───────────────────────── input
 
+  /** The same gestures as indoors (input.ts): drag looks, pinch / scroll zooms, double-tap back to the opening view. */
   private bindPointer(el: HTMLElement) {
-    const pts = new Map<number, { x: number; y: number }>();
-    let pinch = 0;
-    let down: { x: number; y: number; t: number; moved: boolean } | null = null;
-    // a touch that lands in the lower left becomes a floating thumbstick (centred where it landed); the rest look around
-    let stick: { id: number; x: number; y: number } | null = null;
-    const stickZone = (e: PointerEvent) => e.pointerType === 'touch' && e.clientX > 20 && e.clientX < innerWidth * 0.4 && e.clientY > innerHeight * 0.35;
-    const stickAt = (x: number, y: number) => {
-      const dx = x - stick!.x, dy = y - stick!.y, d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1;
+    new Input(el, this.rig.camera, {
+      targets: () => [],
+      hover: () => {},
+      click: (_hit, at) => this.hooks.click?.(new THREE.Vector2(at.x / innerWidth * 2 - 1, -(at.y / innerHeight) * 2 + 1)),
+      dragStart: () => false, drag: () => {}, dragEnd: () => {},
+      swipeDown: () => {}, escape: () => {}, look: () => {},
+      orbit: (dx, dy) => this.orbitBy(dx, dy),
+      zoom: f => this.zoomBy(f),
+      pan: () => {},
+      reset: () => this.goStation('home'),
+    }, { keys: false, passThrough: false });
+  }
+
+  /** The helm's stick: a pad bottom left (drag the knob; it springs back when let go). */
+  private bindStick() {
+    const pad = this.stickEl;
+    let id = -1;
+    const at = (e: PointerEvent) => {
+      const r = pad.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), d = Math.hypot(dx, dy), k = d > STICK_R ? STICK_R / d : 1;
       this.knobEl.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
       this.stick.turn = clamp(dx / STICK_R, -1, 1);
       this.stick.climb = clamp(-dy / STICK_R, -1, 1);
     };
-    const stickEnd = () => {
-      stick = null; this.stick.turn = this.stick.climb = 0;
-      this.stickEl.classList.remove('on'); this.stickEl.style.left = this.stickEl.style.top = ''; this.knobEl.style.transform = '';
+    const end = (e: PointerEvent) => {
+      if (e.pointerId !== id) return;
+      id = -1; this.stick.turn = this.stick.climb = 0;
+      pad.classList.remove('on'); this.knobEl.style.transform = '';
     };
-    el.addEventListener('pointerdown', e => {
-      el.setPointerCapture(e.pointerId);
-      if (!stick && !this.busy && stickZone(e)) {
-        stick = { id: e.pointerId, x: e.clientX, y: e.clientY };
-        this.stickEl.classList.add('on'); this.stickEl.style.left = `${e.clientX}px`; this.stickEl.style.top = `${e.clientY}px`;
-        stickAt(e.clientX, e.clientY);
-        return;
-      }
-      pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); pinch = 0;
-      down = pts.size === 1 ? { x: e.clientX, y: e.clientY, t: performance.now(), moved: false } : null;
+    pad.addEventListener('pointerdown', e => {
+      if (!this.helm || id !== -1) return;
+      e.preventDefault(); e.stopPropagation();
+      id = e.pointerId; pad.setPointerCapture(id); pad.classList.add('on'); at(e);
     });
-    const up = (e: PointerEvent) => { if (e.pointerId === stick?.id) { stickEnd(); return; } pts.delete(e.pointerId); pinch = 0; };
-    el.addEventListener('pointerup', e => {
-      if (e.pointerId === stick?.id) return;
-      if (down && !down.moved && e.type === 'pointerup' && performance.now() - down.t < 450 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8)
-        this.hooks.click?.(new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1));
-      down = null;
-    });
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
-    el.addEventListener('pointermove', e => {
-      if (e.pointerId === stick?.id) { stickAt(e.clientX, e.clientY); return; }
-      const p = pts.get(e.pointerId);
-      if (!p || this.busy) return;
-      const dx = e.clientX - p.x, dy = e.clientY - p.y;
-      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 8) down.moved = true;
-      if (pts.size === 2) {
-        p.x = e.clientX; p.y = e.clientY;
-        const [a, b] = [...pts.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinch > 0) this.orbit.distT = clamp(this.orbit.distT * pinch / Math.max(d, 1), 16, 110);
-        pinch = d;
-        return;
-      }
-      p.x = e.clientX; p.y = e.clientY;
-      this.orbit.yawT -= dx / innerWidth * 4.2;
-      this.orbit.pitchT = clamp(this.orbit.pitchT + dy / innerHeight * 2.4, -0.5, 1.1);
-    });
-    el.addEventListener('wheel', e => { e.preventDefault(); this.orbit.distT = clamp(this.orbit.distT * Math.exp(e.deltaY * 0.0012), 16, 110); }, { passive: false });
+    pad.addEventListener('pointermove', e => { if (e.pointerId === id) at(e); });
+    pad.addEventListener('pointerup', end);
+    pad.addEventListener('pointercancel', end);
   }
 
   // ───────────────────────── per frame
@@ -653,6 +738,7 @@ export class Outside {
     if (this.mixK >= 1 && this.mode === 'inside') return;
     for (const sp of this.spinners) sp.o.rotateOnAxis(sp.axis, sp.rps * Math.PI * 2 * dt);
     if (this.mode === 'inside' || this.busy) {
+      this.way.setVisible(false);
       // the opening shot and the way in and out: the ship cruising with its hands off the helm
       this.layoutWorld();
       this.parts?.update(dt, { turn: 0, climb: 0, throttle: CRUISE, speed: CRUISE, worldQ: this.world.quaternion, speedMs: CRUISE * MAX_SPEED, climbMs: 0 });
@@ -677,7 +763,8 @@ export class Outside {
     s.pos.addScaledVector(fwd, s.speed * dt);
     const climbMs = s.climb * (2 + s.speed * 0.4); // the lift stone climbs even at a stop
     s.pos.y = clamp(s.pos.y + climbMs * dt, -70, 140);
-    o.yaw = damp(o.yaw, o.yawT, 8); o.pitch = damp(o.pitch, o.pitchT, 8); o.dist = damp(o.dist, o.distT, 6);
+    if (reducedMotion) { o.yaw = o.yawT; o.pitch = o.pitchT; o.dist = o.distT; } // a station or a turn: cut, no swing
+    else { o.yaw = damp(o.yaw, o.yawT, 8); o.pitch = damp(o.pitch, o.pitchT, 8); o.dist = damp(o.dist, o.distT, 6); }
     const att = this.layoutWorld();
     this.parts?.update(dt, { turn: s.turn, climb: s.climb, throttle: this.throttle, speed: sp, worldQ: this.world.quaternion, speedMs: s.speed, climbMs });
     // level orbit pose, then lean it with the world about the ship's centre
@@ -687,5 +774,7 @@ export class Outside {
     this.pose.up.set(0, 1, 0).applyQuaternion(att);
     this.rig.cine = this.pose;
     this.dome.position.copy(this.pose.pos);
+    this.way.setVisible(true);
+    this.way.update(this.rig.camera);
   }
 }

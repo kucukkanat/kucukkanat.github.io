@@ -11,8 +11,10 @@ export interface UIHandlers {
   insert(id: string): void;
   panelClosed(): void;
   toggleNight(): void;
-  /** Leave the cabin for the outside view of the ship. */
-  outside(): void;
+  /** Go to one of the three places (the dock's place switcher). */
+  place(p: Place): void;
+  /** Go to a station of the library or the outside view (the dock's middle row there). */
+  station(id: string): void;
   /** Open the Ship's Index (all writing). */
   writing(): void;
   /** Open the search palette. */
@@ -27,6 +29,14 @@ export interface UIHandlers {
 }
 
 export interface Spot { id: string; label: string; world: THREE.Vector3; }
+
+/** Where the visitor is: the dock and the Back button are the same in all three. */
+export type Place = 'cabin' | 'library' | 'outside';
+const PLACES: { p: Place; label: string; aria: string }[] = [
+  { p: 'cabin', label: 'Cabin', aria: 'The captain’s cabin' },
+  { p: 'library', label: 'Library', aria: 'Down the hatch to the library' },
+  { p: 'outside', label: 'Outside', aria: 'Go outside and see the ship' },
+];
 
 const NAV: { view: ViewName; label: string }[] = [
   { view: 'chest', label: 'Projects' },
@@ -48,6 +58,14 @@ export class UI {
   root: HTMLElement;
   private dockBtns = new Map<ViewName, HTMLButtonElement>();
   private backBtn: HTMLButtonElement;
+  /** The Back button and the dock: kept on screen in every place (the rest of root is the cabin's). */
+  readonly chrome: HTMLElement;
+  private navEl: HTMLElement;
+  private placeBtns = new Map<Place, HTMLButtonElement>();
+  private stationBtns = new Map<string, HTMLButtonElement>();
+  private place: Place = 'cabin';
+  private view: ViewName = 'overview';
+  private visible = true;
   private soundBtn: HTMLButtonElement;
   private nightBtn: HTMLButtonElement;
   private spots: { spot: Spot; el: HTMLButtonElement }[] = [];
@@ -76,8 +94,8 @@ export class UI {
       <div class="dock" role="toolbar" aria-label="Cabin">
         <nav aria-label="Viewpoints"></nav>
         <span class="sep" aria-hidden="true"></span>
+        <div class="places" role="group" aria-label="Places"></div>
         <button class="nav writing-btn" type="button" aria-label="Index: open the Ship's Index">Index</button>
-        <button class="nav outside-btn" type="button" aria-label="Go outside and see the ship">Outside</button>
         <span class="sep" aria-hidden="true"></span>
         <button class="icon-btn search" type="button" aria-label="Search (press / or Ctrl+K)" aria-keyshortcuts="/ Control+K Meta+K"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
         <button class="icon-btn night" type="button" aria-pressed="false" aria-label="Lantern: switch to night">${ICON.lantern}</button>
@@ -86,7 +104,28 @@ export class UI {
       <section class="panel" role="dialog" aria-modal="false" aria-labelledby="panel-title" hidden></section>
       <div class="sr-only" aria-live="polite"></div>`;
     parent.appendChild(root);
-    const nav = root.querySelector('nav')!;
+    const chrome = this.chrome = document.createElement('div');
+    chrome.className = 'ui ui-chrome';
+    chrome.dataset.place = 'cabin';
+    chrome.append(root.querySelector('.back')!, root.querySelector('.dock')!);
+    parent.appendChild(chrome);
+    const places = chrome.querySelector('.places')!;
+    for (const pl of PLACES) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'nav place'; b.textContent = pl.label;
+      b.setAttribute('aria-label', pl.aria);
+      b.addEventListener('click', () => h.place(pl.p));
+      places.appendChild(b);
+      this.placeBtns.set(pl.p, b);
+    }
+    this.placeBtns.get('cabin')!.setAttribute('aria-current', 'true');
+    // the dock's height, for what sits above it in the library and outside (--dock-h)
+    const dock = chrome.querySelector<HTMLElement>('.dock')!;
+    const measure = () => document.documentElement.style.setProperty('--dock-h', `${Math.max(0, Math.round(innerHeight - dock.getBoundingClientRect().top))}px`);
+    new ResizeObserver(measure).observe(dock);
+    addEventListener('resize', measure);
+    measure();
+    const nav = this.navEl = chrome.querySelector('nav')!;
     for (const n of NAV) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'nav'; b.textContent = n.label;
@@ -95,15 +134,14 @@ export class UI {
       this.dockBtns.set(n.view, b);
     }
     root.querySelector('.letter-link')!.addEventListener('click', () => h.letter());
-    this.backBtn = root.querySelector('.back')!;
+    this.backBtn = chrome.querySelector('.back')!;
     this.backBtn.addEventListener('click', () => h.back());
-    this.soundBtn = root.querySelector('.sound')!;
+    this.soundBtn = chrome.querySelector('.sound')!;
     this.soundBtn.addEventListener('click', () => h.toggleSound());
-    this.nightBtn = root.querySelector('.night')!;
+    this.nightBtn = chrome.querySelector('.night')!;
     this.nightBtn.addEventListener('click', () => h.toggleNight());
-    root.querySelector('.outside-btn')!.addEventListener('click', () => h.outside());
-    root.querySelector('.writing-btn')!.addEventListener('click', () => h.writing());
-    root.querySelector('.search')!.addEventListener('click', () => h.search());
+    chrome.querySelector('.writing-btn')!.addEventListener('click', () => h.writing());
+    chrome.querySelector('.search')!.addEventListener('click', () => h.search());
     this.spotLayer = root.querySelector('.spots')!;
     this.panel = root.querySelector('.panel')!;
     this.live = root.querySelector('[aria-live]')!;
@@ -119,8 +157,9 @@ export class UI {
   setQuiet(on: boolean) { this.spotLayer.classList.toggle('quiet', on); }
 
   setView(view: ViewName) {
+    this.view = view;
     for (const [v, b] of this.dockBtns) b.setAttribute('aria-current', String(v === view || (view === 'screen' && v === 'handheld')));
-    this.backBtn.hidden = view === 'overview';
+    if (this.place === 'cabin') this.setBack(view === 'overview' ? null : 'Back');
     for (const s of this.spots) s.el.hidden = view !== 'overview';
     if (view === 'overview') this.flashTips();
   }
@@ -311,5 +350,47 @@ export class UI {
     if (!silent) this.h.panelClosed();
   }
 
-  setVisible(on: boolean) { this.root.style.display = on ? '' : 'none'; }
+  /** Everything, dock included (the handheld's screen, the reader). */
+  setVisible(on: boolean) { this.visible = on; this.sync(); }
+  private sync() {
+    this.root.style.display = this.visible && this.place === 'cabin' ? '' : 'none';
+    this.chrome.style.display = this.visible ? '' : 'none';
+  }
+
+  /**
+   * Which place is on screen. The cabin's own UI (brand, hotspots, panel) shows only in the cabin; the dock and Back
+   * stay, the dock's middle row listing that place's stations.
+   */
+  setPlace(place: Place, stations: { id: string; label: string }[] = []) {
+    if (place === this.place && place === 'cabin') return;
+    this.place = place;
+    this.chrome.dataset.place = place;
+    for (const [p, b] of this.placeBtns) b.setAttribute('aria-current', String(p === place));
+    const dock = this.chrome.querySelector('.dock')!;
+    dock.setAttribute('aria-label', place === 'cabin' ? 'Cabin' : place === 'library' ? 'Library' : 'Outside the ship');
+    this.navEl.setAttribute('aria-label', place === 'cabin' ? 'Viewpoints' : 'Places to go');
+    this.stationBtns.clear();
+    if (place === 'cabin') { this.navEl.replaceChildren(...this.dockBtns.values()); this.setView(this.view); }
+    else {
+      this.navEl.replaceChildren(...stations.map(st => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'nav'; b.textContent = st.label;
+        b.addEventListener('click', () => this.h.station(st.id));
+        this.stationBtns.set(st.id, b);
+        return b;
+      }));
+      this.setBack(null);
+    }
+    this.sync();
+  }
+
+  /** The library's / outside's current station in the dock (null: none, the visitor wandered off). */
+  setStation(id: string | null) { for (const [k, b] of this.stationBtns) b.setAttribute('aria-current', String(k === id)); }
+
+  /** The Back button: what it will do ("Close the book", "Back inside"…), or null to hide it. */
+  setBack(label: string | null) {
+    this.backBtn.hidden = label === null;
+    const span = this.backBtn.querySelector('span')!;
+    if (label !== null && span.textContent !== label) span.textContent = label;
+  }
 }

@@ -3,8 +3,9 @@ import * as THREE from 'three';
 export interface InputHandlers {
   /** Return the objects to raycast for the current state. */
   targets(): THREE.Object3D[];
-  hover(hit: THREE.Intersection | null): void;
-  click(hit: THREE.Intersection | null): void;
+  /** `at`: the pointer (client px), given for mouse hover. */
+  hover(hit: THREE.Intersection | null, at?: Point): void;
+  click(hit: THREE.Intersection | null, at: Point): void;
   /** Drag starting on an object (or on nothing); return true to capture it (e.g. the wheel, an inspected item). */
   dragStart(hit: THREE.Intersection | null): boolean;
   drag(dx: number, dy: number): void;
@@ -14,18 +15,38 @@ export interface InputHandlers {
   look(x: number, y: number): void;
   /** Free drag (not on a captured object): fractions of the canvas width/height. */
   orbit(dxNorm: number, dyNorm: number): void;
-  /** Zoom by a factor: <1 closer, >1 further. */
-  zoom(f: number): void;
+  /** Zoom by a factor: <1 closer, >1 further. `at`: the point to zoom toward (client px), when there is one. */
+  zoom(f: number, at?: Point): void;
   /** Slide the camera: fractions of the canvas width/height (two-finger drag, right/shift-drag, shift+arrows). */
   pan(dxNorm: number, dyNorm: number): void;
-  /** Double-click / double-tap / "0": back to the view's own framing. */
-  reset(): void;
+  /** Double-click / double-tap / "0": back to the view's own framing. `at`: where it was tapped (not for "0"). */
+  reset(at?: Point): void;
+}
+
+export interface Point { x: number; y: number }
+
+export interface InputOptions {
+  /** Camera keys and Esc on the window (default true). Off for a second layer whose keys the first one forwards. */
+  keys?: boolean;
+  /**
+   * Touches on controls over the canvas whose data-pass-gestures has this value count for gestures (default '': the
+   * cabin's hotspots). false: none. Each gesture layer takes only its own controls' touches.
+   */
+  passThrough?: string | false;
 }
 
 /** Touches starting this close (px) to a side edge don't orbit (system back / app-switch gestures live there). */
 const EDGE = 20;
 
-/** Pointer, wheel, pinch and keyboard input over the canvas. */
+/**
+ * Pointer, wheel, pinch and keyboard input over the canvas, the same everywhere (cabin and library):
+ *   one finger / left drag        look around (orbit)
+ *   pinch / scroll                zoom (toward the fingers / the pointer)
+ *   two fingers / right or shift-drag / shift+arrows   slide (pan)
+ *   tap / click                   act on what is under it
+ *   double-tap / double-click / 0 back to the view's own framing
+ *   quick flick down / Esc        back
+ */
 export class Input {
   private ray = new THREE.Raycaster();
   private ndc = new THREE.Vector2();
@@ -46,7 +67,7 @@ export class Input {
   private gestured = new Set<number>();
   private suppressClickUntil = 0;
 
-  constructor(private el: HTMLElement, private camera: THREE.Camera, private h: InputHandlers) {
+  constructor(private el: HTMLElement, private camera: THREE.Camera, private h: InputHandlers, opts: InputOptions = {}) {
     el.style.touchAction = 'none'; // we handle pan/pinch ourselves
     el.addEventListener('pointerdown', this.onDown);
     el.addEventListener('pointermove', this.onMove);
@@ -63,13 +84,14 @@ export class Input {
       }
       // trackpad pinch arrives as ctrl+wheel with small deltas; mouse wheels as big steps
       const k = e.ctrlKey ? 0.01 : 0.0015;
-      h.zoom(Math.exp(THREE.MathUtils.clamp(e.deltaY, -120, 120) * k));
+      h.zoom(Math.exp(THREE.MathUtils.clamp(e.deltaY, -120, 120) * k), { x: e.clientX, y: e.clientY });
     }, { passive: false });
-    el.addEventListener('dblclick', () => h.reset());
+    el.addEventListener('dblclick', e => h.reset({ x: e.clientX, y: e.clientY }));
     // A finger on a control over the canvas ([data-pass-gestures], e.g. a hotspot dot) never reached the canvas, so
     // a pinch / pan / orbit with one finger there was seen as one finger or none. Route those touches here too:
     // a tap still clicks the button, anything more becomes a camera gesture and the click is swallowed.
-    const through = (e: PointerEvent) => e.pointerType !== 'mouse' && e.target instanceof Element && e.target !== el && !!e.target.closest('[data-pass-gestures]');
+    const pass = opts.passThrough ?? '';
+    const through = (e: PointerEvent) => pass !== false && e.pointerType !== 'mouse' && e.target instanceof Element && e.target !== el && !!e.target.closest(`[data-pass-gestures="${pass}"]`);
     window.addEventListener('pointerdown', e => { if (through(e)) { this.overlay.add(e.pointerId); this.onDown(e); } }, true);
     window.addEventListener('pointermove', e => { if (this.overlay.has(e.pointerId) && e.target !== el) this.onMove(e); }, true);
     window.addEventListener('pointerup', e => { if (this.overlay.has(e.pointerId) && e.target !== el) this.onUp(e); }, true);
@@ -77,7 +99,7 @@ export class Input {
     window.addEventListener('click', e => {
       if (performance.now() < this.suppressClickUntil) { e.preventDefault(); e.stopPropagation(); this.suppressClickUntil = 0; }
     }, true);
-    window.addEventListener('keydown', e => {
+    if (opts.keys !== false) window.addEventListener('keydown', e => {
       if (e.key === 'Escape') { h.escape(); return; }
       // camera keys only when nothing else (a panel, a button) has focus
       const a = document.activeElement;
@@ -178,7 +200,7 @@ export class Input {
       this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.touches.size >= 2) {
         const d = this.pinchSpan(), m = this.mid();
-        if (this.pinchDist > 0 && d > 0) this.h.zoom(this.pinchDist / d);
+        if (this.pinchDist > 0 && d > 0) this.h.zoom(this.pinchDist / d, m);
         this.h.pan((m.x - this.pinchMid.x) / this.el.clientWidth, (m.y - this.pinchMid.y) / this.el.clientHeight);
         this.pinchDist = d; this.pinchMid = m;
         return;
@@ -200,7 +222,7 @@ export class Input {
         this.pendingHover = true;
         requestAnimationFrame(() => {
           this.pendingHover = false;
-          if (!this.captured && !this.down) this.h.hover(this.pick(this.lastMove.x, this.lastMove.y));
+          if (!this.captured && !this.down) this.h.hover(this.pick(this.lastMove.x, this.lastMove.y), { ...this.lastMove });
         });
       }
     }
@@ -233,7 +255,7 @@ export class Input {
     if (this.captured) {
       this.captured = false;
       this.h.dragEnd();
-      if (!this.moved) this.h.click(this.pick(e.clientX, e.clientY));
+      if (!this.moved) this.h.click(this.pick(e.clientX, e.clientY), { x: e.clientX, y: e.clientY });
       return;
     }
     if (!this.moved) {
@@ -243,11 +265,11 @@ export class Input {
       const hit = this.pick(e.clientX, e.clientY);
       if (d.type !== 'mouse' && !hit) {
         if (now - this.lastTap < 300 && Math.hypot(e.clientX - this.lastTapAt.x, e.clientY - this.lastTapAt.y) < 40) {
-          this.h.reset(); this.lastTap = 0; return;
+          this.h.reset({ x: e.clientX, y: e.clientY }); this.lastTap = 0; return;
         }
         this.lastTap = now; this.lastTapAt = { x: e.clientX, y: e.clientY };
       } else this.lastTap = 0;
-      this.h.click(hit);
+      this.h.click(hit, { x: e.clientX, y: e.clientY });
       return;
     }
     // a quick single-finger flick down → back (slow vertical drags tilt the camera instead)

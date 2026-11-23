@@ -6,8 +6,13 @@
 //
 //   books     one per topic of the notes index (content/topics), on the Book_slot<i> shelf places, in topic order
 //   notes     clicking a note in the open book opens the main reader (writing/reader.ts) over the library
-//   camera    the library's own director (push-in while he talks, fetch tracking), drag to pan, wheel/pinch zoom,
-//             double-click to go and look; a pointer layer of its own, so the cabin's input never sees these events
+//   camera    the library's own director (push-in while he talks, fetch tracking) with the visitor's gestures on top,
+//             the same as in the cabin (input.ts): drag to look around, two fingers / right-drag to slide, pinch /
+//             scroll to zoom, double-tap a shelf to go and look (or back to the framing after looking around). The
+//             gestures arrive on a layer of the deck's own over the canvas, so the cabin's handlers never see them;
+//             the cabin's keys are forwarded here (main.ts)
+//   stations  glowing dots (stations.ts) for the places to go: the Librarian, the bookcase, the side shelves, the
+//             reading table, the portholes and the ladder up to the cabin
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { CameraRig } from '../camera';
@@ -16,6 +21,9 @@ import type { NotesIndex } from '../writing/types';
 import { loadGLB } from '../scene';
 import { FULL } from '../tier';
 import { tween, ease, reducedMotion } from '../anim';
+import { Input, type Point } from '../input';
+import { Waypoints, type Station } from '../stations';
+import { coach } from '../coach';
 import { loadRoom, roomLights, type Room } from './room';
 import { Librarian, type Events, type RuntimeConfig } from './librarian';
 import { ScriptedBrain } from './brain';
@@ -97,6 +105,19 @@ export class Deck {
   }
 
   get active() { return this.phase !== 'cabin'; }
+
+  /** The cabin's camera keys while below (arrows, shift+arrows, +/-, 0): the same moves as the gestures. */
+  orbit(dx: number, dy: number) { if (this.below) this.w?.orbit(dx, dy); }
+  zoom(f: number) { if (this.below) this.w?.zoomGesture(f); }
+  pan(dx: number, dy: number) { if (this.below) this.w?.panGesture(dx, dy); }
+  reset() { if (this.below) this.w?.reset(); }
+
+  /** Stations (stations.ts): for the dock and the address (?station=). */
+  get stations() { return this.w?.stations ?? []; }
+  get station() { return this.w?.station ?? null; }
+  goStation(id: string) { if (this.below) this.w?.goStation(id); }
+  /** The shared Back button's label below deck (null while going up or down). */
+  get backLabel(): string | null { return this.below && this.w ? this.w.backLabel : null; }
   get below() { return this.phase === 'below'; }
   get busy() { return this.phase === 'down' || this.phase === 'up'; }
 
@@ -293,9 +314,6 @@ class World {
   private scroll: SpeechScroll;
   private book3d: OpenBook;
   private drawer: ReturnType<typeof catalogueDrawer>;
-  private closeBtn = document.createElement('button');
-  private backBtn = document.createElement('button');
-  private upBtn = document.createElement('button');
   private history: Msg[] = [];
   private recommended: string[] = [];
   private shown = 0; private added = 0; private spoken = '';
@@ -312,6 +330,12 @@ class World {
   private lensFov = 50;
   private readBlend = 0;
   private follow = { yaw: 0, pitch: 0 };
+  /** The visitor's look around (radians, goal and damped), on top of the director's shot. */
+  private turn = { yaw: 0, pitch: 0, tyaw: 0, tpitch: 0 };
+  private way: Waypoints;
+  private stationList: Station[] = [];
+  /** Camera poses of the stations other than his (the main shot) and the ladder (which leaves). */
+  private stops = new Map<string, { pos: THREE.Vector3; target: THREE.Vector3 }>();
   private greeted = false;
   private flame = new THREE.Vector3();
 
@@ -345,6 +369,8 @@ class World {
     this.home = { pos: camEmpty.getWorldPosition(new THREE.Vector3()), target: new THREE.Vector3().fromArray(camEmpty.userData.target as number[]) };
     const table = room.get('Table_drop')!.getWorldPosition(new THREE.Vector3());
     this.director = setupDirector(this.home, this.lib, table.clone().add(new THREE.Vector3(0, 0.1, 0)));
+    this.way = new Waypoints(ui, id => this.goStation(id), 'deck');
+    this.setupStations(hd);
 
     // UI
     this.chat = new Chat(ui);
@@ -362,14 +388,6 @@ class World {
     };
     this.drawer = catalogueDrawer(table, { wood: roomMap('Mahogany'), brass: roomMap('Brass') });
     group.add(this.drawer.group);
-    for (const [b, cls, text] of [[this.closeBtn, 'deck-btn deck-close', 'Close the book'], [this.backBtn, 'deck-btn deck-close', 'Back to the Librarian'], [this.upBtn, 'deck-btn deck-up', 'Up to the cabin']] as const) {
-      b.type = 'button'; b.className = cls; b.textContent = text; ui.appendChild(b);
-    }
-    this.closeBtn.hidden = this.backBtn.hidden = true;
-    this.upBtn.setAttribute('aria-label', 'Climb back up to the cabin');
-    this.closeBtn.addEventListener('click', () => this.closeBook());
-    this.backBtn.addEventListener('click', () => this.goHome());
-    this.upBtn.addEventListener('click', () => hooks.up());
 
     this.lib.onSyllable = () => hooks.blip?.();
     this.lib.onBookLanded = id => {
@@ -382,9 +400,7 @@ class World {
       hooks.paper?.();
       hooks.announce(`${t.title} is open on the table: ${t.notes.map(n => n.title).join(', ')}.`);
       this.reading = { topic: t, book: b };
-      this.closeBtn.textContent = 'Close the book';
       this.pan.tx = this.pan.ty = 0;
-      this.closeBtn.hidden = false;
     };
     this.book3d.onClose = () => { if (this.reading?.book) this.reading.book.visible = true; this.reading = null; this.pan.tx = this.pan.ty = 0; };
     this.chat.onSend = text => { this.chat.setHint(null); void this.ask(text); };
@@ -438,15 +454,9 @@ class World {
       this.speak('Ahoy, and welcome below! I keep the captain’s library. The books with brass nameplates are his notes: ask me for a subject, tap one below, or browse the card catalogue on the table.');
       const tour = this.topics.map(t => t.id);
       setTimeout(() => { this.lib.emote('point'); this.life.suggest(tour, 8); }, 1800);
-      const tip = document.createElement('div');
-      tip.className = 'deck-tip deck-parchment';
-      tip.textContent = matchMedia('(pointer: coarse)').matches
-        ? 'Drag to pan · pinch to zoom · double-tap a shelf to go and look'
-        : 'Drag to pan · scroll to zoom · double-click a shelf to go and look';
-      this.chat.el.parentElement!.appendChild(tip);
-      setTimeout(() => tip.classList.add('gone'), 9000);
-      setTimeout(() => tip.remove(), 10500);
     }
+    // getting around: the same hint as upstairs and outside (once), above his chat
+    setTimeout(() => coach('library', { above: this.chat.el }), 1200);
     this.lib.setState('talking');
     void this.until(() => !this.lib.speaking).then(() => this.scroll.done());
   }
@@ -470,7 +480,6 @@ class World {
   private closeBook() {
     if (!this.reading) return;
     this.book3d.close();
-    this.closeBtn.hidden = true;
   }
 
   async ask(text: string) {
@@ -553,8 +562,6 @@ class World {
       this.hooks.paper?.();
       this.reading = {};
       this.pan.tx = this.pan.ty = 0;
-      this.closeBtn.textContent = 'Close the catalogue';
-      this.closeBtn.hidden = false;
       this.lib.emote('nod');
     };
     if (this.book3d.isOpen || this.reading) void this.until(() => !this.reading).then(go); else go();
@@ -605,96 +612,156 @@ class World {
     go.x = THREE.MathUtils.clamp(go.x, -2.1, 2.1);
     go.z = THREE.MathUtils.clamp(go.z, -2.3, 2.9);
     this.director.goTo(go, p);
-    this.pan.tx = this.pan.ty = 0;
-    this.tZoom = 1;
-    this.backBtn.hidden = false;
+    this.resetFraming();
+    this.way.setCurrent(null);
     this.life.poke();
   }
   private goHome() {
+    this.way.setCurrent('librarian');
     if (!this.director.away) return;
     this.director.goHome();
-    this.pan.tx = this.pan.ty = 0;
-    this.tZoom = 1;
-    this.backBtn.hidden = true;
+    this.resetFraming();
   }
   private cast(cx: number, cy: number) {
     this.ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
     this.ray.setFromCamera(this.ndc, this.camera);
   }
 
-  // ------------------------------------------------------------ pointer (the deck's own layer over the canvas)
-  private pointer() {
+  // ------------------------------------------------------------ stations (stations.ts)
+  private setupStations(hatch: THREE.Vector3) {
+    const V = THREE.Vector3, get = (n: string) => this.room.get(n);
+    const shot = (name: string, pos: THREE.Vector3, target: THREE.Vector3) => {
+      const e = get(name);
+      if (!e?.userData.target) return { pos, target };
+      e.updateWorldMatrix(true, false);
+      return { pos: e.getWorldPosition(new V()), target: new V().fromArray(e.userData.target as number[]) };
+    };
+    this.stops.set('bookcase', shot('Camera_shelf', new V(0.2, 1.5, 0.4), new V(0, 1.5, -3)));
+    this.stops.set('side', { pos: new V(-0.5, 1.55, 0.5), target: new V(-2.48, 1.15, -1.0) });
+    this.stops.set('table', shot('Camera_table', new V(0.9, 1.45, 2.05), new V(0.2, 0.85, 0.5)));
+    const fixed = (p: THREE.Vector3) => () => p;
+    const head = new V();
+    const stations: Station[] = [
+      { id: 'librarian', label: 'The Librarian — ask him for a subject', spot: () => this.lib.bone('head').getWorldPosition(head).add(_lift) },
+      { id: 'bookcase', label: 'Bookcase — one volume for each of the captain’s subjects', spot: fixed(new V(0.35, 0.04, -2.15)) },
+      { id: 'side', label: 'Side shelves — the rest of the collection', spot: fixed(new V(-1.95, 0.04, -0.2)) },
+      { id: 'table', label: 'Reading table — the card catalogue', spot: fixed(new V(1.15, 0.82, 0.55)) },
+    ];
+    const ports = get('STATIC_portholes');
+    if (ports) {
+      // a row along one side wall: go to the porthole nearest the bookcase (the one in view from his shot)
+      const box = new THREE.Box3().setFromObject(ports);
+      const side = Math.sign(box.min.x + box.max.x) || 1;
+      const c = new V(side > 0 ? box.max.x - 0.1 : box.min.x + 0.1, (box.min.y + box.max.y) / 2, box.min.z + 0.3);
+      const pos = new V(c.x - side * 1.7, 1.55, c.z + 0.05); // straight on: the hull ribs either side stay clear
+      this.stops.set('portholes', { pos, target: c.clone().setY(c.y - 0.05) });
+      stations.push({ id: 'portholes', label: 'Porthole — the sky outside', spot: fixed(c.clone().setX(c.x - side * 0.08)) });
+    }
+    stations.push({ id: 'up', label: 'Ladder — up to the cabin', spot: fixed(new V(hatch.x, 1.6, hatch.z)) });
+    this.way.set(stations);
+    this.stationList = stations;
+    this.way.setCurrent('librarian');
+  }
+
+  /** The station he is at (null: looking at a spot the visitor picked). */
+  get station() { return this.way.at; }
+  /** The stations for the dock (the ladder is the dock's Cabin button there). */
+  get stations() { return this.stationList.filter(s => s.id !== 'up').map(s => ({ id: s.id, label: DOCK_NAME[s.id] ?? s.label.split(' — ')[0] })); }
+  /** What the shared Back button does here: close what is open, come back to him, or climb up. */
+  get backLabel() {
+    if (this.reading) return this.book3d.kind === 'catalogue' ? 'Close the catalogue' : 'Close the book';
+    return this.director.away ? 'Back to the Librarian' : 'Up to the cabin';
+  }
+
+  /** Go to a station (the ladder leaves for the cabin). */
+  goStation(id: string) {
+    if (id === 'up') { this.hooks.up(); return; }
+    if (this.reading) this.closeBook();
+    if (id === 'librarian') { this.goHome(); return; }
+    const s = this.stops.get(id);
+    if (!s) return;
+    this.director.goTo(s.pos, s.target);
+    this.resetFraming();
+    this.way.setCurrent(id);
+    this.life.poke();
+    this.hooks.announce(`At the ${id === 'side' ? 'side shelves' : id === 'table' ? 'reading table' : id}.`);
+  }
+
+  // ------------------------------------------------------------ gestures (input.ts, on the deck's own layer)
+  private get offset() {
+    return Math.abs(this.turn.tyaw) > 0.02 || Math.abs(this.turn.tpitch) > 0.02 || Math.abs(this.tZoom - 1) > 0.02 || Math.hypot(this.pan.tx, this.pan.ty) > 0.02;
+  }
+  private resetFraming() { this.pan.tx = this.pan.ty = 0; this.tZoom = 1; this.turn.tyaw = this.turn.tpitch = 0; }
+
+  /** Drag: fractions of the screen. Dragging the world, as in the cabin: finger right → look left. */
+  orbit(dx: number, dy: number) {
+    if (this.readBlend > 0.5) return;
+    const k = 1.3 / this.tZoom, t = this.turn;
+    t.tyaw = THREE.MathUtils.clamp(t.tyaw + dx * k, -0.6, 0.6);
+    t.tpitch = THREE.MathUtils.clamp(t.tpitch + dy * k, -0.35, 0.3);
+  }
+  /** <1 closer, >1 further, toward `at` (or the middle). */
+  zoomGesture(f: number, at?: Point) { this.zoomAt(1 / f, at?.x ?? innerWidth / 2, at?.y ?? innerHeight / 2); }
+  /** Slide: fractions of the screen; the room follows the fingers. */
+  panGesture(dx: number, dy: number) { this.panBy(dx * innerWidth, dy * innerHeight); }
+  /** Double-tap / "0": back to the framing after looking around; on a framed view, go and look where it was tapped. */
+  reset(at?: Point) {
+    if (this.offset) { this.resetFraming(); return; }
+    if (at) { if (!this.pick(at)) this.goLook(at.x, at.y); return; }
+    this.goHome();
+  }
+
+  /** A book on the shelf or the catalogue drawer under the point. */
+  private pick(at: Point): 'drawer' | string | null {
+    if (this.reading || this.busy()) return null;
+    this.cast(at.x, at.y);
+    const hit = this.ray.intersectObjects(this.bookMeshes, false)[0];
+    const id = hit ? this.bookOf.get(hit.object) : undefined;
+    return id ?? (this.drawer.hit(this.ray) ? 'drawer' : null);
+  }
+
+  private tap(at: Point) {
+    this.cast(at.x, at.y);
+    if (this.reading) {
+      const slug = this.book3d.pick(this.ray);
+      if (slug?.startsWith('topic:')) { this.closeBook(); void this.until(() => !this.reading).then(() => this.pickBook(slug.slice(6))); return; }
+      if (slug) { this.hooks.openNote(slug); return; }
+      if (!this.book3d.over(this.ray)) this.closeBook();
+      return;
+    }
+    const what = this.pick(at);
+    if (what === 'drawer') { this.drawer.highlight(false); this.openCatalogue(); }
+    else if (what) { this.hovered = null; void this.pickBook(what); }
+  }
+
+  private hover(at: Point) {
     const el = this.layer;
-    let drag: { x: number; y: number; moved: boolean; px: number; py: number } | null = null;
-    const touches = new Map<number, { x: number; y: number }>();
-    let pinch: { dist: number; x: number; y: number } | null = null, pinched = false;
-    const spread = () => { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
-    const lift = (e: PointerEvent) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
-    el.addEventListener('wheel', e => {
-      e.preventDefault();
-      const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
-      this.zoomAt(Math.exp(-px * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX, e.clientY);
-    }, { passive: false });
-    el.addEventListener('pointercancel', e => { lift(e); drag = null; });
-    el.addEventListener('pointerdown', e => {
-      this.life.poke();
-      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      try { el.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
-      if (touches.size === 1) pinched = false;
-      if (touches.size === 2) { const s = spread(); pinch = { dist: s.d, x: s.x, y: s.y }; pinched = true; drag = null; return; }
-      if (touches.size > 2) return;
-      drag = { x: e.clientX, y: e.clientY, moved: false, px: this.pan.tx, py: this.pan.ty };
-    });
-    el.addEventListener('pointermove', e => {
-      if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pinch && touches.size === 2) {
-        const s = spread();
-        if (pinch.dist > 0) this.zoomAt(s.d / pinch.dist, s.x, s.y);
-        this.panBy(s.x - pinch.x, s.y - pinch.y);
-        Object.assign(pinch, { dist: s.d, x: s.x, y: s.y });
-        return;
-      }
-      if (drag) {
-        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        if (Math.hypot(dx, dy) > 6) drag.moved = true;
-        if (drag.moved) this.panBy(dx, dy, { x: drag.px, y: drag.py });
-        return;
-      }
-      if (e.pointerType === 'mouse') {
-        this.cast(e.clientX, e.clientY);
-        if (this.reading) { el.style.cursor = this.book3d.pick(this.ray) ? 'pointer' : ''; return; }
-        const hit = this.ray.intersectObjects(this.bookMeshes, false)[0];
-        this.hovered = hit && !this.busy() ? this.bookOf.get(hit.object) ?? null : null;
-        const onDrawer = !hit && !this.busy() && this.drawer.hit(this.ray);
-        this.drawer.highlight(onDrawer);
-        el.style.cursor = this.hovered || onDrawer ? 'pointer' : '';
-      }
-    });
-    el.addEventListener('dblclick', e => this.goLook(e.clientX, e.clientY));
-    let lastTap = { t: 0, x: 0, y: 0 };
-    el.addEventListener('pointerup', e => {
-      lift(e);
-      const d = drag;
-      drag = null;
-      if (!d || d.moved || pinched) return;
-      if (e.pointerType === 'touch') {
-        const now = performance.now();
-        if (now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) { lastTap.t = 0; this.goLook(e.clientX, e.clientY); return; }
-        lastTap = { t: now, x: e.clientX, y: e.clientY };
-      }
-      this.cast(e.clientX, e.clientY);
-      if (this.reading) {
-        const slug = this.book3d.pick(this.ray);
-        if (slug?.startsWith('topic:')) { this.closeBook(); void this.until(() => !this.reading).then(() => this.pickBook(slug.slice(6))); return; }
-        if (slug) { this.hooks.openNote(slug); return; }
-        if (!this.book3d.over(this.ray)) this.closeBook();
-        return;
-      }
-      const hit = this.ray.intersectObjects(this.bookMeshes, false)[0];
-      const id = hit ? this.bookOf.get(hit.object) : undefined;
-      if (id) { this.hovered = null; void this.pickBook(id); return; }
-      if (this.drawer.hit(this.ray)) { this.drawer.highlight(false); this.openCatalogue(); }
-    });
+    if (this.reading) { this.cast(at.x, at.y); el.style.cursor = this.book3d.pick(this.ray) ? 'pointer' : ''; return; }
+    const what = this.pick(at);
+    this.hovered = what && what !== 'drawer' ? what : null;
+    this.drawer.highlight(what === 'drawer');
+    el.style.cursor = what ? 'pointer' : '';
+  }
+
+  private pointer() {
+    this.layer.addEventListener('pointerdown', () => this.life.poke());
+    // Things to tap: the shared input counts a tap on one of these as a tap, never toward a double-tap.
+    const targets = () => this.reading ? [this.book3d.group] : [...this.bookMeshes, this.drawer.group];
+    new Input(this.layer, this.camera, {
+      targets,
+      hover: (_hit, at) => { if (at) this.hover(at); },
+      click: (_hit, at) => this.tap(at),
+      dragStart: () => false,
+      drag: () => {},
+      dragEnd: () => {},
+      swipeDown: () => { this.back(); },
+      escape: () => {},
+      look: () => {},
+      orbit: (dx, dy) => this.orbit(dx, dy),
+      zoom: (f, at) => this.zoomGesture(f, at),
+      pan: (dx, dy) => this.panGesture(dx, dy),
+      reset: at => this.reset(at),
+    }, { keys: false, passThrough: 'deck' });
   }
 
   // ------------------------------------------------------------ frame
@@ -708,6 +775,8 @@ class World {
     const hHalf = Math.atan(Math.tan(THREE.MathUtils.degToRad(25)) * 1.5);
     this.lensFov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(hHalf) / cam.aspect)), 50, 78);
     if (control) this.frameCamera(dt);
+    this.way.setVisible(control && !this.reading && this.readBlend < 0.05);
+    if (control) this.way.update(cam);
     this.sway.update(dt, control ? cam : _still, ship);
     this.book3d.update(dt);
     this.life.update(dt, {
@@ -737,7 +806,10 @@ class World {
     const fov = this.lensFov / this.zoom;
     if (Math.abs(cam.fov - fov) > 1e-4) { cam.fov = fov; cam.updateProjectionMatrix(); }
     if (cam.view) cam.clearViewOffset();
-    cam.quaternion.copy(shot.quat).multiply(_q.setFromEuler(_e.set(this.follow.pitch + pan.y * TILT * (1 - this.readBlend), this.follow.yaw, 0)));
+    const t = this.turn, free = 1 - this.readBlend;
+    t.yaw += (t.tyaw - t.yaw) * k;
+    t.pitch += (t.tpitch - t.pitch) * k;
+    cam.quaternion.copy(shot.quat).multiply(_q.setFromEuler(_e.set(this.follow.pitch + (pan.y * TILT + t.pitch) * free, this.follow.yaw + t.yaw * free, 0)));
     this.readBlend += ((this.book3d.isOpen ? 1 : 0) - this.readBlend) * (1 - Math.exp(-dt * 3));
     if (this.readBlend > 0.001) {
       const m = new THREE.Matrix4().lookAt(this.book3d.readPos, this.book3d.readAt, _up.set(0, 1, 0));
@@ -784,6 +856,10 @@ class World {
 const TILT = 0.42;
 const _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ');
 const _right = new THREE.Vector3(), _up = new THREE.Vector3();
+/** Short names for the dock (it has to fit a phone's width). */
+const DOCK_NAME: Record<string, string> = { librarian: 'Librarian', bookcase: 'Bookcase', side: 'Shelves', table: 'Table', portholes: 'Porthole' };
+/** His dot floats this far above his head. */
+const _lift = new THREE.Vector3(0, 0.38, 0);
 /** A stand-in for the camera while the deck does not own it (the sway leans the camera it is given). */
 const _still = new THREE.PerspectiveCamera();
 

@@ -200,7 +200,7 @@ A deck below the cabin, reached through a hatch beside the bookshelf. The app is
 | `Librarian` | His spot (behind the table) |
 | `Ladder`, `Ladder_path` (+ `.start`/`.end`), `Ladder_step` | The rolling ladder he rides to the high shelves |
 | `Table_drop` | Where a fetched book is laid open |
-| `Camera_main` (+ `Camera_table`, `Camera_shelf`) | The main shot (looks down local −Z; `userData.target`) |
+| `Camera_main` (+ `Camera_table`, `Camera_shelf`) | The main shot (looks down local −Z; `userData.target`). `Camera_table` and `Camera_shelf` are also the poses of the Reading table and Bookcase stations (`src/stations.ts`, set up in `src/library/deck.ts`); the Porthole station is placed from the `STATIC_portholes` bounds |
 | `HATCH_deck` | Floor point under the vault opening, (−1.9, 0, 1.8) |
 | `Sky_backdrop_*`, `Window_glass` | Porthole sky (drawn by the app from `sky_sunset.ktx2` / `sky_night.ktx2`) and glass |
 
@@ -209,3 +209,18 @@ A deck below the cabin, reached through a hatch beside the bookshelf. The app is
 **The Librarian:** `librarian.glb` (3072 px, ~80k triangles), `librarian_lite.glb` (1024 px, simplified to ~56k), `librarian.events.json` (clip lengths and event times). Bones follow Mixamo names with five-finger chains; the accessories (`satchel`, `pendant`, `spyglass`, `sword`, `cape.01`–`03`) swing as springs in the app.
 
 **Sizes:** desktop ~12 MB (room 6.3, Librarian 4.7, lightmaps 1.1), fetched once the visitor reaches the shelf view. Phones ~4.8 MB (room 3.0, Librarian 1.4, lightmaps 0.4), fetched when the visitor heads down.
+
+## Getting around (2026-11-24)
+
+The cabin, the library and the outside view share one way of moving: the gestures (`src/input.ts`), the glowing station dots (`src/stations.ts`), the dock with its Cabin · Library · Outside switcher and the Back button (`src/ui.ts`), and a one-time hint (`src/coach.ts`). The cabin's stations are its views (`VP_*`); the library's are below; outside, they are orbit poses round the galleon's bounding box (`STATIONS` in `src/outside.ts`).
+
+| Library station | Pose | Dot |
+|---|---|---|
+| `librarian` | `Camera_main` (the director's main shot) | over his head bone |
+| `bookcase` | `Camera_shelf` | floor in front of `STATIC_bookcase` |
+| `side` | fixed, facing `STATIC_bookcase_left` | floor in front of it |
+| `table` | `Camera_table` | on `STATIC_table` |
+| `portholes` | straight on to the porthole nearest the bookcase | that porthole, from the `STATIC_portholes` bounds |
+| `up` | leaves for the cabin | in the vault opening over `HATCH_deck` |
+
+The address carries the station (`?station=`); a renamed or moved empty changes where the dot and the pose are, not the names.

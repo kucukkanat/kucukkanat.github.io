@@ -90,6 +90,8 @@ export function setupDirector(base: { pos: THREE.Vector3; target: THREE.Vector3 
         pos.step(wantP, dt);
         target.step(wantT, dt);
       }
+      // reduced motion: cut to the shot (going to a station, back to him, following him) instead of gliding
+      if (REDUCED && (skip || t >= INTRO)) { pos.snap(wantP); target.snap(wantT); }
       look.lookAt(pos.x, target.x, up);
       quat.setFromRotationMatrix(look);
       return { pos: pos.x, quat };

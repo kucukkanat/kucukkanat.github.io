@@ -17,7 +17,26 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 
 `.local` names need mDNS on the phone (iOS: yes; Android: Chrome on Android 12+). If a phone can't resolve it, `bunx vite --host` and open the Network URL it prints.
 
-**Camera:** drag to turn, scroll / pinch to zoom, right-drag / shift-drag / two-finger drag / shift+arrows to pan, double-click / double-tap / `0` to reset, arrow keys and `+`/`-` too. Limits per view live in `LIMITS` in `src/camera.ts`; the camera never leaves the room box (`ROOM`).
+**Getting around** works the same in the cabin, the library and outside:
+
+| | Touch | Mouse / keyboard |
+|---|---|---|
+| Look around | drag | drag, arrow keys |
+| Zoom | pinch | scroll, `+` / `-` |
+| Slide (indoors) | two-finger drag | right-drag, shift-drag, shift+arrows |
+| Back to the framing | double-tap | double-click, `0` |
+| Go somewhere | tap a glowing dot, or a name in the dock | click a dot or the dock, Tab to them |
+| Switch place | Cabin · Library · Outside in the dock | the dock, `1` `2` `3` |
+| Back | the Back button (it says what it will do), flick down | Back, Esc |
+
+- `src/input.ts`: one gesture layer, used by all three places. The library and outside each run their own copy on their own layer; the cabin's copy passes the keys to them.
+- `src/stations.ts`: the glowing dots, like the cabin's hotspots. Library: the Librarian, bookcase, side shelves, reading table, porthole, and the ladder up. Outside: bow, port, starboard, above, and the stern windows back in.
+- `src/ui.ts`: the dock and the Back button, the same in every place. The middle row shows that place's viewpoints or stations.
+- `src/coach.ts`: a one-time hint with the same words in every place, shown above the dock (or the library's chat).
+- **Address:** the station goes in it (`?deck=1&station=table`, `?outside=1&station=bow`), so the browser's Back and Forward walk through stations.
+- **Outside:** the ship sails on by herself while you look around. **Take the helm** (or `H`) brings up the stick, the speed slider and the flight keys (A/D or ←/→ turn, W/S or ↑/↓ climb, Q/E speed). Back or Esc leaves the helm before going inside.
+- **Reduced motion:** stations cut instead of gliding.
+- **Limits:** cabin views in `LIMITS` in `src/camera.ts` (the camera never leaves the room box `ROOM`); the library in `src/library/deck.ts` (`orbit`, `clampPan`).
 
 **Tiers:** phones get the light build (baked light only); larger screens add bloom, a colour grade and a richer sky (`src/tier.ts`, `src/fx.ts`). `?tier=lite` and `?tier=full` force a tier.
 

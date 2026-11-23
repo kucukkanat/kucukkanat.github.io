@@ -17,7 +17,8 @@ import { setupLighting, prefetchLightmap } from './lighting';
 import { setupSky, prefetchSky } from './sky';
 import { Collectibles, type Collectible, type Place } from './collectibles';
 import { CameraRig } from './camera';
-import { UI } from './ui';
+import { UI, type Place as Where } from './ui';
+import { coach, dismissCoach } from './coach';
 import { Play } from './play';
 import { Input } from './input';
 import { audio } from './audio';
@@ -48,22 +49,8 @@ const INSPECT_KINDS = new Set(['cartridge', 'book', 'notebook', 'memcard']);
 const params = new URLSearchParams(location.search);
 const loaderFill = document.getElementById('loader-fill');
 const loaderText = document.getElementById('loader-text');
-// One-time hint about the camera controls; hidden on the first drag/zoom or after a few seconds.
-let hintEl: HTMLElement | null = null;
-const hideHint = () => { if (!hintEl) return; hintEl.classList.remove('on'); const el = hintEl; hintEl = null; setTimeout(() => el.remove(), 400); };
-const showHint = () => {
-  let seen = false;
-  try { seen = localStorage.getItem('kk-hint') === '1'; localStorage.setItem('kk-hint', '1'); } catch { /* private mode */ }
-  if (seen) return;
-  const touch = matchMedia('(pointer: coarse)').matches;
-  hintEl = document.createElement('div');
-  hintEl.className = 'cam-hint';
-  hintEl.setAttribute('role', 'status');
-  hintEl.textContent = touch ? 'Drag to look · two fingers to zoom · double-tap to reset · flick down to go back' : 'Drag to look · scroll to zoom · right-drag to pan · double-click to reset';
-  document.body.appendChild(hintEl);
-  requestAnimationFrame(() => hintEl?.classList.add('on'));
-  setTimeout(hideHint, 6000);
-};
+// The one-time hint about getting around (coach.ts): the same words in the cabin, the library and outside.
+const hideHint = () => dismissCoach();
 const showNote = (text: string) => {
   document.querySelectorAll('.cam-hint.note').forEach(n => n.remove());
   const el = document.createElement('div');
@@ -179,6 +166,7 @@ async function main() {
   // the library deck below the cabin (library/deck.ts, its own chunk)
   let deckRef: Deck | null = null;
   let goDeck: (topic?: string) => Promise<void> = async () => { /* set once the deck hooks exist */ };
+  let goPlace: (p: Where) => void = () => { /* set once the address sync exists */ };
   let preloadDeck = () => { /* set once the deck hooks exist */ };
   // the sky whales: their own chunk, set up in idle time after the sky models (whales-world.ts)
   let whalesRef: import('./whales-world').WhalesWorld | null = null;
@@ -213,7 +201,8 @@ async function main() {
     insert: id => { const c = coll.byId.get(id); if (c) insert(c); },
     panelClosed: () => { putBack(); },
     toggleNight: () => toggleNight(),
-    outside: () => goOutside(),
+    place: p => goPlace(p),
+    station: id => { if (deckRef?.below) deckRef.goStation(id); else if (isOut()) outsideRef?.goStation(id); },
     writing: () => { void writing.openIndex(); },
     search: () => search.open(),
     toggleSound: async () => {
@@ -234,7 +223,7 @@ async function main() {
   let writingP: Promise<Writing> | null = null;
   const getWriting = () => writingP ??= import('./writing/reader').then(m => (writingRef = new m.Writing(document.body, {
     changed: open => {
-      ui.setVisible(!open && !deckRef?.active);
+      ui.setVisible(!open);
       if (open) { hideHint(); if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
     },
     focusTopic: id => { coll.setHover(id ? coll.byId.get(topicItemId(id)) ?? null : null); },
@@ -429,6 +418,7 @@ async function main() {
   }
 
   function back() {
+    if (isOut()) { if (outsideRef?.helm) outsideRef.setHelm(false); else if (outsideRef && !outsideRef.busy) void outsideRef.goInside(); return; }
     if (deckRef?.active) { if (deckRef.below && !writing.isOpen) deckRef.escape(); return; }
     if (letterOpen) { tuckLetter(); return; }
     if (play.overlayOn || (play.inserted && rig.view !== 'overview' && !play.busy && (rig.view === 'screen' || rig.view === 'handheld'))) { play.eject(); return; }
@@ -614,10 +604,12 @@ async function main() {
     swipeDown: () => back(),
     escape: () => { if (!outsideRef?.active) back(); },
     look: (x, y) => rig.setLook(x, y),
-    orbit: (dx, dy) => { if (outsideRef?.active || deckRef?.active) return; rig.orbit(dx, dy); hideHint(); },
-    zoom: f => { if (deckRef?.active) return; rig.zoomBy(f); hideHint(); },
-    pan: (dx, dy) => { if (deckRef?.active) return; rig.panBy(dx, dy); hideHint(); },
-    reset: () => { if (!deckRef?.active) rig.resetView(); },
+    // below deck the library has its own gesture layer over the canvas; only the keys arrive here, so pass them on
+    // outside, away from the helm, the same keys turn and zoom round the ship (at the helm they fly her: outside.ts)
+    orbit: (dx, dy) => { if (deckRef?.active) { if (!writing.isOpen) deckRef.orbit(dx, dy); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.orbitBy(dx, dy); return; } rig.orbit(dx, dy); hideHint(); },
+    zoom: f => { if (deckRef?.active) { if (!writing.isOpen) deckRef.zoom(f); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.zoomBy(f); return; } rig.zoomBy(f); hideHint(); },
+    pan: (dx, dy) => { if (deckRef?.active) { if (!writing.isOpen) deckRef.pan(dx, dy); return; } if (outsideRef?.active) return; rig.panBy(dx, dy); hideHint(); },
+    reset: () => { if (deckRef?.active) { if (!writing.isOpen) deckRef.reset(); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.goStation('home'); return; } rig.resetView(); },
   });
 
   // Resize
@@ -820,8 +812,8 @@ async function main() {
       root: document.body,
       crossed: out => {
         whalesRef?.setOutside(out ? outsideRef : null);
-        ui.setVisible(!out);
-        if (out) hideHint();
+        ui.setPlace(out ? 'outside' : 'cabin', out ? outsideRef?.stations : []);
+        hideHint();
         if (out) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); }
       },
       windowSky: sky.group,
@@ -829,7 +821,7 @@ async function main() {
       click: ndc => { const k = whalesRef?.pickOutside(camera, ndc); if (k) { whalesRef!.showCard(k); audio.click(); } },
       mode: mo => {
         audio.whoosh();
-        ui.announce(mo === 'orbit' ? 'Outside the ship. Drag to look around it; steer and set the speed whenever you like.' : 'Back in the cabin.');
+        ui.announce(mo === 'orbit' ? 'Outside the ship. Drag to look around it; take the helm to steer her.' : 'Back in the cabin.');
       },
     });
     o.setShip(galleonGltf);
@@ -855,7 +847,8 @@ async function main() {
     openNote: slug => { void writing.openNote(slug); },
     reading: () => writing.isOpen || search.isOpen,
     changed: below => {
-      ui.setVisible(!below);
+      ui.setPlace(below ? 'library' : 'cabin', below ? deckRef?.stations : []);
+      hideHint();
       audio.setBelow(below);
       if (below) { hideHint(); if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
     },
@@ -896,6 +889,26 @@ async function main() {
     await goto('shelf');
   };
   const isDeck = () => deckIntent || !!deckRef?.active;
+  /** The dock's place switcher: the same moves as the address (night and storm kept). */
+  goPlace = (p: Where) => {
+    const look: nav.CabinState = {};
+    if (night) look.night = '1';
+    if (weather.storm) look.storm = '1';
+    if (p === 'library') { if (!isDeck()) void goNav({ ...look, deck: '1' }); }
+    else if (p === 'outside') { if (!isOut()) void goNav({ ...look, outside: '1' }); }
+    else void goNav(look);
+  };
+  // 1 / 2 / 3: the cabin, the library, outside (as the dock's place buttons), when nothing else wants the key
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    const p = ({ '1': 'cabin', '2': 'library', '3': 'outside' } as const)[e.key as '1'];
+    if (!p) return;
+    const a = document.activeElement;
+    if (a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || (a instanceof HTMLElement && a.isContentEditable)) return;
+    if (play.overlayOn || writing.isOpen || searchRef?.isOpen || letterOpen) return;
+    e.preventDefault();
+    goPlace(p);
+  });
 
   // ----- the address bar (nav.ts): what is on screen, kept in the URL; Back / Forward replay it -----
   // the address follows what the visitor asked for, at once: a view mid-glide, a cartridge on its way in, the flight out
@@ -907,8 +920,9 @@ async function main() {
     if (weather.storm) s.storm = '1';
     if (searchRef?.isOpen) s.search = searchRef.query;
     if (whalesRef?.cardKey) s.whale = whalesRef.cardKey;
-    if (isOut()) { s.outside = '1'; return s; }
-    if (isDeck()) { s.deck = '1'; return s; }
+    // on the way there the address keeps the station it asks for
+    if (isOut()) { s.outside = '1'; const st = outsideRef && outsideRef.mode === 'orbit' && !outsideRef.busy ? outsideRef.station : nav.read().station; if (st) s.station = st; return s; }
+    if (isDeck()) { s.deck = '1'; const st = deckRef?.below ? deckRef.station : nav.read().station; if (st && st !== 'librarian') s.station = st; return s; }
     if (playing()) s.play = (playIntent ?? play.inserted)!.item.id;
     else {
       const v = play.ejecting ? 'handheld' : rig.view; // eject ends at the handheld
@@ -946,8 +960,16 @@ async function main() {
     if ((t.storm === '1') !== weather.storm) void weather.set(t.storm === '1');
     if (t.search === undefined) searchRef?.close();
     if (t.whale === undefined) whalesRef?.closeCard();
-    if (t.deck) { if (!isDeck()) { if (isOut()) await outsideRef!.goInside(); await goDeck(); } }
-    else if (t.outside) { if (deckRef?.below) await deckRef.exit(); if (!isOut()) await goOutsideP(); }
+    if (t.deck) {
+      if (!isDeck()) { if (isOut()) await outsideRef!.goInside(); await goDeck(); }
+      const st = t.station ?? 'librarian';
+      if (deckRef?.below && deckRef.station !== st) deckRef.goStation(st);
+    }
+    else if (t.outside) {
+      if (deckRef?.below) await deckRef.exit();
+      if (!isOut()) await goOutsideP();
+      if (outsideRef && outsideRef.station !== (t.station ?? null)) outsideRef.goStation(t.station ?? 'home');
+    }
     else {
       if (isOut()) await outsideRef!.goInside();
       if (deckRef?.below) await deckRef.exit();
@@ -983,7 +1005,13 @@ async function main() {
   nav.onPop(t => { void goNav(t); });
   // write the state as soon as it changes: right after each click / key (and on a short poll for everything else)
   let lastTitle: string | null | undefined;
+  /** The dock's current station and what Back will do, in the library and outside. */
+  const syncChrome = () => {
+    if (deckRef?.active) { ui.setStation(deckRef.below ? deckRef.station : null); ui.setBack(deckRef.backLabel); }
+    else if (outsideRef && isOut()) { ui.setStation(outsideRef.station); ui.setBack(outsideRef.mode === 'orbit' && !outsideRef.busy ? outsideRef.helm ? 'Leave the helm' : 'Back inside' : null); }
+  };
   const syncNav = () => {
+    syncChrome();
     if (navBusy()) return;
     const s = snapshot();
     nav.commit(s);
@@ -1007,7 +1035,7 @@ async function main() {
   if (!introOn && rig.view === 'overview') void rig.zoomInFrom(1.3, 1.8);
   function afterWelcome() {
     if (rig.view === 'overview') setTimeout(() => { void rig.introSweep(); }, 500);
-    setTimeout(showHint, 900);
+    setTimeout(() => coach('cabin'), 900);
   }
   await introDone;
   // a note, topic or the index in the address opens over the cabin
@@ -1015,8 +1043,8 @@ async function main() {
   // the rest of a shared address that the first view does not cover (outside, a whale's card, the palette)
   {
     const t = nav.read();
-    if (t.outside) { firstLetter = false; await goOutsideP(); }
-    else if (t.deck) { firstLetter = false; void goDeck(); }
+    if (t.outside) { firstLetter = false; await goOutsideP(); if (t.station) (outsideRef as Outside | null)?.goStation(t.station); }
+    else if (t.deck) { firstLetter = false; void goDeck().then(() => { if (t.station) deckRef?.goStation(t.station); }); }
     if (t.search !== undefined) { firstLetter = false; search.open(t.search); }
     if (t.whale) {
       firstLetter = false;
@@ -1029,7 +1057,7 @@ async function main() {
   if (firstLetter) setTimeout(() => { if (!sheets.isOpen && !play.overlayOn && !letterOpen) void openLetter(false); else if (!letterOpen) { firstLetter = false; afterWelcome(); } }, 1100);
   else {
     if (rig.view === 'overview') setTimeout(() => { void rig.introSweep(); }, 900);
-    setTimeout(showHint, 1800);
+    setTimeout(() => coach('cabin'), 1800);
   }
   // measurement hooks: whole-frame draw calls / triangles, and the real cost of a frame (render + gl.finish)
   renderer.info.autoReset = false;

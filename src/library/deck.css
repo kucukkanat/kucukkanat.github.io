@@ -8,7 +8,8 @@
   color: var(--d-ink); border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 0 40px rgba(140,95,30,.25);
   border: 1px solid #b3966a;
 }
-.deck-ui .chat { position: fixed; z-index: 6; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+/* above the shared dock (ui.ts measures it into --dock-h) */
+.deck-ui .chat { position: fixed; z-index: 6; left: 50%; bottom: calc(var(--dock-h, 0px) + 8px); transform: translateX(-50%);
   width: min(620px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 12px; }
 /* his words live on the in-world scroll; the HTML copy stays for screen readers */
 .deck-ui .chat .who { display: none; }
@@ -27,17 +28,7 @@
 .deck-ui .chat .hint { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); max-width: 48%; overflow: hidden;
   white-space: nowrap; text-overflow: ellipsis; font-size: 13px; font-style: italic; color: #8c5f1e; pointer-events: none; }
 .deck-ui .chat.hinting .field input { padding-right: min(48%, 220px); }
-.deck-btn { position: fixed; z-index: 6; font: 15px var(--display, Georgia), Georgia, serif; border: 1px solid #b3966a; border-radius: 4px;
-  padding: 7px 16px; cursor: pointer; background: linear-gradient(#f3e6c4, #e5d1a2); color: #2a1712; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
-.deck-close { top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); }
-.deck-up { top: max(14px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); }
-.deck-up::before { content: '↑ '; }
-.deck-tip { position: fixed; z-index: 6; top: calc(max(16px, env(safe-area-inset-top)) + 48px); left: 50%; transform: translateX(-50%); padding: 8px 16px;
-  font-size: 14px; font-style: italic; white-space: nowrap; max-width: calc(100vw - 100px); overflow: hidden; text-overflow: ellipsis;
-  transition: opacity 1.2s ease; pointer-events: none; }
-.deck-tip.gone { opacity: 0; }
 @media (max-width: 560px) {
-  .deck-tip { white-space: normal; text-align: center; font-size: 13px; }
   .deck-ui .chat .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .deck-ui .chat .chip { flex: none; }
 }

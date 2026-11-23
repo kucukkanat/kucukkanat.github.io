@@ -130,7 +130,7 @@ a { color: inherit; }
   /* more buttons than fit on one line: two rows (places above, writing / outside / tools below) */
   .dock { flex-wrap: wrap; justify-content: center; row-gap: 2px; width: max-content; max-width: calc(100vw - 16px); border-radius: 22px; padding-block: 5px; }
   .dock .sep { display: none; }
-  .dock nav { flex-basis: 100%; justify-content: center; }
+  .dock nav { flex-basis: 100%; justify-content: center; flex-wrap: wrap; }
   .plain-link { display: none; }
   .panel { left: 0 !important; top: auto !important; bottom: 0; width: 100%; max-height: 62vh; border-radius: 20px 20px 0 0;
     padding-bottom: calc(18px + var(--safe-b)); transform: translateY(30px); }
@@ -277,12 +277,16 @@ a { color: inherit; }
 .outside-hud .btn { padding: 10px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.3); background: rgba(42,23,18,.55);
   color: #fff; font: 600 .9rem var(--sans, system-ui); cursor: pointer; backdrop-filter: blur(8px); }
 .outside-hud .btn:hover, .outside-hud .btn:focus-visible { background: rgba(42,23,18,.8); }
-.outside-hud .out-in { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); }
-.outside-hud .out-hint { position: absolute; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
-  width: max-content; max-width: min(80vw, 760px); margin: 0; text-align: center; color: #fff; font: 500 .8rem var(--sans, system-ui);
+/* top left (the cabin's name is hidden outside), clear of the helm's controls and the Back button */
+.outside-hud .out-hint { position: absolute; left: calc(18px + env(safe-area-inset-left, 0px)); top: calc(22px + env(safe-area-inset-top, 0px));
+  width: max-content; max-width: min(calc(100vw - 230px), 620px); margin: 0; text-align: left; color: #fff; font: 500 .8rem var(--sans, system-ui);
   text-shadow: 0 1px 6px rgba(42,23,18,.8); pointer-events: none; }
 /* throttle: a vertical slider, bottom right */
-.outside-hud .out-throttle { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+.outside-hud .out-helm { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(var(--dock-h, 0px) + 14px); }
+.outside-hud .out-helm[aria-pressed="true"] { background: rgba(226,180,104,.9); color: #2a1712; border-color: transparent; }
+/* the helm's controls show only at the helm (outside.ts setHelm) */
+.outside-hud:not(.helm) .out-throttle, .outside-hud:not(.helm) .out-stick { display: none; }
+.outside-hud .out-throttle { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(var(--dock-h, 0px) + 70px);
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 22px; cursor: ns-resize; touch-action: none;
   background: rgba(42,23,18,.45); border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(8px); }
 .outside-hud .out-throttle:focus-visible { outline: 2px solid var(--brass, #e2b468); outline-offset: 2px; }
@@ -290,15 +294,13 @@ a { color: inherit; }
 .outside-hud .out-thr-track { position: relative; width: 14px; height: 150px; border-radius: 7px; background: rgba(255,255,255,.18); overflow: hidden; }
 .outside-hud .out-thr-fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #e2b468, #e8652b); border-radius: 7px; }
 .outside-hud.touch .out-thr-track { width: 22px; height: min(180px, 34vh); border-radius: 11px; }
-/* floating thumbstick (touch): a faint ring marks the zone; it jumps to the thumb */
-.outside-hud .out-stick { position: absolute; left: calc(70px + env(safe-area-inset-left, 0px)); top: calc(100% - 110px - env(safe-area-inset-bottom, 0px));
-  width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; display: none; pointer-events: none;
-  border: 2px solid rgba(255,255,255,.35); background: rgba(42,23,18,.25); opacity: .45; }
-.outside-hud.touch .out-stick { display: block; }
-.outside-hud .out-stick.on { opacity: 1; }
-.outside-hud .out-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+/* the helm's stick: a pad bottom left, above the dock; drag the knob */
+.outside-hud .out-stick { position: absolute; left: calc(24px + env(safe-area-inset-left, 0px)); bottom: calc(var(--dock-h, 0px) + 18px);
+  width: 112px; height: 112px; border-radius: 50%; touch-action: none; cursor: grab;
+  border: 2px solid rgba(255,255,255,.4); background: rgba(42,23,18,.35); opacity: .8; backdrop-filter: blur(6px); }
+.outside-hud .out-stick.on { opacity: 1; cursor: grabbing; }
+.outside-hud .out-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; pointer-events: none;
   background: rgba(255,255,255,.75); box-shadow: 0 2px 8px rgba(0,0,0,.35); }
-.outside-hud.touch .out-hint { top: calc(20px + env(safe-area-inset-top, 0px)); bottom: auto; left: 16px; transform: none; max-width: calc(100vw - 170px); text-align: left; }
 
 /* Touch screens, late overrides (after the rules they widen) */
 @media (pointer: coarse) {
@@ -399,3 +401,19 @@ a { color: inherit; }
 .update-toast button { font: 700 .85rem/1 var(--sans, system-ui); border: 0; border-radius: 999px; padding: 0 16px; min-height: 40px; cursor: pointer;
   background: #f07a2a; color: #2a1206; }
 .update-toast .x { background: none; color: #fbeedd; padding: 0 10px; font-weight: 500; }
+
+/* Stations (stations.ts): the cabin's hotspot dots, in the library and outside */
+.waypoints { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+.outside-hud > .waypoints { pointer-events: none; }
+.waypoints .hotspot { pointer-events: auto; }
+
+/* The dock and Back (ui.ts .ui-chrome) stay in every place: over the library's layer, and over the outside view */
+.ui-chrome[data-place="outside"] { z-index: 32; }
+.dock .places { display: flex; gap: 2px; }
+/* the place you are in: outlined, so it never reads as a second current viewpoint */
+.dock .place[aria-current="true"] { color: var(--ink); background: none; box-shadow: inset 0 0 0 1.5px var(--brass); }
+.dock .place[aria-current="true"]::before { opacity: .55; }
+
+/* The one-time hint about getting around (coach.ts): above the dock (or the library's chat), in every place */
+.cam-hint.coach { bottom: calc(var(--dock-h, 62px) + 12px); white-space: normal; text-align: center; width: max-content;
+  max-width: min(600px, calc(100vw - 32px)); border-radius: 16px; z-index: 33; }
