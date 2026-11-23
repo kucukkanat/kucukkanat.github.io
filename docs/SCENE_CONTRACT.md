@@ -176,3 +176,36 @@ Built by `whales/scripts` (Blender 5.3, see `whales/README.md`); the site only r
 - **Window view:** whales live in `sky.group` (`Whales`) at scale 0.55 and wander x ±11, y −1..4, z −7.6..−19.5. They avoid `sky.obstacles()` and use the painted sky shader with the backdrop haze (`HAZE_VERT`, `sky.uniforms`).
 - **Outside:** whales live in `WhalesOutside`, a child of `Outside.worldGroup` positioned at −ship position (absolute space). They're at scale 8 and wander 160–480 m from the ship; at the helm one comes to swim off the bow quarter.
 - **Picking:** each whale carries an invisible `WhaleHit_<sp>` box with `userData.whale = <sp>`.
+
+## Library deck (2026-11-23)
+
+A deck below the cabin, reached through a hatch beside the bookshelf. The app is `src/library/` (its own chunk, loaded when the visitor first goes down); the room is built by `blender/library/build.py` and the Librarian comes from the Librarian prototype repository (Meshy model, rig and clips), copied in as `art/library/*`. `bun run library` rebuilds both (Blender bake, then `scripts/library-assets.ts`).
+
+**In `cabin.glb`** (`blender/kit/hatch.py`; the floor slab has the opening cut out):
+
+| Node | What |
+|---|---|
+| `STATIC_hatch` | Lined well, coaming, the open trapdoor and the ladder rails rising above the floor. Lightmapped. |
+| `VP_hatch` / `VP_hatch_T` | The hatch view (`ViewName` `hatch`, camera mode `none`); the descent starts here |
+| `HIT_hatch` | Hotspot: "Hatch — down to the library" |
+| `HATCH_anchor` | Floor centre of the opening, (−2.05, 0, 0.35) |
+
+**`public/assets/library.glb` / `library_lite.glb`** (2048 / 512 px textures, KTX2, meshopt). The library uses its own coordinates (floor at y = 0, origin in the middle of the room, the back bookcase toward −Z); the app shows it in place of the cabin, not under it, and the descent dips to black between the two wells.
+
+| Node | What |
+|---|---|
+| `STATIC_*` | Baked meshes (unlit × lightmap in `TEXCOORD_1`, no normals in the web copy). `STATIC_deckhatch` is the opening in the vault with its ladder; `STATIC_hanging_lantern` swings with the ship. |
+| `VC_*` | Book runs: baked light in `COLOR_0` (= L / scale), tinted at night |
+| `Book_slot0` … `Book_slot9` | Empties for the topic books (child mesh `BookMesh_slot<i>`), in reach order (floor first, the ladder last). The app renames them `Book_<topic id>` in topic order and paints the cover in the topic's `colour`; unused slots stay as plain books. |
+| `Librarian` | His spot (behind the table) |
+| `Ladder`, `Ladder_path` (+ `.start`/`.end`), `Ladder_step` | The rolling ladder he rides to the high shelves |
+| `Table_drop` | Where a fetched book is laid open |
+| `Camera_main` (+ `Camera_table`, `Camera_shelf`) | The main shot (looks down local −Z; `userData.target`) |
+| `HATCH_deck` | Floor point under the vault opening, (−1.9, 0, 1.8) |
+| `Sky_backdrop_*`, `Window_glass` | Porthole sky (drawn by the app from `sky_sunset.ktx2` / `sky_night.ktx2`) and glass |
+
+**Lightmaps:** `library_lightmap_{sunset,night}.ktx2` (2048) and `_1k.ktx2` (phones), sources `.webp`; `library_lightmaps.json` has `scale` (3.0 for both) and `books` (the night tint for the `VC_*` runs). The deck mixes them by the cabin's `uNight` and dims them by `uStorm`, so the lantern and storms carry below.
+
+**The Librarian:** `librarian.glb` (3072 px, ~80k triangles), `librarian_lite.glb` (1024 px, simplified to ~56k), `librarian.events.json` (clip lengths and event times). Bones follow Mixamo names with five-finger chains; the accessories (`satchel`, `pendant`, `spyglass`, `sword`, `cape.01`–`03`) swing as springs in the app.
+
+**Sizes:** desktop ~12 MB (room 6.3, Librarian 4.7, lightmaps 1.1), fetched once the visitor reaches the shelf view. Phones ~4.8 MB (room 3.0, Librarian 1.4, lightmaps 0.4), fetched when the visitor heads down.
