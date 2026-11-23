@@ -69,7 +69,7 @@ export class Writing {
         <div class="wr-bar">
           <button type="button" class="wr-tool" data-act="index" aria-label="Ship’s Index: all notes">${ICON.list}<span>Index</span></button>
           <div class="wr-crumb" aria-hidden="true"></div>
-          <button type="button" class="wr-icon wr-close" data-act="close" aria-label="Close and return to the cabin">${ICON.close}</button>
+          <button type="button" class="wr-icon wr-close" data-act="close" aria-label="Close the reader">${ICON.close}</button>
           <div class="wr-progress" role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
         </div>
         <div class="wr-scroll" tabindex="-1"><div class="wr-content"></div></div>

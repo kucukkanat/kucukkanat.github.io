@@ -27,7 +27,7 @@ class Sound {
     this.loading ??= import('./engine').then(m => {
       try {
         this.eng = new m.SoundEngine();
-        this.eng.setNight(this.night); this.eng.setStorm(this.storm); this.eng.setFocus(this.focus); this.eng.duck(this.ducked);
+        this.eng.setNight(this.night); this.eng.setStorm(this.storm); this.eng.setFocus(this.focus); this.eng.duck(this.ducked); this.eng.setBelow(this.below);
       } catch { this.eng = null; }
       return this.eng;
     }).catch(() => null);
@@ -51,6 +51,9 @@ class Sound {
   setStorm(on: boolean) { this.storm = on; this.eng?.setStorm(on); }
   // called every frame by the app: only changes reach the engine (no per-frame audio automation)
   setFocus(close: boolean) { if (close === this.focus) return; this.focus = close; this.eng?.setFocus(close); }
+  private below = false;
+  /** Below deck: muffled weather (library/deck.ts). */
+  setBelow(on: boolean) { if (on === this.below) return; this.below = on; this.eng?.setBelow(on); }
   duck(on: boolean) { if (on === this.ducked) return; this.ducked = on; this.eng?.duck(on); }
   /** Ship roll in radians, every frame (creaks follow the motion). No-op while sound is off. */
   roll(r: number) { if (this.mode !== 'off') this.eng?.feedRoll(r); }
@@ -58,6 +61,8 @@ class Sound {
   // one-shots: silent unless the engine is running in full mode
   private fx(f: (e: SoundEngine) => void) { if (this.mode === 'full' && this.eng) f(this.eng); }
   tick(pitch = 1) { this.fx(e => e.tick(pitch)); }
+  /** A syllable of the Librarian's speech. */
+  blip() { this.fx(e => e.blip()); }
   click() { this.fx(e => e.click()); }
   chunk() { this.fx(e => e.chunk()); }
   chime() { this.fx(e => e.chime()); }
