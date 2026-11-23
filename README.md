@@ -1,6 +1,6 @@
 # kucukkanat.com
 
-The personal site of Hilmi Tolga Şahin (HT): the captain's cabin of an airship at sunset. Projects are game cartridges in a map chest — insert one into the KANAT·1 handheld and it plays. Writing is on the bookshelf, the career is on the logbook rack and drawn as a voyage on the chart table. A plain version lives at `/plain/`.
+The personal site of Hilmi Tolga Şahin (HT): the captain's cabin of an airship at sunset. Projects are game cartridges in a map chest — insert one into the KANAT·1 handheld and it plays. Writing is on the bookshelf, and below deck (down the hatch beside it) is the captain's library, kept by his best friend the Librarian, who fetches a topic's volume when asked. The career is on the logbook rack and drawn as a voyage on the chart table. A plain version lives at `/plain/`.
 
 ```bash
 bun install
@@ -25,13 +25,15 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 
 **Textures:** the models, lightmaps and sky backdrops ship as KTX2 (Basis Universal ETC1S), which the GPU keeps compressed: roughly 4–8x less GPU memory than WebP/JPEG, which it holds uncompressed. `scripts/ktx2.ts` encodes them with the `ktx2-encoder` devDependency (Basis compiled to WASM, so there's nothing to install: no `toktx`/KTX-Software). It runs from `bun run blender` (`scripts/compress-glb.ts`: models + lightmaps + sky), `bun scripts/build-captain.ts` and `whales/scripts/web.ts`. Maps smaller than half of 512² stay WebP. The browser side is the `KTX2Loader` in `src/scene.ts` (`initKTX2`, `gltfLoader`, `loadTexture`), with the Basis transcoder served from `public/basis/` (copied from `node_modules/three/examples/jsm/libs/basis/`; copy it again after a three.js upgrade). Compressed textures can't be read back or flipped at load time, so the bake brightness goes to `lightmaps.json` (`mean`) and the sky backdrops are flipped when they're encoded. The sources stay next to them (`lightmap_*.webp` from the bake, `sky_*.jpg`).
 
-**Sound:** fully synthesised (no audio files) in `src/sound/engine.ts`, a separate ~4 KB chunk loaded only when the visitor turns sound on. The button cycles Off → Ambient (wind, creaks, rain, music, ship's bells) → Full (plus interaction sounds). Ship's bells strike on the half hour by the watch.
+**Library deck:** `src/library/` (its own chunk), `?deck=1` goes straight down. The room is built by `blender/library/build.py`, the Librarian comes from the Librarian prototype repository as `art/library/*`; `bun run library` rebuilds and compresses both. Its search is offline keyword matching over the topics and notes (`src/library/brain.ts`). See the Library deck section of [docs/SCENE_CONTRACT.md](docs/SCENE_CONTRACT.md).
+
+**Sound:** fully synthesised (no audio files) in `src/sound/engine.ts`, a separate ~4 KB chunk loaded only when the visitor turns sound on. The button cycles Off → Ambient (wind, creaks, rain, music, ship's bells) → Full (plus interaction sounds). Ship's bells strike on the half hour by the watch. Below deck the weather is muffled and the Librarian's speech is a soft syllable blip (Full).
 
 | Where | What |
 |---|---|
 | `content/` | Everything shown on the site, one Markdown file per item — see [docs/CONTENT.md](docs/CONTENT.md) |
 | `src/` | three.js app (Vite + TypeScript) |
-| `blender/` | Python scripts that build the cabin, collectibles and sky in Blender 5.3 and bake the lightmaps (`bun run blender`) |
+| `blender/` | Python scripts that build the cabin, collectibles and sky in Blender 5.3 and bake the lightmaps (`bun run blender`); `blender/library/` builds the library deck (`bun run library`) |
 | `airship/` | The sky galleon (exterior of the same ship): build scripts, standalone preview, and the web copy `public/assets/galleon.glb` used for the opening shot |
 | `whales/` | Sky whales: six Blender-built species bodies (generator scripts, master GLBs, renders, `bun run whales`); the individuals and the ecosystems on their backs are grown from seeds at runtime in `src/whales/`, see [whales/README.md](whales/README.md) |
 | `blender/mcp/server.py` | Stdio MCP server for Blender Lab's MCP extension (registered in `.mcp.json`) |

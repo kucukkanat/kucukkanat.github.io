@@ -1,6 +1,7 @@
 import { plainFx, setupShafts, type Fx } from './fx';
 import { FULL } from './tier';
 import type { Outside } from './outside';
+import type { Deck } from './library/deck';
 import { wantsIntro } from './intro-flag';
 import { setupPatch } from './patch';
 import type { Writing } from './writing/reader';
@@ -79,6 +80,7 @@ const HOTSPOT_LABEL: Record<string, string> = {
   table: 'Chart table — my voyage so far',
   rack: 'Logbook rack — a save file from every job',
   shelf: 'Bookshelf — things I wrote',
+  hatch: 'Hatch — down to the library',
   handheld: 'KANAT·1 — the handheld',
   lantern: 'Lantern — sunset or night',
   wheel: 'Ship’s wheel — give it a spin',
@@ -119,7 +121,7 @@ async function main() {
   // First view only: content, cabin, collectibles, sunset light + sky. Everything else streams in after the first frame.
   // The galleon is not fetched here: it streams in after the first frame (full tier) or when Outside is opened.
   const fxFull = FULL ? import('./fx-full') : null;
-  const introOn = wantsIntro(params, ['view', 'play', 'open', 'storm', 'night', 'item', 'note', 'topic', 'index'].some(k => params.has(k)));
+  const introOn = wantsIntro(params, ['view', 'play', 'open', 'storm', 'night', 'item', 'note', 'topic', 'index', 'deck'].some(k => params.has(k)));
   const [content0, notesIndex, cabinGltf, collGltf, galleonGltf] = await Promise.all([
     loadContent(),
     loadNotesIndex(),
@@ -174,6 +176,10 @@ async function main() {
   // State
   let goOutside: () => void = () => { /* set once the outside view exists */ };
   let outsideRef: Outside | null = null;
+  // the library deck below the cabin (library/deck.ts, its own chunk)
+  let deckRef: Deck | null = null;
+  let goDeck: (topic?: string) => Promise<void> = async () => { /* set once the deck hooks exist */ };
+  let preloadDeck = () => { /* set once the deck hooks exist */ };
   // the sky whales: their own chunk, set up in idle time after the sky models (whales-world.ts)
   let whalesRef: import('./whales-world').WhalesWorld | null = null;
   let skyGltf: Awaited<ReturnType<typeof loadGLB>> = null;
@@ -228,7 +234,7 @@ async function main() {
   let writingP: Promise<Writing> | null = null;
   const getWriting = () => writingP ??= import('./writing/reader').then(m => (writingRef = new m.Writing(document.body, {
     changed: open => {
-      ui.setVisible(!open);
+      ui.setVisible(!open && !deckRef?.active);
       if (open) { hideHint(); if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
     },
     focusTopic: id => { coll.setHover(id ? coll.byId.get(topicItemId(id)) ?? null : null); },
@@ -268,6 +274,10 @@ async function main() {
     const act = (id: string, title: string, detail: string, keywords: string[], run: () => void) => items.push({ id: `a-${id}`, group: 'Actions', title, detail, keywords, run: () => { writing.close(); run(); } });
     act('index', 'Open the Ship\u2019s Index', 'Every note, with filters', ['writing', 'blog', 'articles', 'notes', 'yazılar', 'liste'], () => { void writing.openIndex(); });
     act('night', night ? 'Blow out the lantern: back to sunset' : 'Light the lantern: night', 'Switch between sunset and night', ['night', 'day', 'dark', 'gece', 'gündüz', 'lantern'], () => toggleNight());
+    if (notesIndex?.topics.some(t => t.notes.length)) {
+      act('library', 'Go down to the library', 'The captain’s library below deck, and his friend who keeps it', ['library', 'librarian', 'books', 'notes', 'below', 'kütüphane'], () => { void goDeck(); });
+      for (const t of notesIndex.topics) if (t.notes.length) act(`ask-${t.id}`, `Ask the Librarian for ${t.title}`, 'He fetches the volume from the shelf below deck', ['library', 'librarian', t.title.toLowerCase()], () => { void goDeck(t.id); });
+    }
     act('outside', 'Go outside', 'See the ship from the air and fly it', ['ship', 'galleon', 'fly', 'helm', 'dışarı', 'gemi'], () => goOutside());
     act('whales', 'Watch the sky whales', "Today's pod of whales carrying their own worlds, in the whale viewer", ['whale', 'whales', 'sky whales', 'balina'], () => { location.href = '/whales/'; });
     act('letter', 'Read the welcome letter', 'The letter on the chart table', ['welcome', 'hello', 'mektup'], () => { void openLetter(true); });
@@ -359,7 +369,7 @@ async function main() {
   function select(c: Collectible) {
     // a topic volume opens its notes in the Reading Room instead of the inspector
     const topic = topicOf(c.item.id);
-    if (topic) { audio.paper(); void writing.openTopic(topic); return; }
+    if (topic) { audio.paper(); if (notesIndex) void goDeck(topic); else void writing.openTopic(topic); return; }
     if (c.detached) { if (inspector.isCurrent(c.item.id)) inspector.flip(); return; }
     const isIsland = c.kind === 'island';
     if (pulled === c) { ui.closePanel(); return; }
@@ -403,6 +413,8 @@ async function main() {
     ui.setItemButtons(place ? coll.list.filter(c => c.place === place).map(c => ({ id: c.item.id, label: itemLabel(c), world: coll.worldCenter(c) })) : []);
     if (v === 'table') setTimeout(() => coll.revealRoute(), reducedMotion ? 0 : 600);
     await rig.glide(v);
+    // the library is right below the shelf: larger screens start fetching it here (library/deck.ts)
+    if ((v === 'shelf' || v === 'hatch') && FULL) preloadDeck();
     if (v === 'handheld' && play.inserted && !play.busy) play.insert(play.inserted);
   }
 
@@ -417,6 +429,7 @@ async function main() {
   }
 
   function back() {
+    if (deckRef?.active) { if (deckRef.below && !writing.isOpen) deckRef.escape(); return; }
     if (letterOpen) { tuckLetter(); return; }
     if (play.overlayOn || (play.inserted && rig.view !== 'overview' && !play.busy && (rig.view === 'screen' || rig.view === 'handheld'))) { play.eject(); return; }
     if (sheets.isOpen) { sheets.close(); return; }
@@ -428,6 +441,7 @@ async function main() {
   function activateHit(id: string) {
     if (id === 'lantern') { toggleNight(); return; }
     if (id === 'wheel') { spinWheel(2.4); return; }
+    if (id === 'hatch') { void goDeck(); return; }
     if (id === 'clock') { audio.brass(); if (ui.panelOpen) ui.closePanel(); clock.open(); ui.announce('Ship’s clock'); return; }
     switch (id as EggId) {
       case 'letter': openLetter(true); return;
@@ -553,7 +567,7 @@ async function main() {
 
   new Input(renderer.domElement, camera, {
     targets: () => {
-      if (play.overlayOn || play.busy || outsideRef?.active || writing.isOpen || search.isOpen) return [];
+      if (play.overlayOn || play.busy || outsideRef?.active || deckRef?.active || writing.isOpen || search.isOpen) return [];
       const place = VIEW_PLACE[rig.view];
       const hits = [...inspector.pickables(), ...allHits.filter(h => h.userData.hit !== rig.view && !(rig.view === 'screen' && h.userData.hit === 'handheld')), ...(rig.view === 'screen' ? [] : eggHits), ...(clock.hit && rig.view !== 'screen' ? [clock.hit] : []), ...(whalesRef && rig.view === 'overview' ? whalesRef.pickables() : [])];
       if (!place) return hits;
@@ -600,10 +614,10 @@ async function main() {
     swipeDown: () => back(),
     escape: () => { if (!outsideRef?.active) back(); },
     look: (x, y) => rig.setLook(x, y),
-    orbit: (dx, dy) => { if (outsideRef?.active) return; rig.orbit(dx, dy); hideHint(); },
-    zoom: f => { rig.zoomBy(f); hideHint(); },
-    pan: (dx, dy) => { rig.panBy(dx, dy); hideHint(); },
-    reset: () => rig.resetView(),
+    orbit: (dx, dy) => { if (outsideRef?.active || deckRef?.active) return; rig.orbit(dx, dy); hideHint(); },
+    zoom: f => { if (deckRef?.active) return; rig.zoomBy(f); hideHint(); },
+    pan: (dx, dy) => { if (deckRef?.active) return; rig.panBy(dx, dy); hideHint(); },
+    reset: () => { if (!deckRef?.active) rig.resetView(); },
   });
 
   // Resize
@@ -713,8 +727,8 @@ async function main() {
     });
   };
   const wheelSpin = new THREE.Quaternion();
-  renderer.setAnimationLoop((now: number) => {
-    const idle = now - lastInput > IDLE_AFTER && !tweensActive() && !wheelHeld && Math.abs(wheelVel) < 0.01 && !outsideRef?.active;
+  const frame = (now: number) => {
+    const idle = now - lastInput > IDLE_AFTER && !tweensActive() && !wheelHeld && Math.abs(wheelVel) < 0.01 && !outsideRef?.active && !deckRef?.active;
     const minMs = idle ? IDLE_MS : ACTIVE_MS;
     // 2 ms of slack: rAF timestamps jitter, and a 60 Hz frame (16.7 ms) must still pass a 33.3 ms gap on the second one
     if (last >= 0 && minMs && now - last < minMs - 2) return;
@@ -774,6 +788,7 @@ async function main() {
       if (n) audio.whale(n.key, clamp(0.5 / Math.max(n.rel, 1), 0.04, 0.3), n.pan);
     }
     rig.update(t, dt);
+    deckRef?.update(dt, ship);
     inspector.update(dt);
     ui.setQuiet(inspector.overlay);
     ui.update(camera, innerWidth, innerHeight, id => { const c = coll.byId.get(id); return c ? coll.worldCenter(c) : null; });
@@ -795,7 +810,8 @@ async function main() {
       scene.background = bg;
     }
     if (firstFrame) { firstFrame = false; afterFirstFrame(); }
-  });
+  };
+  renderer.setAnimationLoop(frame);
 
   // Outside the ship: the opening shot, and the "Outside" button (outside.ts, its own chunk)
   let outsideP: Promise<Outside> | null = null;
@@ -831,6 +847,56 @@ async function main() {
   };
   goOutside = () => { void goOutsideP(); };
 
+  // Below deck: the captain's library and the Librarian (library/deck.ts, its own chunk), down the hatch by the shelf
+  let deckP: Promise<Deck> | null = null;
+  const getDeck = () => deckP ??= import('./library/deck').then(m => (deckRef = new m.Deck(scene, rig, renderer, cabin, {
+    root: document.body,
+    index: notesIndex!,
+    openNote: slug => { void writing.openNote(slug); },
+    reading: () => writing.isOpen || search.isOpen,
+    changed: below => {
+      ui.setVisible(!below);
+      audio.setBelow(below);
+      if (below) { hideHint(); if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
+    },
+    up: () => { void upDeck(); },
+    announce: t => ui.announce(t),
+    paper: () => audio.paper(),
+    blip: () => audio.blip(),
+  })));
+  preloadDeck = () => { if (notesIndex) void getDeck().then(d => d.preload()); };
+  // a shared ?view=shelf link landed before this existed
+  if (FULL && (rig.view === 'shelf' || rig.view === 'hatch')) preloadDeck();
+  let deckIntent = false; // on the way down: the address says below at once
+  goDeck = async (topic?: string) => {
+    if (!notesIndex) return;
+    if (deckRef?.active) { if (topic) deckRef.fetch(topic); return; }
+    if (deckIntent || isOut()) return;
+    deckIntent = true;
+    try {
+      if (writing.isOpen) writing.close();
+      const ready = getDeck().then(d => d.preload());
+      if (rig.view !== 'hatch') await goto('hatch');
+      // still loading (phones, slow links): say so until it is in
+      let waiting = true;
+      void ready.finally(() => { waiting = false; });
+      await new Promise(r => setTimeout(r, 0));
+      while (waiting) { showNote('Lighting the lamps below…'); await Promise.race([ready, new Promise(r => setTimeout(r, 2000))]); }
+      if (!(await ready)) { showNote('The library could not be loaded'); return; }
+      audio.whoosh();
+      ui.announce('Down the ladder to the library.');
+      await deckRef!.enter(topic);
+    } catch (err) { console.warn('deck', err); showNote('The library could not be loaded'); } finally { deckIntent = false; }
+  };
+  const upDeck = async () => {
+    if (!deckRef?.below) return;
+    audio.whoosh();
+    await deckRef.exit();
+    ui.announce('Back in the cabin, by the hatch.');
+    await goto('shelf');
+  };
+  const isDeck = () => deckIntent || !!deckRef?.active;
+
   // ----- the address bar (nav.ts): what is on screen, kept in the URL; Back / Forward replay it -----
   // the address follows what the visitor asked for, at once: a view mid-glide, a cartridge on its way in, the flight out
   const isOut = () => outIntent || (!!outsideRef && outsideRef.mode !== 'inside');
@@ -842,6 +908,7 @@ async function main() {
     if (searchRef?.isOpen) s.search = searchRef.query;
     if (whalesRef?.cardKey) s.whale = whalesRef.cardKey;
     if (isOut()) { s.outside = '1'; return s; }
+    if (isDeck()) { s.deck = '1'; return s; }
     if (playing()) s.play = (playIntent ?? play.inserted)!.item.id;
     else {
       const v = play.ejecting ? 'handheld' : rig.view; // eject ends at the handheld
@@ -852,11 +919,12 @@ async function main() {
     if (open) s.open = open;
     return s;
   };
-  const VIEW_TITLE: Partial<Record<ViewName, string>> = { chest: 'The map chest', table: 'The chart table', rack: 'The logbook rack', shelf: 'The bookshelf', handheld: 'KANAT·1', screen: 'KANAT·1', portrait: 'The captain’s portrait', letter: 'The welcome letter', clock: 'The ship’s clock' };
+  const VIEW_TITLE: Partial<Record<ViewName, string>> = { hatch: 'The hatch', chest: 'The map chest', table: 'The chart table', rack: 'The logbook rack', shelf: 'The bookshelf', handheld: 'KANAT·1', screen: 'KANAT·1', portrait: 'The captain’s portrait', letter: 'The welcome letter', clock: 'The ship’s clock' };
   const OPEN_TITLE: Record<string, string> = { letter: 'The welcome letter', about: 'About', story: 'The story', contact: 'Send a message', clock: 'The ship’s clock' };
   const titleOf = (s: nav.CabinState): string | null => {
     if (s.search !== undefined) return 'Search';
     if (s.outside) return 'Outside the ship';
+    if (s.deck) return 'The library';
     if (s.open) return OPEN_TITLE[s.open] ?? null;
     const id = s.play ?? s.item;
     if (id) return coll.byId.get(id)?.item.title ?? null;
@@ -872,15 +940,17 @@ async function main() {
   });
   async function applyNav(t: nav.CabinState) {
     // Back / Forward pressed mid-move: let the move finish first
-    await until(() => !play.busy && !outsideRef?.busy && !rig.isGliding);
+    await until(() => !play.busy && !outsideRef?.busy && !rig.isGliding && !deckIntent && !deckRef?.busy);
     const lit = t.night === '1';
     if (lit !== night) { nightP = toggleNight(); await nightP; nightP = null; }
     if ((t.storm === '1') !== weather.storm) void weather.set(t.storm === '1');
     if (t.search === undefined) searchRef?.close();
     if (t.whale === undefined) whalesRef?.closeCard();
-    if (t.outside) { if (!isOut()) await goOutsideP(); }
+    if (t.deck) { if (!isDeck()) { if (isOut()) await outsideRef!.goInside(); await goDeck(); } }
+    else if (t.outside) { if (deckRef?.below) await deckRef.exit(); if (!isOut()) await goOutsideP(); }
     else {
       if (isOut()) await outsideRef!.goInside();
+      if (deckRef?.below) await deckRef.exit();
       if (letterOpen && t.open !== 'letter') tuckLetter();
       if (sheets.isOpen && sheets.kind !== t.open) sheets.close('close', true);
       if (clock.isOpen && t.open !== 'clock') clock.close();
@@ -946,6 +1016,7 @@ async function main() {
   {
     const t = nav.read();
     if (t.outside) { firstLetter = false; await goOutsideP(); }
+    else if (t.deck) { firstLetter = false; void goDeck(); }
     if (t.search !== undefined) { firstLetter = false; search.open(t.search); }
     if (t.whale) {
       firstLetter = false;
@@ -973,6 +1044,11 @@ async function main() {
     scene, cabin, coll, rig, play, ui, props, weather, sheets, lighting, sky, inspector, ship, clock, hang, letterView,
     get whales() { return whalesRef; },
     get outside() { return outsideRef; },
+    get deck() { return deckRef; },
+    goDeck: (topic?: string) => goDeck(topic),
+    /** Automated checks in a hidden tab (no rAF): run n frames of ms each. */
+    step: (n = 1, ms = 16) => { let v = Math.max(last, 0); for (let i = 0; i < n; i++) frame(v += ms); },
+    upDeck: () => upDeck(),
     goOutside: () => goOutside(),
     goto, openLetter, openAbout, openSheet, ringBell, toggleNight, back,
     select: (id: string) => { const c = coll.byId.get(id); if (c) select(c); },

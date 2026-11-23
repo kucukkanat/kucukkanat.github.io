@@ -35,7 +35,7 @@ export class SoundEngine {
   private lastRoll = 0; private lastRollVel = 0; private nextCreakOk = 0;
   private ownRollT = 0;
   private bellSlot = -1;
-  private focus = false; private ducked = false;
+  private focus = false; private ducked = false; private below = false; private lastBlip = 0;
 
   constructor() {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -100,6 +100,8 @@ export class SoundEngine {
   /** 0 = sunset, 1 = night. */
   setNight(k: number) { this.night = k; this.updateMood(); }
   setStorm(on: boolean) { this.storm = on ? 1 : 0; this.updateMood(); if (on) this.gustTarget = 1; }
+  /** Below deck (the library): the wind and rain come through the hull, low and muffled. */
+  setBelow(on: boolean) { this.below = on; this.mixAmb(); }
   /** Close-up views muffle the wind a little; the overview opens it up. */
   setFocus(close: boolean) { this.focus = close; this.mixAmb(); }
   /** A game is playing in the handheld: step back. */
@@ -124,8 +126,8 @@ export class SoundEngine {
 
   private mixAmb() {
     const t = this.ctx.currentTime;
-    this.ambLP.frequency.setTargetAtTime(this.focus ? 2600 : 16000, t, 0.5);
-    this.amb.gain.setTargetAtTime((this.ducked ? 0.25 : 1) * (this.focus ? 0.7 : 0.9), t, 0.6);
+    this.ambLP.frequency.setTargetAtTime(this.below ? 700 : this.focus ? 2600 : 16000, t, 0.5);
+    this.amb.gain.setTargetAtTime((this.ducked ? 0.25 : 1) * (this.below ? 0.55 : this.focus ? 0.7 : 0.9), t, 0.6);
   }
 
   // ---------- buffers ----------
@@ -383,6 +385,20 @@ export class SoundEngine {
   }
 
   /** Soft wooden tick (hover, small UI). */
+  /** One syllable of the Librarian's speech (no voice): a short, warm, quiet tone of slightly varied pitch. */
+  blip() {
+    const c = this.ctx, t = c.currentTime;
+    if (t - this.lastBlip < 0.05) return;
+    this.lastBlip = t;
+    const o = c.createOscillator(), f = c.createBiquadFilter();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(140 + Math.random() * 70, t);
+    o.frequency.exponentialRampToValueAtTime(110 + Math.random() * 40, t + 0.08);
+    f.type = 'lowpass'; f.frequency.value = 900;
+    o.connect(f);
+    this.env(f, t, 0.06, 0.1).connect(this.fx);
+    o.start(t); o.stop(t + 0.12);
+  }
   tick(pitch = 1) { this.burst(this.ctx.currentTime, 0.035, 'bandpass', 2400 * pitch, 5, 0.25); }
   /** Plastic click (pick up a cartridge, buttons). */
   click() {

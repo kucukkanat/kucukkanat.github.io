@@ -3,7 +3,7 @@
   "file": "lightmap_sunset.webp",
   "scale": 3,
   "lightMapIntensity": 9.4248,
-  "mean": 0.1274
+  "mean": 0.1352
  },
  "night": {
   "file": "lightmap_night.webp",

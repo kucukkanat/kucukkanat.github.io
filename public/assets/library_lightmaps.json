@@ -1,0 +1,30 @@
+{
+ "sunset": {
+  "file": "library_lightmap_sunset.webp",
+  "lite": "library_lightmap_sunset_lite.webp",
+  "scale": 3,
+  "lightMapIntensity": 9.4248,
+  "books": [
+   1,
+   1,
+   1
+  ],
+  "mean": 0.1598,
+  "ktx2": "library_lightmap_sunset.ktx2",
+  "ktx2_1k": "library_lightmap_sunset_1k.ktx2"
+ },
+ "night": {
+  "file": "library_lightmap_night.webp",
+  "lite": "library_lightmap_night_lite.webp",
+  "scale": 3,
+  "lightMapIntensity": 9.4248,
+  "books": [
+   0.265,
+   0.261,
+   0.271
+  ],
+  "mean": 0.0721,
+  "ktx2": "library_lightmap_night.ktx2",
+  "ktx2_1k": "library_lightmap_night_1k.ktx2"
+ }
+}

@@ -29,6 +29,7 @@ const LIMITS: Record<ViewName, Limits> = {
   portrait: { mode: 'orbit', yaw: 18, pitchDown: 10, pitchUp: 10, zoomIn: 0.6, zoomOut: 1.15, panX: 0.224, panY: 0.224 },
   letter:   { mode: 'orbit', yaw: 22, pitchDown: 8, pitchUp: 14, zoomIn: 0.6, zoomOut: 1.2, panX: 0.168, panY: 0.14 },
   clock:    { mode: 'orbit', yaw: 20, pitchDown: 10, pitchUp: 10, zoomIn: 0.6, zoomOut: 1.6, panX: 0.168, panY: 0.168 },
+  hatch:    { mode: 'none', yaw: 0, pitchDown: 0, pitchUp: 0, zoomIn: 1, zoomOut: 1, panX: 0, panY: 0 },
 };
 
 export class CameraRig {

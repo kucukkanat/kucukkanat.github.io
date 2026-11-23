@@ -41,7 +41,7 @@ Because content is plain files, a Git-based editor (for example Pages CMS or Dec
 
 Long-form writing lives in two folders and is built by `scripts/build-notes.ts` (the data contract is `src/writing/types.ts`):
 
-- `content/topics/<id>.md`: one file per topic, which is one book on the shelf. Frontmatter: `title`, `colour` (`#rrggbb`, the book cover), `order` (a number; shelf order). The body is a one or two sentence blurb.
+- `content/topics/<id>.md`: one file per topic, which is one book on the shelf and one volume in the library below deck (the first ten topics by `order`; the Librarian fetches it and the open book lists its notes; tags of the notes are the words he recognises when asked). Frontmatter: `title`, `colour` (`#rrggbb`, the book cover), `order` (a number; shelf order). The body is a one or two sentence blurb.
 - `content/notes/<slug>.md`: one file per note. The file name is the slug and the address (`/writing/<slug>/`, `/?note=<slug>` in the cabin): lower-case ASCII letters, digits and dashes, unique across both languages (a Turkish note gets its own slug, for example `seksen-yuzde-kes`). Sub-folders are allowed and ignored.
 
 ```yaml

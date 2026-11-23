@@ -528,6 +528,8 @@ def build(blockout=False):
     objs["chest"] = build_chest(C)
     objs["rack"] = build_rack(C)
     objs["props"] = build_props(C)
+    from . import hatch
+    hatch.build(C, objs)          # the way down to the library deck
     build_lantern(C)
     build_wheel(C)
     hh = handheld.build(C)

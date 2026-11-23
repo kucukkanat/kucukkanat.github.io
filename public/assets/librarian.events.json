@@ -1,0 +1,95 @@
+{
+  "point": {
+    "point": 0.4
+  },
+  "tip_hat": {
+    "tip": 0.7
+  },
+  "reach_high": {
+    "contact": 0.55
+  },
+  "reach_mid": {
+    "contact": 0.55
+  },
+  "reach_low": {
+    "contact": 0.65
+  },
+  "grab": {
+    "attach": 0.42
+  },
+  "hand_over": {
+    "release": 1.3
+  },
+  "_clips": {
+    "idle": {
+      "duration": 4.0,
+      "loop": true
+    },
+    "idle_shift": {
+      "duration": 5.0,
+      "loop": true
+    },
+    "talk_a": {
+      "duration": 2.0,
+      "loop": true
+    },
+    "talk_b": {
+      "duration": 2.4,
+      "loop": true
+    },
+    "think": {
+      "duration": 3.0,
+      "loop": true
+    },
+    "nod": {
+      "duration": 1.0,
+      "loop": false
+    },
+    "shrug": {
+      "duration": 1.2,
+      "loop": false
+    },
+    "point": {
+      "duration": 1.6,
+      "loop": false
+    },
+    "wave": {
+      "duration": 2.0,
+      "loop": false
+    },
+    "tip_hat": {
+      "duration": 1.8,
+      "loop": false
+    },
+    "idle_hilt": {
+      "duration": 4.5,
+      "loop": true
+    },
+    "reach_high": {
+      "duration": 1.2,
+      "loop": false
+    },
+    "reach_mid": {
+      "duration": 1.2,
+      "loop": false
+    },
+    "reach_low": {
+      "duration": 1.4,
+      "loop": false
+    },
+    "grab": {
+      "duration": 0.8,
+      "loop": false
+    },
+    "hand_over": {
+      "duration": 2.0,
+      "loop": false
+    },
+    "walk": {
+      "duration": 1.0,
+      "loop": true,
+      "speed": 0.72
+    }
+  },
+  "_fps": 30
+}

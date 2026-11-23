@@ -1,0 +1,49 @@
+/* The library deck's HUD (library/deck.ts): the Librarian's parchment ask box, the book and back buttons, and the
+   pointer layer over the canvas. Everything is scoped to .deck-*, under the reader (writing.css, z-index 35). */
+.deck-layer { position: fixed; inset: 0; z-index: 5; touch-action: none; }
+.deck-fade { position: fixed; inset: 0; z-index: 30; background: #0d0a0b; opacity: 0; pointer-events: none; }
+.deck-ui { --d-ink: #2a1712; --d-paper: #e5d1a2; --d-paper-hi: #f3e6c4; font: 16px/1.45 var(--display, Georgia), Georgia, 'Times New Roman', serif; }
+.deck-ui .deck-parchment, .deck-ui .parchment {
+  background: radial-gradient(ellipse at 30% 20%, var(--d-paper-hi), var(--d-paper) 60%, #d0b784);
+  color: var(--d-ink); border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 0 40px rgba(140,95,30,.25);
+  border: 1px solid #b3966a;
+}
+.deck-ui .chat { position: fixed; z-index: 6; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(620px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 12px; }
+/* his words live on the in-world scroll; the HTML copy stays for screen readers */
+.deck-ui .chat .who { display: none; }
+.deck-ui .chat .words { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.deck-ui .chat form { display: flex; gap: 8px; margin: 0; }
+.deck-ui .chat input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; border-radius: 4px; border: 1px solid #b3966a; background: rgba(255,250,235,.7); color: var(--d-ink); }
+.deck-ui .chat button[type=submit] { font: inherit; border: 0; border-radius: 4px; background: #992f27; color: #f3e6c4; padding: 7px 14px; cursor: pointer; }
+.deck-ui .chat button[type=submit]:disabled { background: #8a7a6a; cursor: default; }
+.deck-ui .chat .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
+.deck-ui .chat .chip { font: 13px var(--display, Georgia), Georgia, serif; padding: 4px 10px; border-radius: 999px; border: 1px solid #b3966a;
+  background: rgba(255,250,235,.55); color: #5a3a22; cursor: pointer; }
+.deck-ui .chat .chip:hover, .deck-ui .chat .chip:focus-visible { background: #f3e6c4; color: var(--d-ink); }
+.deck-ui .chat.busy .chip { opacity: .5; cursor: default; }
+.deck-ui .chat .field { flex: 1; min-width: 0; position: relative; display: flex; }
+.deck-ui .chat .field input { flex: 1; }
+.deck-ui .chat .hint { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); max-width: 48%; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis; font-size: 13px; font-style: italic; color: #8c5f1e; pointer-events: none; }
+.deck-ui .chat.hinting .field input { padding-right: min(48%, 220px); }
+.deck-btn { position: fixed; z-index: 6; font: 15px var(--display, Georgia), Georgia, serif; border: 1px solid #b3966a; border-radius: 4px;
+  padding: 7px 16px; cursor: pointer; background: linear-gradient(#f3e6c4, #e5d1a2); color: #2a1712; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.deck-close { top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); }
+.deck-up { top: max(14px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); }
+.deck-up::before { content: '↑ '; }
+.deck-tip { position: fixed; z-index: 6; top: calc(max(16px, env(safe-area-inset-top)) + 48px); left: 50%; transform: translateX(-50%); padding: 8px 16px;
+  font-size: 14px; font-style: italic; white-space: nowrap; max-width: calc(100vw - 100px); overflow: hidden; text-overflow: ellipsis;
+  transition: opacity 1.2s ease; pointer-events: none; }
+.deck-tip.gone { opacity: 0; }
+@media (max-width: 560px) {
+  .deck-tip { white-space: normal; text-align: center; font-size: 13px; }
+  .deck-ui .chat .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .deck-ui .chat .chip { flex: none; }
+}
+@media (max-height: 620px) {
+  .deck-ui .chat { padding: 8px 12px; font-size: 14px; }
+  .deck-ui .chat input, .deck-ui .chat button[type=submit] { padding: 5px 10px; }
+  .deck-ui .chat .chips { margin-bottom: 6px; }
+  .deck-ui .chat .chip { padding: 3px 8px; font-size: 12px; }
+}

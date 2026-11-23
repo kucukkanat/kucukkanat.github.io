@@ -3,8 +3,8 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
-export type ViewName = 'overview' | 'chest' | 'table' | 'rack' | 'shelf' | 'handheld' | 'screen' | 'portrait' | 'letter' | 'clock';
-export const VIEWS: ViewName[] = ['overview', 'chest', 'table', 'rack', 'shelf', 'handheld', 'screen', 'portrait', 'letter', 'clock'];
+export type ViewName = 'overview' | 'chest' | 'table' | 'rack' | 'shelf' | 'handheld' | 'screen' | 'portrait' | 'letter' | 'clock' | 'hatch';
+export const VIEWS: ViewName[] = ['overview', 'chest', 'table', 'rack', 'shelf', 'handheld', 'screen', 'portrait', 'letter', 'clock', 'hatch'];
 /** Polish-round viewpoints: optional in the GLB (props.ts derives them from the props when missing). */
 const OPTIONAL_VIEWS = new Set<ViewName>(['portrait', 'letter', 'clock']);
 /** Polish-round hit volumes: optional, never get a pulsing hotspot. */
@@ -84,6 +84,7 @@ const FALLBACK_VIEWS: Record<ViewName, [number[], number[]]> = {
   portrait: [[1.5, 2.0, -0.5], [2.45, 2.3, -1.6]],
   letter: [[0.3, 1.35, 0.6], [0.28, 0.86, 0.15]],
   clock: [[2.1, 2.1, 0.6], [2.9, 2.2, 0.6]],
+  hatch: [[-1.3, 1.55, 1.3], [-2.1, 0.05, 0.3]],
 };
 
 export function indexCabin(root: THREE.Object3D): Cabin {
@@ -116,7 +117,7 @@ export function indexCabin(root: THREE.Object3D): Cabin {
     o.userData.hit = h;
   };
   const hits = new Map<string, THREE.Object3D>();
-  for (const h of ['chest', 'table', 'rack', 'shelf', 'handheld', 'lantern', 'wheel']) {
+  for (const h of ['chest', 'table', 'rack', 'shelf', 'handheld', 'lantern', 'wheel', 'hatch']) {
     const o = get(`HIT_${h}`);
     if (!o) { console.warn(`[scene] missing HIT_${h}`); continue; }
     register(h, o);
