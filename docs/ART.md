@@ -33,8 +33,8 @@ Generated with OpenRouter through `scripts/gen-art.ts` (key in `~/.config/openro
 Made with the Meshy API (key on the cloud environment, never in the repo), from three photos of him (not committed):
 1. Image to image (`nano-banana-pro`, the photos as references): a full-body concept in the pirate navigator's outfit (red frock coat, tricorn, cutlass, spyglass), A-pose on white, then a second pass to bring the face closer to the photos → `art/chartroom/ugurcan_concept.png`.
 2. Image to 3D from the concept: `ai_model: latest` (Meshy 7.1), remeshed to 60k triangles, `texture_model: meshy-7`, `remove_lighting`, **T-pose**. (An A-pose model rigged badly: his arms hang against the coat, so the auto-rig tied the coat side and the hip props to the arm bones and they stretched whenever he raised a hand. In a T-pose the arms stand clear of the body and the weights come out clean.)
-3. Rigging (biped, 1.78 m, fingers), then animations `[0, 11, 336, 290, 42, 415, 30, 121]` (idles, wave, bow, sway, casual and thoughtful walk) in one file → `art/chartroom/ugurcan.glb`.
-About 185 credits in all, with the drafts.
+3. Rigging (biped, 1.78 m, fingers), then animations `[336, 243, 244, 246, 247, 252, 290, 42, 30, 121]` (six relaxed idles, wave, bow, casual and thoughtful walk; at most 10 per request). Of the library's standing idles, these keep his arms at his sides; `Idle 1` holds a fist up and the others gesture, stretch or crouch in one file → `art/chartroom/ugurcan.glb`.
+About 260 credits in all, with the drafts and the idle tryouts.
 
 ## Style rules
 
