@@ -41,6 +41,47 @@ interface Cloth { mesh: THREE.Mesh; pos: THREE.BufferAttribute; base: Float32Arr
 
 const q = new THREE.Quaternion();
 
+/** Belly weight per vertex: 0 on the cloth's real edges (yard, stay, gaff, mast, leeches), rising to 1 inside.
+ *  The edges are found from the triangles (vertices welded by position, since colour seams split them), so slanted
+ *  edges like the jib's luff and the spanker's head stay on their spars, which a bounding box would not do. */
+function sailWeights(mesh: THREE.Mesh, base: Float32Array, thin: number, c: THREE.Vector3, dims: number[]): Float32Array {
+  const n = base.length / 3, w = new Float32Array(n);
+  const [a0, a1] = [0, 1, 2].filter(a => a !== thin);
+  const eps = Math.max(...dims) * 1e-3, key = new Map<string, number>(), id = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    const k = `${Math.round(base[i * 3] / eps)},${Math.round(base[i * 3 + 1] / eps)},${Math.round(base[i * 3 + 2] / eps)}`;
+    let v = key.get(k); if (v === undefined) key.set(k, v = i); id[i] = v;
+  }
+  const idx = mesh.geometry.index, tri = idx ? (idx.array as ArrayLike<number>) : Array.from({ length: n }, (_, i) => i);
+  const edges = new Map<string, [number, number, number]>();
+  for (let t = 0; t + 2 < tri.length; t += 3) for (let e = 0; e < 3; e++) {
+    const p = id[tri[t + e]], r = id[tri[t + (e + 1) % 3]];
+    if (p === r) continue;
+    const k = p < r ? `${p},${r}` : `${r},${p}`, x = edges.get(k);
+    if (x) x[2]++; else edges.set(k, [p, r, 1]);
+  }
+  const seg: number[] = [];
+  for (const [p, r, cnt] of edges.values()) if (cnt === 1) seg.push(base[p * 3 + a0], base[p * 3 + a1], base[r * 3 + a0], base[r * 3 + a1]);
+  if (!seg.length) { // no open edge found: fall back to the bounding box
+    const cc = [c.x, c.y, c.z];
+    for (let i = 0; i < n; i++) { let k = 1; for (const a of [a0, a1]) { const u = (base[i * 3 + a] - cc[a]) / Math.max(dims[a] / 2, 1e-3); k *= clamp(1 - u * u, 0, 1); } w[i] = k; }
+    return w;
+  }
+  let dMax = 1e-6;
+  for (let i = 0; i < n; i++) {
+    const px = base[i * 3 + a0], py = base[i * 3 + a1];
+    let d = Infinity;
+    for (let s = 0; s < seg.length; s += 4) {
+      const ax = seg[s], ay = seg[s + 1], dx = seg[s + 2] - ax, dy = seg[s + 3] - ay, l = dx * dx + dy * dy;
+      const t = l > 0 ? clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0, ex = px - ax - t * dx, ey = py - ay - t * dy;
+      d = Math.min(d, ex * ex + ey * ey);
+    }
+    w[i] = Math.sqrt(d); dMax = Math.max(dMax, w[i]);
+  }
+  for (let i = 0; i < n; i++) { const u = w[i] / dMax; w[i] = u * (2 - u); } // ease out: rounded, no crease at the middle
+  return w;
+}
+
 export class ShipRig {
   private joints = new Map<string, Joint>();
   private sails: Cloth[] = [];
@@ -80,13 +121,7 @@ export class ShipRig {
     const bb = mesh.geometry.boundingBox!, size = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
     const dims = [size.x, size.y, size.z];
     const thin = dims.indexOf(Math.min(...dims)) as 0 | 1 | 2;
-    const w = new Float32Array(pos.count);
-    for (let i = 0; i < pos.count; i++) {
-      // belly: 1 in the middle of the cloth, 0 at its edges (the two axes that span the sail)
-      let k = 1;
-      for (let a = 0; a < 3; a++) if (a !== thin) { const u = (base[i * 3 + a] - (a === 0 ? c.x : a === 1 ? c.y : c.z)) / Math.max(dims[a] / 2, 1e-3); k *= clamp(1 - u * u, 0, 1); }
-      w[i] = k;
-    }
+    const w = sailWeights(mesh, base, thin, c, dims);
     const size2 = Math.max(...dims);
     return { mesh, pos, base, kind, furl: 0, furlT: 0, w, thin, size: size2, belly: 0, side: 1 };
   }
@@ -172,7 +207,8 @@ export class ShipRig {
     // only change sides in a real turn (a helm hovering around centre must not flip them back and forth)
     if (s.kind === 'fore-aft' && Math.abs(this.turnL) > 0.2) s.side = Math.sign(this.turnL);
     const dir = s.kind === 'square' ? 1 : s.side;
-    const target = open * s.size * (0.1 + 0.3 * sp) * dir;
+    // the model already carries its belly (airship/rig.py): this only adds a little more with speed
+    const target = open * s.size * (0.015 + 0.045 * sp) * dir;
     s.belly += (target - s.belly) * (1 - Math.exp(-1.5 * dt)); // the cloth fills and empties slowly
     const ax = s.thin;
     for (let i = 0; i < s.pos.count; i++) a[i * 3 + ax] = b[i * 3 + ax] + s.w[i] * s.belly;
