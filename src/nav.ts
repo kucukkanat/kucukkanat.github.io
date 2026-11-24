@@ -5,6 +5,7 @@
 //   ?open=letter|about|story|contact|clock
 //   ?outside=1                  outside the ship
 //   ?deck=1                     below deck, in the library
+//   ?chart=1                    in the chart room, with Ugurcan
 //   ?station=table              where in the library / round the ship outside (stations.ts)
 //   ?whale=<key>                a sky whale's card
 //   ?search=<words>             the Speaking Tube palette
@@ -18,7 +19,7 @@
 // down…), the module calls history.back() instead of stacking a new entry, so in-app back and the browser's Back
 // are the same thing.
 
-export const CABIN_KEYS = ['view', 'item', 'play', 'open', 'outside', 'deck', 'station', 'whale', 'search', 'night', 'storm'] as const;
+export const CABIN_KEYS = ['view', 'item', 'play', 'open', 'outside', 'deck', 'chart', 'station', 'whale', 'search', 'night', 'storm'] as const;
 export type CabinKey = typeof CABIN_KEYS[number];
 export type CabinState = Partial<Record<CabinKey, string>>;
 

@@ -1,0 +1,24 @@
+/* The chart room's HUD (chartroom/chartroom.ts): the pointer layer, the fade through the door, and his note. */
+.chart-layer { position: fixed; inset: 0; z-index: 5; touch-action: none; }
+.chart-fade { position: fixed; inset: 0; z-index: 30; background: #0d0a0b; opacity: 0; pointer-events: none; }
+.chart-ui .chart-note {
+  position: fixed; z-index: 8; left: 50%; top: 50%; transform: translate(-50%, -46%); opacity: 0;
+  transition: opacity .5s ease, transform .5s ease;
+  width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - var(--dock-h, 0px) - 48px); overflow: auto; box-sizing: border-box;
+  padding: 30px 32px 28px; text-align: center; color: #2a1712;
+  font: 17px/1.55 var(--display, Georgia), Georgia, 'Times New Roman', serif;
+  background: radial-gradient(ellipse at 30% 20%, #f3e6c4, #e5d1a2 60%, #d0b784);
+  border: 1px solid #b3966a; border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.5), inset 0 0 44px rgba(140,95,30,.25);
+}
+.chart-ui .chart-note.on { opacity: 1; transform: translate(-50%, -50%); }
+.chart-ui .chart-note h2 { margin: 4px 0 2px; font-size: 30px; font-weight: 600; letter-spacing: .01em; }
+.chart-ui .chart-note .sub { margin: 0 0 16px; font-style: italic; color: #6b4a2c; }
+.chart-ui .chart-note p { margin: 0 0 10px; }
+.chart-ui .chart-note .star { font-size: 26px; color: #b07a22; text-shadow: 0 0 12px rgba(255,210,120,.8); }
+.chart-ui .chart-note .close {
+  position: absolute; top: 6px; right: 8px; width: 36px; height: 36px; border: 0; background: none; cursor: pointer;
+  font: 26px/1 Georgia, serif; color: #6b4a2c; border-radius: 50%;
+}
+.chart-ui .chart-note .close:hover, .chart-ui .chart-note .close:focus-visible { background: rgba(107,74,44,.12); }
+@media (prefers-reduced-motion: reduce) { .chart-ui .chart-note { transition: none; } }

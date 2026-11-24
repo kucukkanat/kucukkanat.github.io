@@ -39,7 +39,7 @@ CEIL_SIDE, CEIL_TOP = 2.7, 3.3
 BULGE = 0.18
 TABLE_C, TABLE_TOP = (0.0, 0.0, -0.75), 0.92        # his chart table (a standing height)
 TABLE_W, TABLE_D = 1.7, 0.95
-UGURCAN = (0.0, -1.55)                              # (x, z) where he stands, behind the table, facing the visitor
+UGURCAN = (0.0, -1.42)                              # (x, z) where he stands, behind the table, facing the visitor
 WIN_Y0, WIN_Y1 = 0.85, 2.3                          # the gallery windows on the back wall
 WINDOWS = [(-1.05, 0.62), (0.0, 0.7), (1.05, 0.62)]  # (x centre, width)
 SKY_C, SKY_HALF = (0.0, -0.75), 0.5                 # skylight centre (x, z) and half size, over the table
@@ -215,7 +215,7 @@ def skylight(C):
     g.build(collection=C)
     # the sky above it (the app draws it: dusk, then night with his star)
     k = MB("Skylight_sky", smooth_angle=0)
-    ky = gy + 0.9
+    ky = gy + 0.45
     r = 1.6
     k.quad([(sx - r, ky, sz - r), (sx + r, ky, sz - r), (sx + r, ky, sz + r), (sx - r, ky, sz + r)], "SkyBackdrop")
     k.build(collection=C)

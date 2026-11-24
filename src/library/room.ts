@@ -17,12 +17,20 @@ export interface Room {
   update(): void;
 }
 
-export async function loadRoom(gltf: GLTF, full: boolean): Promise<Room> {
-  const meta = await fetch('/assets/library_lightmaps.json').then(r => r.json() as Promise<LightmapMeta>);
+/** The library's baked files (literal paths: the build gives them content-hashed names, scripts/hash-assets.ts). */
+const LIBRARY_FILES = {
+  meta: '/assets/library_lightmaps.json',
+  sunset: ['/assets/library_lightmap_sunset.ktx2', '/assets/library_lightmap_sunset_1k.ktx2'],
+  night: ['/assets/library_lightmap_night.ktx2', '/assets/library_lightmap_night_1k.ktx2'],
+};
+export type RoomFiles = typeof LIBRARY_FILES;
+
+/** `files`: another room built the same way (the chart room, chartroom/chartroom.ts). */
+export async function loadRoom(gltf: GLTF, full: boolean, files: RoomFiles = LIBRARY_FILES): Promise<Room> {
+  const meta = await fetch(files.meta).then(r => r.json() as Promise<LightmapMeta>);
   const [lmSunset, lmNight, skySunset, skyNight] = await Promise.all([
-    // literal paths: the build gives them content-hashed names (scripts/hash-assets.ts)
-    loadTexture(full ? '/assets/library_lightmap_sunset.ktx2' : '/assets/library_lightmap_sunset_1k.ktx2'),
-    loadTexture(full ? '/assets/library_lightmap_night.ktx2' : '/assets/library_lightmap_night_1k.ktx2'),
+    loadTexture(files.sunset[full ? 0 : 1]),
+    loadTexture(files.night[full ? 0 : 1]),
     loadTexture('/assets/sky_sunset.ktx2'),
     loadTexture('/assets/sky_night.ktx2'),
   ]);

@@ -11,6 +11,7 @@
     "blender": "/Applications/Blender.app/Contents/MacOS/Blender --background --python blender/build.py && bun scripts/compress-glb.ts",
     "whales": "whales/scripts/build_all.sh",
     "library": "/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/library/build.py && bun scripts/library-assets.ts",
+    "chartroom": "/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/chartroom/build.py && bun scripts/chartroom-assets.ts",
     "labels": "bun scripts/gen-labels.ts",
     "portrait": "bun scripts/gen-portrait.ts",
     "lan": "bun run content && bun run notes && PLAIN_OUT=public bun scripts/build-plain.ts && portless kucukkanat --lan vite",
