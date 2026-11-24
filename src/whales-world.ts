@@ -304,7 +304,7 @@ function proxyFor(w: SkyWhale, key: string) {
 
 // ───────────────────────────────────────────────────────── card
 const CARD_CSS = `
-.whale-card { position: fixed; z-index: 12; left: 50%; bottom: calc(76px + var(--safe-b, 0px)); transform: translate(-50%, 12px);
+.whale-card { position: fixed; z-index: 34; left: 50%; bottom: calc(76px + var(--safe-b, 0px)); transform: translate(-50%, 12px);
   width: min(380px, calc(100vw - 32px)); padding: 16px 18px 14px; border-radius: 16px; color: var(--ink);
   background: var(--glass-strong); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 14px 40px rgba(20, 8, 4, .45); opacity: 0; transition: opacity .25s ease, transform .25s ease; }
