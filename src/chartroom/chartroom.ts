@@ -4,7 +4,8 @@
 // scene origin in its own coordinates (blender/chartroom/build.py); the way in and out is a short fade through its door.
 //
 //   Ugurcan   stands at his chart table (Meshy model, rig and clips, art/chartroom/ugurcan.glb); he turns his head to
-//             the visitor, waves when they come in, and bows when they tap him, and his note opens (content/_ugurcan.md)
+//             the visitor, waves when they come in, and bows when they tap him, and his note opens (content/_ugurcan.md).
+//             Now and then he walks over to the star chart or the windows, stays a while, and walks back
 //   his star  in the skylight over the table: an evening star at sunset, the brightest in the sky at night
 //   camera    the stations' poses (Camera_* in the room) with the visitor's gestures on top, as in the library
 import * as THREE from 'three';
@@ -241,7 +242,12 @@ class World {
 
     const anchor = room.get('Ugurcan');
     this.man = new Navigator(manGltf);
-    if (anchor) { anchor.updateWorldMatrix(true, false); anchor.matrixWorld.decompose(this.man.root.position, this.man.root.quaternion, new THREE.Vector3()); }
+    if (anchor) {
+      anchor.updateWorldMatrix(true, false);
+      const q = new THREE.Quaternion();
+      anchor.matrixWorld.decompose(this.man.root.position, q, new THREE.Vector3());
+      this.man.setHome(this.man.root.position, new THREE.Euler().setFromQuaternion(q, 'YXZ').y);
+    }
     group.add(this.man.root);
     this.man.root.traverse(o => {
       const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
@@ -274,7 +280,7 @@ class World {
     this.shot = { pos: this.home.pos.clone(), target: this.home.target.clone() };
 
     this.note = new Note(ui, parseNote(noteText));
-    this.note.onClose = () => { this.man.lookAway(false); };
+    this.note.onClose = () => { this.man.lookAway(false); this.man.hold = false; };
     this.way = new Waypoints(ui, id => this.goStation(id), 'chart');
     const head = new V();
     const lift = new V(0, 0.42, 0);
@@ -296,6 +302,7 @@ class World {
 
   arrive(station?: string) {
     this.goHome(true);
+    this.man.toHome();
     if (station && station !== 'ugurcan') this.goStation(station);
     this.man.play(this.greeted ? 'Wave_One_Hand' : 'Gentlemans_Bow');
     if (!this.greeted) this.hooks.announce('In the chart room. Ugurcan, the ship’s navigator, is at his chart table.');
@@ -303,7 +310,7 @@ class World {
     setTimeout(() => coach('chartroom'), 1200);
   }
 
-  leave() { this.note.close(); this.goHome(true); }
+  leave() { this.note.close(); this.goHome(true); this.man.toHome(); }
 
   back(): boolean {
     if (this.note.isOpen) { this.note.close(); return true; }
@@ -340,6 +347,7 @@ class World {
   private openNote() {
     if (this.note.isOpen) return;
     this.goHome();
+    this.man.hold = true;
     this.man.play('Gentlemans_Bow');
     this.man.lookAway(true);
     this.note.open();
@@ -437,6 +445,13 @@ class World {
 }
 
 // ------------------------------------------------------------------------------------------------ Ugurcan
+/** Where he goes in the room (room coordinates) and which way he faces there (radians about +Y; 0 = toward the door). */
+type Spot = { x: number; z: number; yaw: number };
+/** Besides his place at the table: the star chart on the starboard wall, and the middle window, looking out ahead. */
+const AWAY: Spot[] = [{ x: 1.32, z: -1.3, yaw: Math.PI / 2 }, { x: 0.15, z: -1.98, yaw: Math.PI }];
+/** Metres per second of each walk clip (measured from the planted foot), so his feet do not slide. */
+const WALKS = { slow: { clip: 'Thoughtful_Walk', speed: 0.56 }, brisk: { clip: 'Casual_Walk', speed: 0.71 } };
+
 class Navigator {
   readonly root = new THREE.Group();
   private mixer: THREE.AnimationMixer;
@@ -444,36 +459,63 @@ class Navigator {
   private current: THREE.AnimationAction | null = null;
   private idleIndex = 0;
   private head: THREE.Object3D | null = null;
-  private meshes: THREE.Object3D[] = [];
   private look = { yaw: 0, pitch: 0, w: 0, away: false };
+  private home: Spot = { x: 0, z: -1.42, yaw: 0 };
+  /** idle: standing at a spot (idles, or a one-off clip); walk: on his way; turn: arrived, turning to face the spot's way. */
+  private state: 'idle' | 'walk' | 'turn' = 'idle';
+  private at: Spot = this.home;
+  private target: Spot | null = null;
+  private pace = WALKS.slow;
+  private yaw = 0;
+  /** Seconds until he next wanders off (at the table) or heads back (away). */
+  private wait = 25;
+  private awayIndex = 0;
+  private oneOff = false;
+  private then: (() => void) | null = null;
+  /** No wandering while the visitor reads his note. */
+  hold = false;
 
   constructor(gltf: GLTF) {
     this.root.name = 'Ugurcan';
     this.root.add(gltf.scene);
     gltf.scene.traverse(o => {
       const m = o as THREE.SkinnedMesh;
-      if (m.isMesh) { m.frustumCulled = false; this.meshes.push(m); }
+      if (m.isMesh) m.frustumCulled = false;
       if (!this.head && /^head$/i.test(o.name)) this.head = o;
     });
+    // the clips are in place (no root travel): the walks move him from here
     this.mixer = new THREE.AnimationMixer(gltf.scene);
-    for (const c of gltf.animations) {
-      // he stays where he stands: drop the hips' travel, keep their bob
-      for (const tr of c.tracks) if (/Hips\.position$/.test(tr.name)) {
-        const v = tr.values;
-        for (let i = 0; i < v.length; i += 3) { v[i] = v[0]; v[i + 2] = v[2]; }
-      }
-      this.clips.set(c.name, this.mixer.clipAction(c));
-    }
-    this.mixer.addEventListener('finished', () => this.nextIdle());
+    for (const c of gltf.animations) this.clips.set(c.name, this.mixer.clipAction(c));
+    this.mixer.addEventListener('finished', () => { this.oneOff = false; if (this.state === 'idle') this.nextIdle(); });
     this.nextIdle();
   }
 
-  /** A clip once (a wave, the bow), then back to his idles. */
+  /** His place at the table (from the room's Ugurcan empty). */
+  setHome(pos: THREE.Vector3, yaw: number) {
+    this.home = { x: pos.x, z: pos.z, yaw };
+    this.toHome();
+  }
+
+  /** Straight back to his place, no walk (while nobody is looking: arriving, leaving). */
+  toHome() {
+    this.at = this.home; this.target = null; this.then = null; this.state = 'idle';
+    this.yaw = this.home.yaw;
+    this.root.position.set(this.home.x, this.root.position.y, this.home.z);
+    this.root.rotation.set(0, this.yaw, 0);
+    this.wait = 20 + Math.random() * 15;
+    if (this.current && /Walk/.test(this.current.getClip().name)) this.nextIdle();
+  }
+
+  get atHome() { return this.at === this.home && this.state === 'idle'; }
+
+  /** A clip once (a wave, the bow) at his table; if he is away he walks back first. */
   play(name: string) {
+    if (!this.atHome) { this.walkTo(this.home, WALKS.brisk, () => this.play(name)); return; }
     const a = this.clips.get(name);
     if (!a) return;
     a.reset().setLoop(THREE.LoopOnce, 1);
     a.clampWhenFinished = false;
+    this.oneOff = true;
     this.fadeTo(a);
   }
 
@@ -485,11 +527,21 @@ class Navigator {
     this.fadeTo(a);
   }
 
-  private fadeTo(a: THREE.AnimationAction) {
+  private walkTo(spot: Spot, pace: typeof WALKS.slow, then?: () => void) {
+    const a = this.clips.get(pace.clip);
+    if (!a) { this.at = spot; this.toSpot(spot); then?.(); return; }
+    this.target = spot; this.pace = pace; this.then = then ?? null; this.state = 'walk';
+    a.reset().setLoop(THREE.LoopRepeat, Infinity);
+    this.fadeTo(a, 0.4);
+  }
+
+  private toSpot(s: Spot) { this.root.position.set(s.x, this.root.position.y, s.z); this.yaw = s.yaw; this.root.rotation.set(0, s.yaw, 0); }
+
+  private fadeTo(a: THREE.AnimationAction, t = 0.5) {
     a.enabled = true;
     a.setEffectiveWeight(1);
     a.play();
-    if (this.current && this.current !== a) a.crossFadeFrom(this.current, 0.5, false);
+    if (this.current && this.current !== a) a.crossFadeFrom(this.current, t, false);
     this.current = a;
   }
 
@@ -500,20 +552,60 @@ class Navigator {
 
   hit(ray: THREE.Raycaster) {
     // the skinned mesh's bind-pose bounds are close enough: a box round him
-    _box.setFromCenterAndSize(_v.copy(this.root.position).setY(0.95), _size.set(0.8, 1.9, 0.6));
+    _box.setFromCenterAndSize(_v.copy(this.root.position).setY(0.95), _size.set(0.8, 1.9, 0.8));
     return ray.ray.intersectsBox(_box);
   }
 
+  /** Wandering: now and then he paces over to the star chart or the window, stays a while, and comes back. */
+  private wander(dt: number) {
+    if (this.state !== 'idle' || this.oneOff || this.hold) return;
+    this.wait -= dt;
+    if (this.wait > 0) return;
+    if (this.at === this.home) {
+      const spot = AWAY[this.awayIndex++ % AWAY.length];
+      this.walkTo(spot, WALKS.slow);
+      this.wait = 10 + Math.random() * 6;       // how long he stays there
+    } else {
+      this.walkTo(this.home, WALKS.slow);
+      this.wait = 25 + Math.random() * 20;      // how long until he goes again
+    }
+  }
+
+  private move(dt: number) {
+    const t = this.target;
+    if (!t) return;
+    const p = this.root.position;
+    if (this.state === 'walk') {
+      const dx = t.x - p.x, dz = t.z - p.z, dist = Math.hypot(dx, dz);
+      const heading = Math.atan2(dx, dz);
+      this.yaw = turnToward(this.yaw, heading, dt * 3.2);
+      // he turns first, then walks: no gliding sideways
+      const facing = Math.max(0, Math.cos(angleDiff(this.yaw, heading)));
+      const step = Math.min(dist, this.pace.speed * dt * facing * facing);
+      if (dist > 1e-4) { p.x += (dx / dist) * step; p.z += (dz / dist) * step; }
+      if (dist < 0.02) { p.x = t.x; p.z = t.z; this.state = 'turn'; this.at = t; this.nextIdle(); }
+    } else if (this.state === 'turn') {
+      this.yaw = turnToward(this.yaw, t.yaw, dt * 2.2);
+      if (Math.abs(angleDiff(this.yaw, t.yaw)) < 0.01) {
+        this.yaw = t.yaw; this.state = 'idle'; this.target = null;
+        const then = this.then; this.then = null; then?.();
+      }
+    }
+    this.root.rotation.set(0, this.yaw, 0);
+  }
+
   update(dt: number, eye: THREE.Vector3) {
+    this.wander(dt);
+    this.move(dt);
     this.mixer.update(dt);
     if (!this.head) return;
-    // turn his head toward the visitor (a little: the clip still moves it)
+    // at his table he turns his head toward the visitor (a little: the clip still moves it); never on the move
     const local = this.root.worldToLocal(_v.copy(eye));
     const headLocal = this.root.worldToLocal(this.head.getWorldPosition(_w));
     local.sub(headLocal);
     const yaw = THREE.MathUtils.clamp(Math.atan2(local.x, local.z), -0.7, 0.7);
     const pitch = THREE.MathUtils.clamp(Math.atan2(local.y, Math.hypot(local.x, local.z)), -0.3, 0.3);
-    const want = this.look.away || local.z < 0 ? 0 : 0.65;
+    const want = this.look.away || !this.atHome || local.z < 0 ? 0 : 0.65;
     const k = 1 - Math.exp(-dt * 3);
     this.look.w += (want - this.look.w) * k;
     this.look.yaw += (yaw - this.look.yaw) * k;
@@ -525,6 +617,12 @@ class Navigator {
     rotateWorld(this.head, up, this.look.yaw * this.look.w);
     rotateWorld(this.head, right, -this.look.pitch * this.look.w);
   }
+}
+
+const angleDiff = (a: number, b: number) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+function turnToward(a: number, b: number, maxStep: number) {
+  const d = angleDiff(a, b);
+  return a + Math.sign(d) * Math.min(Math.abs(d), maxStep);
 }
 
 function rotateWorld(o: THREE.Object3D, axis: THREE.Vector3, angle: number) {
