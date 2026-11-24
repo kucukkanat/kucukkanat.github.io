@@ -1,0 +1,28 @@
+{
+ "sunset": {
+  "file": "chartroom_lightmap_sunset.webp",
+  "scale": 3,
+  "lightMapIntensity": 9.4248,
+  "books": [
+   1,
+   1,
+   1
+  ],
+  "mean": 0.1468,
+  "ktx2": "chartroom_lightmap_sunset.ktx2",
+  "ktx2_1k": "chartroom_lightmap_sunset_1k.ktx2"
+ },
+ "night": {
+  "file": "chartroom_lightmap_night.webp",
+  "scale": 3,
+  "lightMapIntensity": 9.4248,
+  "books": [
+   1,
+   1,
+   1
+  ],
+  "mean": 0.0847,
+  "ktx2": "chartroom_lightmap_night.ktx2",
+  "ktx2_1k": "chartroom_lightmap_night_1k.ktx2"
+ }
+}

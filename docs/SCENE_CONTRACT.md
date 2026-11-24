@@ -224,3 +224,24 @@ The cabin, the library and the outside view share one way of moving: the gesture
 | `up` | leaves for the cabin | in the vault opening over `HATCH_deck` |
 
 The address carries the station (`?station=`); a renamed or moved empty changes where the dot and the pose are, not the names.
+
+## Chart room (2026-11-24)
+
+Ugurcan's room: the navigator's chart room, a place of its own in the dock (Cabin · Library · Chart room · Outside, keys 1–4, `?chart=1`). The app is `src/chartroom/` (its own chunk, loaded when the visitor first goes there); the room is built by `blender/chartroom/build.py` with the library's kit; Ugurcan is a Meshy model (`art/chartroom/ugurcan.glb`, see docs/ART.md). `bun run chartroom` rebuilds both (Blender bake, then `scripts/chartroom-assets.ts`). The way in and out is a fade through its door.
+
+**`public/assets/chartroom.glb` / `chartroom_lite.glb`** (own coordinates: floor at y = 0, his chart table toward −Z, the door at +Z):
+
+| Node | What |
+|---|---|
+| `STATIC_*` | Baked meshes (unlit × lightmap in `TEXCOORD_1`), as in the library. `STATIC_hanging_lantern` swings with the ship. |
+| `PROP_desk_lit` | Small brass things on the table (dividers, sextant, compass), lit by the app |
+| `Ugurcan` | His spot behind the chart table, facing +Z |
+| `Camera_main` / `Camera_table` / `Camera_sky` / `Camera_window` | Station poses (look down local −Z; `userData.target`): Ugurcan, Charts, His star, Windows |
+| `Skylight_sky` | The sky over the skylight, drawn by the app: dusk with his star out, or night with his star the brightest |
+| `Star` | Where his star is in the build; the app moves it to where the star view looks through the glass |
+| `Sky_backdrop_back`, `Sky_backdrop_port`, `Window_glass`, `Skylight_glass` | The painted sky beyond the windows and porthole (the cabin's sky textures), and glass |
+| `DOOR_front` | Floor point in the doorway, the way back to the cabin |
+
+**Lightmaps:** `chartroom_lightmap_{sunset,night}.ktx2` (2048) and `_1k.ktx2`, sources `.webp`, `chartroom_lightmaps.json`; loaded through `library/room.ts` `loadRoom(…, files)`.
+
+**Ugurcan:** `ugurcan.glb` (2048 px), `ugurcan_lite.glb` (1024 px, simplified). Meshy rig (Mixamo-style names, `Head`, `Hips`), clips `Idle`, `Idle_02`, `Long_Breathe_and_Look_Around`, `Wave_One_Hand`, `Gentlemans_Bow`, `Happy_Sway_Standing`. He waves or bows as the visitor comes in, turns his head toward them, and bows when tapped; his note opens. The note is `content/_ugurcan.md` (`# name`, `## the line under it`, then paragraphs).

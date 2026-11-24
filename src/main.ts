@@ -2,6 +2,7 @@ import { plainFx, setupShafts, type Fx } from './fx';
 import { FULL } from './tier';
 import type { Outside } from './outside';
 import type { Deck } from './library/deck';
+import type { ChartRoom } from './chartroom/chartroom';
 import { wantsIntro } from './intro-flag';
 import { setupPatch } from './patch';
 import type { Writing } from './writing/reader';
@@ -108,7 +109,7 @@ async function main() {
   // First view only: content, cabin, collectibles, sunset light + sky. Everything else streams in after the first frame.
   // The galleon is not fetched here: it streams in after the first frame (full tier) or when Outside is opened.
   const fxFull = FULL ? import('./fx-full') : null;
-  const introOn = wantsIntro(params, ['view', 'play', 'open', 'storm', 'night', 'item', 'note', 'topic', 'index', 'deck'].some(k => params.has(k)));
+  const introOn = wantsIntro(params, ['view', 'play', 'open', 'storm', 'night', 'item', 'note', 'topic', 'index', 'deck', 'chart'].some(k => params.has(k)));
   const [content0, notesIndex, cabinGltf, collGltf, galleonGltf] = await Promise.all([
     loadContent(),
     loadNotesIndex(),
@@ -168,6 +169,9 @@ async function main() {
   let goDeck: (topic?: string) => Promise<void> = async () => { /* set once the deck hooks exist */ };
   let goPlace: (p: Where) => void = () => { /* set once the address sync exists */ };
   let preloadDeck = () => { /* set once the deck hooks exist */ };
+  // the chart room, Ugurcan's (chartroom/chartroom.ts, its own chunk)
+  let chartRef: ChartRoom | null = null;
+  let goChart: (station?: string) => Promise<void> = async () => { /* set once the chart room hooks exist */ };
   // the sky whales: their own chunk, set up in idle time after the sky models (whales-world.ts)
   let whalesRef: import('./whales-world').WhalesWorld | null = null;
   let skyGltf: Awaited<ReturnType<typeof loadGLB>> = null;
@@ -202,7 +206,7 @@ async function main() {
     panelClosed: () => { putBack(); },
     toggleNight: () => toggleNight(),
     place: p => goPlace(p),
-    station: id => { if (deckRef?.below) deckRef.goStation(id); else if (isOut()) outsideRef?.goStation(id); },
+    station: id => { if (deckRef?.below) deckRef.goStation(id); else if (chartRef?.inside) chartRef.goStation(id); else if (isOut()) outsideRef?.goStation(id); },
     writing: () => { void writing.openIndex(); },
     search: () => search.open(),
     toggleSound: async () => {
@@ -267,6 +271,7 @@ async function main() {
       act('library', 'Go down to the library', 'The captain’s library below deck, and his friend who keeps it', ['library', 'librarian', 'books', 'notes', 'below', 'kütüphane'], () => { void goDeck(); });
       for (const t of notesIndex.topics) if (t.notes.length) act(`ask-${t.id}`, `Ask the Librarian for ${t.title}`, 'He fetches the volume from the shelf below deck', ['library', 'librarian', t.title.toLowerCase()], () => { void goDeck(t.id); });
     }
+    act('chartroom', 'Visit Ugurcan in the chart room', 'The ship’s navigator, at his chart table under his star', ['ugurcan', 'navigator', 'chart room', 'star', 'friend', 'harita'], () => { void goChart(); });
     act('outside', 'Go outside', 'See the ship from the air and fly it', ['ship', 'galleon', 'fly', 'helm', 'dışarı', 'gemi'], () => goOutside());
     act('whales', 'Watch the sky whales', "Today's pod of whales carrying their own worlds, in the whale viewer", ['whale', 'whales', 'sky whales', 'balina'], () => { location.href = '/whales/'; });
     act('letter', 'Read the welcome letter', 'The letter on the chart table', ['welcome', 'hello', 'mektup'], () => { void openLetter(true); });
@@ -420,6 +425,7 @@ async function main() {
   function back() {
     if (isOut()) { if (outsideRef?.helm) outsideRef.setHelm(false); else if (outsideRef && !outsideRef.busy) void outsideRef.goInside(); return; }
     if (deckRef?.active) { if (deckRef.below && !writing.isOpen) deckRef.escape(); return; }
+    if (chartRef?.active) { if (chartRef.inside && !writing.isOpen) chartRef.escape(); return; }
     if (letterOpen) { tuckLetter(); return; }
     if (play.overlayOn || (play.inserted && rig.view !== 'overview' && !play.busy && (rig.view === 'screen' || rig.view === 'handheld'))) { play.eject(); return; }
     if (sheets.isOpen) { sheets.close(); return; }
@@ -557,7 +563,7 @@ async function main() {
 
   new Input(renderer.domElement, camera, {
     targets: () => {
-      if (play.overlayOn || play.busy || outsideRef?.active || deckRef?.active || writing.isOpen || search.isOpen) return [];
+      if (play.overlayOn || play.busy || outsideRef?.active || deckRef?.active || chartRef?.active || writing.isOpen || search.isOpen) return [];
       const place = VIEW_PLACE[rig.view];
       const hits = [...inspector.pickables(), ...allHits.filter(h => h.userData.hit !== rig.view && !(rig.view === 'screen' && h.userData.hit === 'handheld')), ...(rig.view === 'screen' ? [] : eggHits), ...(clock.hit && rig.view !== 'screen' ? [clock.hit] : []), ...(whalesRef && rig.view === 'overview' ? whalesRef.pickables() : [])];
       if (!place) return hits;
@@ -606,10 +612,10 @@ async function main() {
     look: (x, y) => rig.setLook(x, y),
     // below deck the library has its own gesture layer over the canvas; only the keys arrive here, so pass them on
     // outside, away from the helm, the same keys turn and zoom round the ship (at the helm they fly her: outside.ts)
-    orbit: (dx, dy) => { if (deckRef?.active) { if (!writing.isOpen) deckRef.orbit(dx, dy); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.orbitBy(dx, dy); return; } rig.orbit(dx, dy); hideHint(); },
-    zoom: f => { if (deckRef?.active) { if (!writing.isOpen) deckRef.zoom(f); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.zoomBy(f); return; } rig.zoomBy(f); hideHint(); },
-    pan: (dx, dy) => { if (deckRef?.active) { if (!writing.isOpen) deckRef.pan(dx, dy); return; } if (outsideRef?.active) return; rig.panBy(dx, dy); hideHint(); },
-    reset: () => { if (deckRef?.active) { if (!writing.isOpen) deckRef.reset(); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.goStation('home'); return; } rig.resetView(); },
+    orbit: (dx, dy) => { if (chartRef?.active) { chartRef.orbit(dx, dy); return; } if (deckRef?.active) { if (!writing.isOpen) deckRef.orbit(dx, dy); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.orbitBy(dx, dy); return; } rig.orbit(dx, dy); hideHint(); },
+    zoom: f => { if (chartRef?.active) { chartRef.zoom(f); return; } if (deckRef?.active) { if (!writing.isOpen) deckRef.zoom(f); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.zoomBy(f); return; } rig.zoomBy(f); hideHint(); },
+    pan: (dx, dy) => { if (chartRef?.active) { chartRef.pan(dx, dy); return; } if (deckRef?.active) { if (!writing.isOpen) deckRef.pan(dx, dy); return; } if (outsideRef?.active) return; rig.panBy(dx, dy); hideHint(); },
+    reset: () => { if (chartRef?.active) { chartRef.reset(); return; } if (deckRef?.active) { if (!writing.isOpen) deckRef.reset(); return; } if (outsideRef?.active) { if (!outsideRef.helm) outsideRef.goStation('home'); return; } rig.resetView(); },
   });
 
   // Resize
@@ -720,7 +726,7 @@ async function main() {
   };
   const wheelSpin = new THREE.Quaternion();
   const frame = (now: number) => {
-    const idle = now - lastInput > IDLE_AFTER && !tweensActive() && !wheelHeld && Math.abs(wheelVel) < 0.01 && !outsideRef?.active && !deckRef?.active;
+    const idle = now - lastInput > IDLE_AFTER && !tweensActive() && !wheelHeld && Math.abs(wheelVel) < 0.01 && !outsideRef?.active && !deckRef?.active && !chartRef?.active;
     const minMs = idle ? IDLE_MS : ACTIVE_MS;
     // 2 ms of slack: rAF timestamps jitter, and a 60 Hz frame (16.7 ms) must still pass a 33.3 ms gap on the second one
     if (last >= 0 && minMs && now - last < minMs - 2) return;
@@ -781,6 +787,7 @@ async function main() {
     }
     rig.update(t, dt);
     deckRef?.update(dt, ship);
+    chartRef?.update(dt, ship);
     inspector.update(dt);
     ui.setQuiet(inspector.overlay);
     ui.update(camera, innerWidth, innerHeight, id => { const c = coll.byId.get(id); return c ? coll.worldCenter(c) : null; });
@@ -889,19 +896,60 @@ async function main() {
     await goto('shelf');
   };
   const isDeck = () => deckIntent || !!deckRef?.active;
+
+  // The chart room: Ugurcan, the ship's navigator (chartroom/chartroom.ts, its own chunk), through a door
+  let chartP: Promise<ChartRoom> | null = null;
+  const getChart = () => chartP ??= import('./chartroom/chartroom').then(m => (chartRef = new m.ChartRoom(scene, rig, renderer, {
+    root: document.body,
+    changed: inside => {
+      ui.setPlace(inside ? 'chartroom' : 'cabin', inside ? chartRef?.stations : []);
+      hideHint();
+      audio.setBelow(inside);
+      if (inside) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
+    },
+    out: () => { void leaveChart(); },
+    announce: t => ui.announce(t),
+    paper: () => audio.paper(),
+  })));
+  let chartIntent = false;
+  goChart = async (station?: string) => {
+    if (chartRef?.active) { if (station) chartRef.goStation(station); return; }
+    if (chartIntent || isOut() || isDeck()) return;
+    chartIntent = true;
+    try {
+      if (writing.isOpen) writing.close();
+      const ready = getChart().then(c => c.preload());
+      let waiting = true;
+      void ready.finally(() => { waiting = false; });
+      await new Promise(r => setTimeout(r, 0));
+      while (waiting) { showNote('Lighting the chart room lamps…'); await Promise.race([ready, new Promise(r => setTimeout(r, 2000))]); }
+      if (!(await ready)) { showNote('The chart room could not be loaded'); return; }
+      audio.whoosh();
+      ui.announce('Through the door to the chart room.');
+      await chartRef!.enter(station);
+    } catch (err) { console.warn('chartroom', err); showNote('The chart room could not be loaded'); } finally { chartIntent = false; }
+  };
+  const leaveChart = async () => {
+    if (!chartRef?.inside) return;
+    audio.whoosh();
+    await chartRef.exit();
+    ui.announce('Back in the cabin.');
+  };
+  const isChart = () => chartIntent || !!chartRef?.active;
   /** The dock's place switcher: the same moves as the address (night and storm kept). */
   goPlace = (p: Where) => {
     const look: nav.CabinState = {};
     if (night) look.night = '1';
     if (weather.storm) look.storm = '1';
     if (p === 'library') { if (!isDeck()) void goNav({ ...look, deck: '1' }); }
+    else if (p === 'chartroom') { if (!isChart()) void goNav({ ...look, chart: '1' }); }
     else if (p === 'outside') { if (!isOut()) void goNav({ ...look, outside: '1' }); }
     else void goNav(look);
   };
-  // 1 / 2 / 3: the cabin, the library, outside (as the dock's place buttons), when nothing else wants the key
+  // 1 / 2 / 3 / 4: the cabin, the library, the chart room, outside (as the dock's place buttons), when nothing else wants the key
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
-    const p = ({ '1': 'cabin', '2': 'library', '3': 'outside' } as const)[e.key as '1'];
+    const p = ({ '1': 'cabin', '2': 'library', '3': 'chartroom', '4': 'outside' } as const)[e.key as '1'];
     if (!p) return;
     const a = document.activeElement;
     if (a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || (a instanceof HTMLElement && a.isContentEditable)) return;
@@ -922,6 +970,7 @@ async function main() {
     if (whalesRef?.cardKey) s.whale = whalesRef.cardKey;
     // on the way there the address keeps the station it asks for
     if (isOut()) { s.outside = '1'; const st = outsideRef && outsideRef.mode === 'orbit' && !outsideRef.busy ? outsideRef.station : nav.read().station; if (st) s.station = st; return s; }
+    if (isChart()) { s.chart = '1'; const st = chartRef?.inside ? chartRef.station : nav.read().station; if (st && st !== 'ugurcan') s.station = st; return s; }
     if (isDeck()) { s.deck = '1'; const st = deckRef?.below ? deckRef.station : nav.read().station; if (st && st !== 'librarian') s.station = st; return s; }
     if (playing()) s.play = (playIntent ?? play.inserted)!.item.id;
     else {
@@ -939,6 +988,7 @@ async function main() {
     if (s.search !== undefined) return 'Search';
     if (s.outside) return 'Outside the ship';
     if (s.deck) return 'The library';
+    if (s.chart) return 'The chart room';
     if (s.open) return OPEN_TITLE[s.open] ?? null;
     const id = s.play ?? s.item;
     if (id) return coll.byId.get(id)?.item.title ?? null;
@@ -954,25 +1004,33 @@ async function main() {
   });
   async function applyNav(t: nav.CabinState) {
     // Back / Forward pressed mid-move: let the move finish first
-    await until(() => !play.busy && !outsideRef?.busy && !rig.isGliding && !deckIntent && !deckRef?.busy);
+    await until(() => !play.busy && !outsideRef?.busy && !rig.isGliding && !deckIntent && !deckRef?.busy && !chartIntent && !chartRef?.busy);
     const lit = t.night === '1';
     if (lit !== night) { nightP = toggleNight(); await nightP; nightP = null; }
     if ((t.storm === '1') !== weather.storm) void weather.set(t.storm === '1');
     if (t.search === undefined) searchRef?.close();
     if (t.whale === undefined) whalesRef?.closeCard();
-    if (t.deck) {
+    if (t.chart) {
+      if (!isChart()) { if (isOut()) await outsideRef!.goInside(); if (deckRef?.below) await deckRef.exit(); await goChart(); }
+      const st = t.station ?? 'ugurcan';
+      if (chartRef?.inside && chartRef.station !== st) chartRef.goStation(st);
+    }
+    else if (t.deck) {
+      if (chartRef?.inside) await chartRef.exit();
       if (!isDeck()) { if (isOut()) await outsideRef!.goInside(); await goDeck(); }
       const st = t.station ?? 'librarian';
       if (deckRef?.below && deckRef.station !== st) deckRef.goStation(st);
     }
     else if (t.outside) {
       if (deckRef?.below) await deckRef.exit();
+      if (chartRef?.inside) await chartRef.exit();
       if (!isOut()) await goOutsideP();
       if (outsideRef && outsideRef.station !== (t.station ?? null)) outsideRef.goStation(t.station ?? 'home');
     }
     else {
       if (isOut()) await outsideRef!.goInside();
       if (deckRef?.below) await deckRef.exit();
+      if (chartRef?.inside) await chartRef.exit();
       if (letterOpen && t.open !== 'letter') tuckLetter();
       if (sheets.isOpen && sheets.kind !== t.open) sheets.close('close', true);
       if (clock.isOpen && t.open !== 'clock') clock.close();
@@ -1008,6 +1066,7 @@ async function main() {
   /** The dock's current station and what Back will do, in the library and outside. */
   const syncChrome = () => {
     if (deckRef?.active) { ui.setStation(deckRef.below ? deckRef.station : null); ui.setBack(deckRef.backLabel); }
+    else if (chartRef?.active) { ui.setStation(chartRef.inside ? chartRef.station : null); ui.setBack(chartRef.backLabel); }
     else if (outsideRef && isOut()) { ui.setStation(outsideRef.station); ui.setBack(outsideRef.mode === 'orbit' && !outsideRef.busy ? outsideRef.helm ? 'Leave the helm' : 'Back inside' : null); }
   };
   const syncNav = () => {
@@ -1044,6 +1103,7 @@ async function main() {
   {
     const t = nav.read();
     if (t.outside) { firstLetter = false; await goOutsideP(); if (t.station) (outsideRef as Outside | null)?.goStation(t.station); }
+    else if (t.chart) { firstLetter = false; void goChart(t.station); }
     else if (t.deck) { firstLetter = false; void goDeck().then(() => { if (t.station) deckRef?.goStation(t.station); }); }
     if (t.search !== undefined) { firstLetter = false; search.open(t.search); }
     if (t.whale) {
@@ -1073,6 +1133,9 @@ async function main() {
     get whales() { return whalesRef; },
     get outside() { return outsideRef; },
     get deck() { return deckRef; },
+    get chart() { return chartRef; },
+    goChart: (station?: string) => goChart(station),
+    leaveChart: () => leaveChart(),
     goDeck: (topic?: string) => goDeck(topic),
     /** Automated checks in a hidden tab (no rAF): run n frames of ms each. */
     step: (n = 1, ms = 16) => { let v = Math.max(last, 0); for (let i = 0; i < n; i++) frame(v += ms); },

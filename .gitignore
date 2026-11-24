@@ -23,5 +23,6 @@ __pycache__/
 .claude/worktrees/
 blender/library/tex/
 blender/out/library/
+blender/out/chartroom/
 blender/library/__pycache__/
 blender/library/kit/__pycache__/

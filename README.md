@@ -46,6 +46,8 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 
 **Library deck:** `src/library/` (its own chunk), `?deck=1` goes straight down. The room is built by `blender/library/build.py`, the Librarian comes from the Librarian prototype repository as `art/library/*`; `bun run library` rebuilds and compresses both. Its search is offline keyword matching over the topics and notes (`src/library/brain.ts`). See the Library deck section of [docs/SCENE_CONTRACT.md](docs/SCENE_CONTRACT.md).
 
+**Chart room:** `src/chartroom/` (its own chunk), `?chart=1` goes straight there. The navigator's room, Ugurcan's: he stands at his chart table under the skylight where his star shows, and tapping him opens his note (`content/_ugurcan.md`). The room is built by `blender/chartroom/build.py`, his model is `art/chartroom/ugurcan.glb` (Meshy); `bun run chartroom` rebuilds and compresses both. See the Chart room section of [docs/SCENE_CONTRACT.md](docs/SCENE_CONTRACT.md).
+
 **Sound:** fully synthesised (no audio files) in `src/sound/engine.ts`, a separate ~4 KB chunk loaded only when the visitor turns sound on. The button cycles Off → Ambient (wind, creaks, rain, music, ship's bells) → Full (plus interaction sounds). Ship's bells strike on the half hour by the watch. Below deck the weather is muffled and the Librarian's speech is a soft syllable blip (Full).
 
 | Where | What |

@@ -31,10 +31,11 @@ export interface UIHandlers {
 export interface Spot { id: string; label: string; world: THREE.Vector3; }
 
 /** Where the visitor is: the dock and the Back button are the same in all three. */
-export type Place = 'cabin' | 'library' | 'outside';
+export type Place = 'cabin' | 'library' | 'chartroom' | 'outside';
 const PLACES: { p: Place; label: string; aria: string }[] = [
   { p: 'cabin', label: 'Cabin', aria: 'The captain’s cabin' },
   { p: 'library', label: 'Library', aria: 'Down the hatch to the library' },
+  { p: 'chartroom', label: 'Chart room', aria: 'The navigator’s chart room, where Ugurcan keeps the charts' },
   { p: 'outside', label: 'Outside', aria: 'Go outside and see the ship' },
 ];
 
@@ -367,7 +368,7 @@ export class UI {
     this.chrome.dataset.place = place;
     for (const [p, b] of this.placeBtns) b.setAttribute('aria-current', String(p === place));
     const dock = this.chrome.querySelector('.dock')!;
-    dock.setAttribute('aria-label', place === 'cabin' ? 'Cabin' : place === 'library' ? 'Library' : 'Outside the ship');
+    dock.setAttribute('aria-label', place === 'cabin' ? 'Cabin' : place === 'library' ? 'Library' : place === 'chartroom' ? 'Chart room' : 'Outside the ship');
     this.navEl.setAttribute('aria-label', place === 'cabin' ? 'Viewpoints' : 'Places to go');
     this.stationBtns.clear();
     if (place === 'cabin') { this.navEl.replaceChildren(...this.dockBtns.values()); this.setView(this.view); }
