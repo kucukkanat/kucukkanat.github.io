@@ -1,5 +1,7 @@
 # Navigation plan (interview, 2026-11-24)
 
+**Status:** built (phases 1–4). The map has no `?map=1` address: closing it with the browser's Back would race the move it starts, so Esc, ✕ and the scrim close it instead.
+
 ## What's there today
 
 The dock (`src/ui.ts`) packs everything into one bar, in every place:

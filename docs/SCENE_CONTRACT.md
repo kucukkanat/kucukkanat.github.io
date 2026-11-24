@@ -212,7 +212,7 @@ A deck below the cabin, reached through a hatch beside the bookshelf. The app is
 
 ## Getting around (2026-11-24)
 
-The cabin, the library and the outside view share one way of moving: the gestures (`src/input.ts`), the glowing station dots (`src/stations.ts`), the dock with its Cabin · Library · Outside switcher and the Back button (`src/ui.ts`), and a one-time hint (`src/coach.ts`). The cabin's stations are its views (`VP_*`); the library's are below; outside, they are orbit poses round the galleon's bounding box (`STATIONS` in `src/outside.ts`).
+The cabin, the library and the outside view share one way of moving: the gestures (`src/input.ts`), the glowing station dots (`src/stations.ts`), the pill with Back, the place name and search (`src/ui.ts`), the ship's map that switches places and stations (`src/shipmap.ts`), and a one-time hint (`src/coach.ts`). The cabin's stations are its views (`VP_*`); the library's are below; outside, they are orbit poses round the galleon's bounding box (`STATIONS` in `src/outside.ts`).
 
 | Library station | Pose | Dot |
 |---|---|---|
@@ -227,7 +227,7 @@ The address carries the station (`?station=`); a renamed or moved empty changes 
 
 ## Chart room (2026-11-24)
 
-Ugurcan's room: the navigator's chart room, a place of its own in the dock (Cabin · Library · Chart room · Outside, keys 1–4, `?chart=1`). The app is `src/chartroom/` (its own chunk, loaded when the visitor first goes there); the room is built by `blender/chartroom/build.py` with the library's kit; Ugurcan is a Meshy model (`art/chartroom/ugurcan.glb`, see docs/ART.md). `bun run chartroom` rebuilds both (Blender bake, then `scripts/chartroom-assets.ts`). The way in and out is a fade through its door.
+Ugurcan's room: the navigator's chart room, a place of its own on the ship's map (Cabin · Library · Chart room · Outside, keys 1–4, `?chart=1`). The app is `src/chartroom/` (its own chunk, loaded when the visitor first goes there); the room is built by `blender/chartroom/build.py` with the library's kit; Ugurcan is a Meshy model (`art/chartroom/ugurcan.glb`, see docs/ART.md). `bun run chartroom` rebuilds both (Blender bake, then `scripts/chartroom-assets.ts`). The way in and out is a fade through its door.
 
 **`public/assets/chartroom.glb` / `chartroom_lite.glb`** (own coordinates: floor at y = 0, his chart table toward −Z, the door at +Z):
 

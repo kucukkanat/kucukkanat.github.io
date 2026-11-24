@@ -167,7 +167,7 @@ async function main() {
   // the library deck below the cabin (library/deck.ts, its own chunk)
   let deckRef: Deck | null = null;
   let goDeck: (topic?: string) => Promise<void> = async () => { /* set once the deck hooks exist */ };
-  let goPlace: (p: Where) => void = () => { /* set once the address sync exists */ };
+  let goPlace: (p: Where, station?: string) => void = () => { /* set once the address sync exists */ };
   let preloadDeck = () => { /* set once the deck hooks exist */ };
   // the chart room, Ugurcan's (chartroom/chartroom.ts, its own chunk)
   let chartRef: ChartRoom | null = null;
@@ -198,17 +198,15 @@ async function main() {
   };
 
   const ui = new UI(document.body, content, {
-    nav: v => goto(v),
     back: () => back(),
     hotspot: id => activateHit(id),
     item: id => { const c = coll.byId.get(id); if (c) select(c); },
     insert: id => { const c = coll.byId.get(id); if (c) insert(c); },
     panelClosed: () => { putBack(); },
     toggleNight: () => toggleNight(),
-    place: p => goPlace(p),
-    station: id => { if (deckRef?.below) deckRef.goStation(id); else if (chartRef?.inside) chartRef.goStation(id); else if (isOut()) outsideRef?.goStation(id); },
+    go: (p, st) => goPlace(p, st),
     writing: () => { void writing.openIndex(); },
-    search: () => search.open(),
+    search: () => { ui.map.close(true); search.open(); },
     toggleSound: async () => {
       const m = audio.nextMode();
       ui.setSound(m);
@@ -819,7 +817,7 @@ async function main() {
       root: document.body,
       crossed: out => {
         whalesRef?.setOutside(out ? outsideRef : null);
-        ui.setPlace(out ? 'outside' : 'cabin', out ? outsideRef?.stations : []);
+        ui.setPlace(out ? 'outside' : 'cabin');
         hideHint();
         if (out) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); }
       },
@@ -854,7 +852,7 @@ async function main() {
     openNote: slug => { void writing.openNote(slug); },
     reading: () => writing.isOpen || search.isOpen,
     changed: below => {
-      ui.setPlace(below ? 'library' : 'cabin', below ? deckRef?.stations : []);
+      ui.setPlace(below ? 'library' : 'cabin');
       hideHint();
       audio.setBelow(below);
       if (below) { hideHint(); if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
@@ -902,7 +900,7 @@ async function main() {
   const getChart = () => chartP ??= import('./chartroom/chartroom').then(m => (chartRef = new m.ChartRoom(scene, rig, renderer, {
     root: document.body,
     changed: inside => {
-      ui.setPlace(inside ? 'chartroom' : 'cabin', inside ? chartRef?.stations : []);
+      ui.setPlace(inside ? 'chartroom' : 'cabin');
       hideHint();
       audio.setBelow(inside);
       if (inside) { if (ui.panelOpen) ui.closePanel(true); if (sheets.isOpen) sheets.close('close', true); clock.close(); putBack(); if (letterOpen) tuckLetter(); }
@@ -936,30 +934,40 @@ async function main() {
     ui.announce('Back in the cabin.');
   };
   const isChart = () => chartIntent || !!chartRef?.active;
-  /** The dock's place switcher: the same moves as the address (night and storm kept). */
-  goPlace = (p: Where) => {
+  /**
+   * The ship's map and the 1–4 keys: go to a place, and a station there (a view in the cabin), the same moves as the
+   * address (night and storm kept). A place without a station: its usual spot, or nothing if already there.
+   */
+  goPlace = (p: Where, station?: string) => {
     const look: nav.CabinState = {};
     if (night) look.night = '1';
     if (weather.storm) look.storm = '1';
-    if (p === 'library') { if (!isDeck()) void goNav({ ...look, deck: '1' }); }
-    else if (p === 'chartroom') { if (!isChart()) void goNav({ ...look, chart: '1' }); }
-    else if (p === 'outside') { if (!isOut()) void goNav({ ...look, outside: '1' }); }
-    else void goNav(look);
+    if (station) look.station = station;
+    if (p === 'library') { if (station || !isDeck()) void goNav({ ...look, deck: '1' }); }
+    else if (p === 'chartroom') { if (station || !isChart()) void goNav({ ...look, chart: '1' }); }
+    else if (p === 'outside') { if (station || !isOut()) void goNav({ ...look, outside: '1' }); }
+    else { delete look.station; if (station) look.view = station; void goNav(look); }
   };
-  // 1 / 2 / 3 / 4: the cabin, the library, the chart room, outside (as the dock's place buttons), when nothing else wants the key
+  // 1 / 2 / 3 / 4: the cabin, the library, the chart room, outside; M: the ship's map — when nothing else wants the key
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    const isMap = e.key === 'm' || e.key === 'M';
     const p = ({ '1': 'cabin', '2': 'library', '3': 'chartroom', '4': 'outside' } as const)[e.key as '1'];
-    if (!p) return;
+    if (!p && !isMap) return;
     const a = document.activeElement;
     if (a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || (a instanceof HTMLElement && a.isContentEditable)) return;
     if (play.overlayOn || writing.isOpen || searchRef?.isOpen || letterOpen) return;
     e.preventDefault();
-    goPlace(p);
+    if (isMap) { ui.map.toggle(); return; }
+    if (moving()) return;
+    ui.map.close(true);
+    goPlace(p!);
   });
 
   // ----- the address bar (nav.ts): what is on screen, kept in the URL; Back / Forward replay it -----
   // the address follows what the visitor asked for, at once: a view mid-glide, a cartridge on its way in, the flight out
+  /** On the way from one place to another (the map and the place keys wait). */
+  const moving = () => outIntent || deckIntent || chartIntent || !!outsideRef?.busy || !!deckRef?.busy || !!chartRef?.busy;
   const isOut = () => outIntent || (!!outsideRef && outsideRef.mode !== 'inside');
   const playing = () => !!playIntent || (!!play.inserted && !play.ejecting && (play.overlayOn || rig.view === 'handheld' || rig.view === 'screen'));
   const snapshot = (): nav.CabinState => {
@@ -1065,6 +1073,7 @@ async function main() {
   let lastTitle: string | null | undefined;
   /** The dock's current station and what Back will do, in the library and outside. */
   const syncChrome = () => {
+    ui.setBusy(moving());
     if (deckRef?.active) { ui.setStation(deckRef.below ? deckRef.station : null); ui.setBack(deckRef.backLabel); }
     else if (chartRef?.active) { ui.setStation(chartRef.inside ? chartRef.station : null); ui.setBack(chartRef.backLabel); }
     else if (outsideRef && isOut()) { ui.setStation(outsideRef.station); ui.setBack(outsideRef.mode === 'orbit' && !outsideRef.busy ? outsideRef.helm ? 'Leave the helm' : 'Back inside' : null); }
@@ -1095,6 +1104,7 @@ async function main() {
   function afterWelcome() {
     if (rig.view === 'overview') setTimeout(() => { void rig.introSweep(); }, 500);
     setTimeout(() => coach('cabin'), 900);
+    setTimeout(() => ui.beckonMap(), 1200);
   }
   await introDone;
   // a note, topic or the index in the address opens over the cabin

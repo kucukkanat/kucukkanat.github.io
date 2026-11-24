@@ -15,8 +15,8 @@ let timer = 0;
 export function coachText(place: Place) {
   const touch = matchMedia('(pointer: coarse)').matches;
   const base = touch
-    ? ['Drag to look around', 'pinch to zoom', 'tap a glowing dot to go there', 'double-tap to reset']
-    : ['Drag to look around', 'scroll to zoom', 'click a glowing dot to go there', '1 2 3 4 switch places'];
+    ? ['Drag to look around', 'pinch to zoom', 'tap a glowing dot to go there', 'the map below changes rooms']
+    : ['Drag to look around', 'scroll to zoom', 'click a glowing dot to go there', 'the map (M) changes rooms'];
   const x = EXTRA[place];
   if (x) base.push(touch ? x.touch : x.mouse);
   return base.join(' · ');

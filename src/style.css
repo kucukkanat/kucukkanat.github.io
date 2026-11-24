@@ -46,7 +46,6 @@ a { color: inherit; }
   text-shadow: 0 1px 12px rgba(30, 12, 6, .65); }
 .brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(1.15rem, 2.4vw, 1.6rem); letter-spacing: .005em; }
 .brand p { margin: 2px 0 0; font-size: clamp(.78rem, 1.4vw, .92rem); color: var(--ink-dim); }
-.back { position: absolute; top: calc(16px + var(--safe-t)); right: calc(20px + var(--safe-r)); }
 .btn { font: 500 .9rem/1 var(--sans); color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-radius: 999px;
   padding: 10px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background .2s, transform .15s, border-color .2s; min-height: 40px; }
@@ -60,14 +59,6 @@ a { color: inherit; }
 .dock { position: absolute; left: 50%; bottom: calc(14px + var(--safe-b)); transform: translateX(-50%); display: flex; align-items: center; gap: 6px;
   padding: 6px; border-radius: 999px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   max-width: calc(100vw - 16px); }
-.dock nav { display: flex; gap: 2px; }
-.dock .nav { font: 500 .85rem/1 var(--sans); color: var(--ink-dim); background: none; border: 0; padding: 9px 11px; border-radius: 999px; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.dock .nav::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .55; }
-.dock .nav:hover { color: var(--ink); background: rgba(255,255,255,.06); }
-.dock .nav[aria-current="true"] { color: var(--accent-ink); background: var(--brass); }
-.dock .nav[aria-current="true"]::before { opacity: 1; }
-.dock .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: 0; background: none; color: var(--ink); cursor: pointer; display: grid; place-items: center; }
 .icon-btn:hover { background: rgba(255,255,255,.08); }
 .icon-btn svg { width: 20px; height: 20px; }
@@ -125,12 +116,6 @@ a { color: inherit; }
 .nosignal { position: fixed; z-index: 12; transform: translate(-50%, 0); }
 
 @media (max-width: 720px) {
-  .dock .nav { padding: 9px 8px; font-size: .78rem; }
-  .dock .nav::before { display: none; }
-  /* more buttons than fit on one line: two rows (places above, writing / outside / tools below) */
-  .dock { flex-wrap: wrap; justify-content: center; row-gap: 2px; width: max-content; max-width: calc(100vw - 16px); border-radius: 22px; padding-block: 5px; }
-  .dock .sep { display: none; }
-  .dock nav { flex-basis: 100%; justify-content: center; flex-wrap: wrap; }
   .plain-link { display: none; }
   .panel { left: 0 !important; top: auto !important; bottom: 0; width: 100%; max-height: 62vh; border-radius: 20px 20px 0 0;
     padding-bottom: calc(18px + var(--safe-b)); transform: translateY(30px); }
@@ -141,20 +126,17 @@ a { color: inherit; }
   .bezel .label-hide { display: none; }
 }
 @media (max-width: 420px) {
-  .dock { gap: 0; padding: 4px; }
-  .dock .nav { padding: 8px 6px; }
   .icon-btn { width: 34px; height: 34px; }
 }
 /* Touch screens: every control at least 44px to the finger (the visible dot or label can stay small) */
 @media (pointer: coarse) {
   .btn { min-height: 44px; }
   .bezel .btn { min-height: 40px; }
-  .icon-btn, .dock .icon-btn { width: 44px; height: 44px; }
-  .dock .nav { min-height: 44px; }
+  .icon-btn { width: 44px; height: 44px; }
   .hotspot { width: 48px; height: 48px; }
   .hotspot::before { inset: 17px; }
   .item-btn { width: 44px; height: 44px; }
-  .icon-btn:active, .dock .nav:not([aria-current="true"]):active { background: rgba(255,255,255,.12); }
+  .icon-btn:active, .pill-btn:active { background: rgba(255,255,255,.12); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -304,7 +286,6 @@ a { color: inherit; }
 
 /* Touch screens, late overrides (after the rules they widen) */
 @media (pointer: coarse) {
-  .dock .nav { min-width: 44px; justify-content: center; }
   .brand .linkish, .brand a { display: inline-block; padding: 12px 6px; margin: -12px -6px; }
   .letter-view .letter-close { width: 44px; height: 44px; }
 }
@@ -361,21 +342,12 @@ a { color: inherit; }
   .intro-skip { min-height: 44px; }
 }
 
-/* Phones held sideways: the dock becomes a two-column rail on the left edge (a bottom bar would eat a sixth of the
-   screen height), clear of the notch */
+/* Phones held sideways: everything a little tighter */
 @media (orientation: landscape) and (max-height: 500px) {
-  .dock { left: calc(8px + var(--safe-l)); right: auto; bottom: calc(8px + var(--safe-b)); top: auto; transform: none;
-    display: grid; grid-template-columns: auto auto; gap: 2px; padding: 5px; border-radius: 20px; width: auto;
-    max-width: none; max-height: calc(100vh - 84px); overflow-y: auto; }
-  @supports (height: 1dvh) { .dock { max-height: calc(100dvh - 84px); } }
-  .dock nav { display: contents; }
-  .dock .sep, .plain-link, .dock .nav::before { display: none; }
-  .dock .nav { padding: 8px 10px; font-size: .78rem; justify-content: flex-start; }
-  .dock .icon-btn { justify-self: center; }
+  .dock { bottom: calc(8px + var(--safe-b)); }
   .brand { max-width: calc(100vw - 180px); }
   .brand h1 { font-size: 1rem; }
   .brand p { font-size: .7rem; }
-  .cam-hint { bottom: calc(12px + var(--safe-b)); }
   body:has(.letter-view.on) .dock, body:has(.panel.open) .dock { opacity: 0; visibility: hidden; pointer-events: none; }
 }
 
@@ -409,11 +381,103 @@ a { color: inherit; }
 
 /* The dock and Back (ui.ts .ui-chrome) stay in every place: over the library's layer, and over the outside view */
 .ui-chrome[data-place="outside"] { z-index: 32; }
-.dock .places { display: flex; gap: 2px; }
-/* the place you are in: outlined, so it never reads as a second current viewpoint */
-.dock .place[aria-current="true"] { color: var(--ink); background: none; box-shadow: inset 0 0 0 1.5px var(--brass); }
-.dock .place[aria-current="true"]::before { opacity: .55; }
 
 /* The one-time hint about getting around (coach.ts): above the dock (or the library's chat), in every place */
 .cam-hint.coach { bottom: calc(var(--dock-h, 62px) + 12px); white-space: normal; text-align: center; width: max-content;
   max-width: min(600px, calc(100vw - 32px)); border-radius: 16px; z-index: 33; }
+
+/* ---------- The pill (ui.ts): Back · where you are (opens the ship's map) · search ---------- */
+.dock.pill { gap: 2px; padding: 4px; }
+.pill-btn { font: 500 .88rem/1 var(--sans); color: var(--ink); background: none; border: 0; border-radius: 999px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; padding: 0 14px; min-height: 38px; white-space: nowrap; }
+.pill-btn:hover { background: rgba(255,255,255,.08); }
+.pill-btn svg { flex: none; }
+.pill-btn[hidden] { display: none; }
+.pill .back { color: var(--ink-dim); padding-left: 10px; }
+.pill .back:hover { color: var(--ink); }
+.pill .back:not([hidden]) + .place-btn { box-shadow: inset 1px 0 0 var(--line); border-radius: 0 999px 999px 0; }
+.pill .place-btn svg:first-child { width: 20px; height: 20px; color: var(--brass); }
+.pill .place-btn svg:last-child { opacity: .6; margin-left: -2px; }
+.pill .place-btn.busy { opacity: .55; }
+.pill .place-btn.busy svg:first-child { animation: pill-spin 1.4s linear infinite; }
+@keyframes pill-spin { to { transform: rotate(360deg); } }
+/* once, after the welcome letter that points to it */
+.pill .place-btn.beckon { animation: pill-beckon 1.2s ease-out 4; }
+@keyframes pill-beckon { 0% { box-shadow: 0 0 0 0 rgba(226,180,104,.7); } 100% { box-shadow: 0 0 0 14px rgba(226,180,104,0); } }
+@media (pointer: coarse) { .pill-btn { min-height: 44px; } }
+@media (max-width: 420px) { .pill-btn { padding: 0 11px; } }
+/* notes ("Lighting the lamps below…") sit above the pill, never on it */
+.cam-hint.note { bottom: calc(var(--dock-h, 62px) + 12px); z-index: 33; }
+/* the phone's welcome letter leaves the top half of the cabin in view */
+@media (max-width: 720px) {
+  .letter-view .letter-text { max-height: 50vh; }
+  @supports (height: 1dvh) { .letter-view .letter-text { max-height: 50dvh; } }
+}
+
+/* ---------- The ship's map (shipmap.ts) ---------- */
+.shipmap { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; }
+.shipmap[hidden] { display: none; }
+.shipmap-scrim { position: absolute; inset: 0; background: rgba(20, 10, 6, .55); opacity: 0; transition: opacity .2s ease; }
+.shipmap-card { position: relative; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; overscroll-behavior: contain;
+  background: var(--glass-strong); border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px 16px;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 24px 70px rgba(10, 4, 2, .55);
+  opacity: 0; transform: translateY(10px) scale(.985); transition: opacity .2s ease, transform .2s ease; }
+@supports (height: 1dvh) { .shipmap-card { max-height: calc(100dvh - 48px); } }
+.shipmap.on .shipmap-scrim, .shipmap.on .shipmap-card { opacity: 1; transform: none; }
+.shipmap header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.shipmap h2 { margin: 0; font: 700 1.35rem/1.1 var(--display); outline: none; }
+.shipmap .ship-svg { display: block; width: 100%; height: auto; margin: 2px 0 10px; }
+.shipmap .ship-svg text { font: 700 15px var(--display); fill: #fbeedd; text-anchor: middle; pointer-events: none; }
+.shipmap .ship-svg text.sub { font: 500 10px var(--sans); fill: rgba(251,238,221,.7); }
+.shipmap .room[data-place="outside"] text { fill: #3a1a0c; }
+.shipmap .room[data-place="outside"] text.sub { fill: rgba(58,26,12,.7); }
+.shipmap .room { cursor: pointer; outline: none; }
+.shipmap .room .shape { transition: filter .15s, stroke .15s; stroke: transparent; stroke-width: 2; }
+.shipmap .room rect.shape { fill: rgba(255, 214, 170, .1); }
+.shipmap .room .windows { fill: rgba(255, 200, 120, .35); }
+.shipmap .room .star { fill: #ffe2b0; }
+.shipmap .room.hot .shape, .shipmap .room:focus-visible .shape { stroke: var(--brass); filter: brightness(1.15); }
+.shipmap .room.here rect.shape { fill: rgba(226, 180, 104, .26); }
+.shipmap .room.here ellipse.shape { stroke: #fff3dc; }
+.shipmap .pin circle { fill: var(--accent); stroke: #fff3dc; stroke-width: 2; }
+.shipmap .pin .dot { fill: #fff3dc; stroke: none; }
+.shipmap .rooms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.shipmap .rooms li { display: grid; grid-template-columns: minmax(130px, auto) 1fr; align-items: center; gap: 4px 10px;
+  padding: 6px; border-radius: 12px; border: 1px solid transparent; transition: background .15s, border-color .15s; }
+.shipmap .rooms li.hot { background: rgba(255,255,255,.05); }
+.shipmap .rooms li.here { border-color: rgba(226,180,104,.45); background: rgba(226,180,104,.08); }
+.shipmap .room-btn { display: grid; text-align: left; gap: 2px; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+.shipmap .room-btn:hover { background: rgba(255,255,255,.06); }
+.shipmap .room-btn .name { font: 700 1rem/1.1 var(--display); }
+.shipmap .room-btn .blurb { font-size: .74rem; color: var(--ink-dim); }
+.shipmap .room-btn[aria-current]::after { content: "You are here"; font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--brass); }
+.shipmap .stations { display: flex; flex-wrap: wrap; gap: 4px; }
+.shipmap .st { font: 500 .8rem/1 var(--sans); color: var(--ink-dim); background: rgba(255,255,255,.05); border: 1px solid var(--line);
+  border-radius: 999px; padding: 7px 11px; cursor: pointer; }
+.shipmap .st:hover { color: var(--ink); background: rgba(255,255,255,.1); }
+.shipmap .st[aria-current] { color: var(--accent-ink); background: var(--brass); border-color: transparent; }
+.shipmap button:disabled { opacity: .45; cursor: progress; }
+.shipmap.busy .room { cursor: progress; opacity: .7; }
+.shipmap footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.shipmap .links { display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.shipmap .link { font: 500 .84rem var(--sans); color: var(--ink-dim); background: none; border: 0; padding: 6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.shipmap .link:hover { color: var(--ink); }
+.shipmap .settings { display: flex; gap: 6px; }
+.shipmap .chip { font: 500 .8rem/1 var(--sans); color: var(--ink); background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.shipmap .chip[aria-pressed="true"] { border-color: var(--brass); color: var(--brass); }
+.shipmap .chip.loading { opacity: .6; cursor: progress; }
+@media (pointer: coarse) { .shipmap .st, .shipmap .chip, .shipmap .link, .shipmap .room-btn { min-height: 44px; } }
+/* phones: a bottom sheet */
+@media (max-width: 720px) {
+  .shipmap { place-items: end stretch; }
+  .shipmap-card { width: 100%; border-radius: 20px 20px 0 0; max-height: 86vh; padding: 14px calc(16px + var(--safe-r)) calc(14px + var(--safe-b)) calc(16px + var(--safe-l));
+    transform: translateY(30px); }
+  @supports (height: 1dvh) { .shipmap-card { max-height: 86dvh; } }
+  .shipmap-card::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.25); margin: -4px auto 10px; }
+  .shipmap .ship-svg { max-height: 26vh; }
+  .shipmap .rooms li { grid-template-columns: 1fr; padding: 4px; }
+  .shipmap .room-btn { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: 8px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .shipmap .ship-svg { display: none; }
+}

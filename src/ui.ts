@@ -2,19 +2,17 @@ import * as THREE from 'three';
 import type { Content, Item } from './types';
 import type { ViewName } from './scene';
 import { escapeHtml } from './content';
+import { ShipMap } from './shipmap';
 
 export interface UIHandlers {
-  nav(view: ViewName): void;
   back(): void;
   hotspot(id: string): void;
   item(id: string): void;
   insert(id: string): void;
   panelClosed(): void;
   toggleNight(): void;
-  /** Go to one of the three places (the dock's place switcher). */
-  place(p: Place): void;
-  /** Go to a station of the library or the outside view (the dock's middle row there). */
-  station(id: string): void;
+  /** Go to a place, and a station there (a cabin view, or a station of another place): the ship's map. */
+  go(p: Place, station?: string): void;
   /** Open the Ship's Index (all writing). */
   writing(): void;
   /** Open the search palette. */
@@ -32,43 +30,29 @@ export interface Spot { id: string; label: string; world: THREE.Vector3; }
 
 /** Where the visitor is: the dock and the Back button are the same in all three. */
 export type Place = 'cabin' | 'library' | 'chartroom' | 'outside';
-const PLACES: { p: Place; label: string; aria: string }[] = [
-  { p: 'cabin', label: 'Cabin', aria: 'The captain’s cabin' },
-  { p: 'library', label: 'Library', aria: 'Down the hatch to the library' },
-  { p: 'chartroom', label: 'Chart room', aria: 'The navigator’s chart room, where Ugurcan keeps the charts' },
-  { p: 'outside', label: 'Outside', aria: 'Go outside and see the ship' },
-];
-
-const NAV: { view: ViewName; label: string }[] = [
-  { view: 'chest', label: 'Projects' },
-  { view: 'table', label: 'Table' },
-  { view: 'rack', label: 'Resume' },
-  { view: 'shelf', label: 'Blog' },
-  { view: 'handheld', label: 'Handheld' },
-];
+const PLACE_NAME: Record<Place, string> = { cabin: 'Cabin', library: 'Library', chartroom: 'Chart room', outside: 'Outside' };
 
 const ICON = {
   soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>',
   soundOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
   lantern: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6M12 2v2M8 7h8l1 3v8l-1 2H8l-1-2v-8z"/><path d="M12 11c1.2 1.3 1.2 3.2 0 4.2-1.2-1-1.2-2.9 0-4.2z"/></svg>',
   close: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/><path d="M14.5 9.5l-1.6 4.2-4.4 1.8 1.6-4.2z"/></svg>',
+  caret: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>',
   back: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
 };
 
 export class UI {
   root: HTMLElement;
-  private dockBtns = new Map<ViewName, HTMLButtonElement>();
   private backBtn: HTMLButtonElement;
-  /** The Back button and the dock: kept on screen in every place (the rest of root is the cabin's). */
+  /** The pill (Back · the place / map · search): kept on screen in every place (the rest of root is the cabin's). */
   readonly chrome: HTMLElement;
-  private navEl: HTMLElement;
-  private placeBtns = new Map<Place, HTMLButtonElement>();
-  private stationBtns = new Map<string, HTMLButtonElement>();
+  private placeBtn: HTMLButtonElement;
+  readonly map: ShipMap;
   private place: Place = 'cabin';
   private view: ViewName = 'overview';
+  private station: string | null = null;
   private visible = true;
-  private soundBtn: HTMLButtonElement;
-  private nightBtn: HTMLButtonElement;
   private spots: { spot: Spot; el: HTMLButtonElement }[] = [];
   private items: { spot: Spot; el: HTMLButtonElement }[] = [];
   private eggs: { spot: Spot; el: HTMLButtonElement; world: () => THREE.Vector3 | null }[] = [];
@@ -88,60 +72,41 @@ export class UI {
     root.innerHTML = `
       <header class="brand">
         <h1>${escapeHtml(content.person.name)}</h1>
-        <p>Curious, engineer, maker, mathematician · <button type="button" class="linkish letter-link">Letter</button> · <a href="/plain/" style="pointer-events:auto">Plain version</a></p>
+        <p>Curious, engineer, maker, mathematician</p>
       </header>
-      <button class="btn back" type="button" hidden>${ICON.back}<span>Back</span></button>
       <div class="spots"></div>
-      <div class="dock" role="toolbar" aria-label="Cabin">
-        <nav aria-label="Viewpoints"></nav>
-        <span class="sep" aria-hidden="true"></span>
-        <div class="places" role="group" aria-label="Places"></div>
-        <button class="nav writing-btn" type="button" aria-label="Index: open the Ship's Index">Index</button>
-        <span class="sep" aria-hidden="true"></span>
-        <button class="icon-btn search" type="button" aria-label="Search (press / or Ctrl+K)" aria-keyshortcuts="/ Control+K Meta+K"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
-        <button class="icon-btn night" type="button" aria-pressed="false" aria-label="Lantern: switch to night">${ICON.lantern}</button>
-        <button class="icon-btn sound" type="button" aria-pressed="false" aria-label="Sound off">${ICON.soundOff}</button>
-      </div>
       <section class="panel" role="dialog" aria-modal="false" aria-labelledby="panel-title" hidden></section>
       <div class="sr-only" aria-live="polite"></div>`;
     parent.appendChild(root);
+    // the pill: Back (what it will do) · where you are, which opens the ship's map · search
     const chrome = this.chrome = document.createElement('div');
     chrome.className = 'ui ui-chrome';
     chrome.dataset.place = 'cabin';
-    chrome.append(root.querySelector('.back')!, root.querySelector('.dock')!);
+    chrome.innerHTML = `
+      <div class="dock pill" role="toolbar" aria-label="Getting around">
+        <button class="pill-btn back" type="button" hidden>${ICON.back}<span>Back</span></button>
+        <button class="pill-btn place-btn" type="button" aria-haspopup="dialog" aria-keyshortcuts="M">${ICON.map}<span class="place-name">Cabin</span>${ICON.caret}</button>
+        <button class="icon-btn search" type="button" aria-label="Search (press / or Ctrl+K)" aria-keyshortcuts="/ Control+K Meta+K"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+      </div>`;
     parent.appendChild(chrome);
-    const places = chrome.querySelector('.places')!;
-    for (const pl of PLACES) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'nav place'; b.textContent = pl.label;
-      b.setAttribute('aria-label', pl.aria);
-      b.addEventListener('click', () => h.place(pl.p));
-      places.appendChild(b);
-      this.placeBtns.set(pl.p, b);
-    }
-    this.placeBtns.get('cabin')!.setAttribute('aria-current', 'true');
-    // the dock's height, for what sits above it in the library and outside (--dock-h)
+    this.map = new ShipMap(parent, {
+      go: (p, st) => h.go(p, st),
+      writing: () => h.writing(),
+      letter: () => h.letter(),
+      toggleNight: () => h.toggleNight(),
+      toggleSound: () => h.toggleSound(),
+    });
+    this.placeBtn = chrome.querySelector('.place-btn')!;
+    this.placeBtn.addEventListener('click', () => { this.placeBtn.classList.remove('beckon'); this.map.toggle(); });
+    this.syncPlaceLabel();
+    // the pill's height, for what sits above it in the library and outside (--dock-h)
     const dock = chrome.querySelector<HTMLElement>('.dock')!;
     const measure = () => document.documentElement.style.setProperty('--dock-h', `${Math.max(0, Math.round(innerHeight - dock.getBoundingClientRect().top))}px`);
     new ResizeObserver(measure).observe(dock);
     addEventListener('resize', measure);
     measure();
-    const nav = this.navEl = chrome.querySelector('nav')!;
-    for (const n of NAV) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'nav'; b.textContent = n.label;
-      b.addEventListener('click', () => h.nav(n.view));
-      nav.appendChild(b);
-      this.dockBtns.set(n.view, b);
-    }
-    root.querySelector('.letter-link')!.addEventListener('click', () => h.letter());
     this.backBtn = chrome.querySelector('.back')!;
     this.backBtn.addEventListener('click', () => h.back());
-    this.soundBtn = chrome.querySelector('.sound')!;
-    this.soundBtn.addEventListener('click', () => h.toggleSound());
-    this.nightBtn = chrome.querySelector('.night')!;
-    this.nightBtn.addEventListener('click', () => h.toggleNight());
-    chrome.querySelector('.writing-btn')!.addEventListener('click', () => h.writing());
     chrome.querySelector('.search')!.addEventListener('click', () => h.search());
     this.spotLayer = root.querySelector('.spots')!;
     this.panel = root.querySelector('.panel')!;
@@ -152,6 +117,27 @@ export class UI {
     this.watchLongPress();
   }
 
+  /** The map button pulses a few times (once, after the welcome letter that points to it). */
+  beckonMap() {
+    this.placeBtn.classList.remove('beckon');
+    void this.placeBtn.offsetWidth;
+    this.placeBtn.classList.add('beckon');
+    setTimeout(() => this.placeBtn.classList.remove('beckon'), 4800);
+  }
+
+  /** While the ship moves between places: the map can't start another move (it would be lost). */
+  setBusy(on: boolean) {
+    this.map.setDisabled(on);
+    this.placeBtn.classList.toggle('busy', on);
+    this.placeBtn.setAttribute('aria-busy', String(on));
+  }
+
+  private syncPlaceLabel() {
+    this.placeBtn.querySelector('.place-name')!.textContent = PLACE_NAME[this.place];
+    this.placeBtn.setAttribute('aria-label', `${PLACE_NAME[this.place]}: open the ship’s map (M)`);
+    this.map.setHere(this.place, this.place === 'cabin' ? (this.view === 'screen' ? 'handheld' : this.view) : this.station);
+  }
+
   announce(text: string) { this.live.textContent = text; }
 
   /** Hide the pulsing hotspots while something is held up close (they would float over it). */
@@ -159,8 +145,7 @@ export class UI {
 
   setView(view: ViewName) {
     this.view = view;
-    for (const [v, b] of this.dockBtns) b.setAttribute('aria-current', String(v === view || (view === 'screen' && v === 'handheld')));
-    if (this.place === 'cabin') this.setBack(view === 'overview' ? null : 'Back');
+    if (this.place === 'cabin') { this.setBack(view === 'overview' ? null : 'Back'); this.syncPlaceLabel(); }
     for (const s of this.spots) s.el.hidden = view !== 'overview';
     if (view === 'overview') this.flashTips();
   }
@@ -186,21 +171,11 @@ export class UI {
     for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, cancel, { passive: true });
   }
 
-  /** Sound button cycles off → ambient → full. */
+  /** Sound cycles off → ambient → full (its button is in the ship's map). */
   setSound(mode: 'off' | 'ambient' | 'full' | boolean) {
-    const m = mode === true ? 'full' : mode === false ? 'off' : mode;
-    const on = m !== 'off';
-    this.soundBtn.setAttribute('aria-pressed', String(on));
-    const label = m === 'off' ? 'Sound off — click for ambient sound' : m === 'ambient' ? 'Sound: ambient — click for full sound' : 'Sound: full — click to mute';
-    this.soundBtn.setAttribute('aria-label', label);
-    this.soundBtn.title = label;
-    this.soundBtn.dataset.mode = m;
-    this.soundBtn.innerHTML = on ? ICON.soundOn : ICON.soundOff;
+    this.map.setSound(mode === true ? 'full' : mode === false ? 'off' : mode);
   }
-  setNight(on: boolean) {
-    this.nightBtn.setAttribute('aria-pressed', String(on));
-    this.nightBtn.setAttribute('aria-label', on ? 'Lantern: back to sunset' : 'Lantern: switch to night');
-  }
+  setNight(on: boolean) { this.map.setNight(on); }
 
   setHotspots(spots: Spot[], pulse: boolean) {
     for (const s of this.spots) s.el.remove();
@@ -253,7 +228,7 @@ export class UI {
   }
 
   /** Busy spinner on the lantern while the night assets stream in. */
-  setNightLoading(on: boolean) { this.nightBtn.classList.toggle('loading', on); this.nightBtn.setAttribute('aria-busy', String(on)); }
+  setNightLoading(on: boolean) { this.map.setNightLoading(on); }
 
   focusFirstItem() { this.items[0]?.el.focus({ preventScroll: true }); }
 
@@ -352,41 +327,29 @@ export class UI {
   }
 
   /** Everything, dock included (the handheld's screen, the reader). */
-  setVisible(on: boolean) { this.visible = on; this.sync(); }
+  setVisible(on: boolean) { this.visible = on; if (!on) this.map.close(true); this.sync(); }
   private sync() {
     this.root.style.display = this.visible && this.place === 'cabin' ? '' : 'none';
     this.chrome.style.display = this.visible ? '' : 'none';
   }
 
   /**
-   * Which place is on screen. The cabin's own UI (brand, hotspots, panel) shows only in the cabin; the dock and Back
-   * stay, the dock's middle row listing that place's stations.
+   * Which place is on screen. The cabin's own UI (brand, hotspots, panel) shows only in the cabin; the pill stays, and
+   * names the place.
    */
-  setPlace(place: Place, stations: { id: string; label: string }[] = []) {
-    if (place === this.place && place === 'cabin') return;
+  setPlace(place: Place) {
+    if (place === this.place) return;
     this.place = place;
+    this.station = null;
     this.chrome.dataset.place = place;
-    for (const [p, b] of this.placeBtns) b.setAttribute('aria-current', String(p === place));
-    const dock = this.chrome.querySelector('.dock')!;
-    dock.setAttribute('aria-label', place === 'cabin' ? 'Cabin' : place === 'library' ? 'Library' : place === 'chartroom' ? 'Chart room' : 'Outside the ship');
-    this.navEl.setAttribute('aria-label', place === 'cabin' ? 'Viewpoints' : 'Places to go');
-    this.stationBtns.clear();
-    if (place === 'cabin') { this.navEl.replaceChildren(...this.dockBtns.values()); this.setView(this.view); }
-    else {
-      this.navEl.replaceChildren(...stations.map(st => {
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'nav'; b.textContent = st.label;
-        b.addEventListener('click', () => this.h.station(st.id));
-        this.stationBtns.set(st.id, b);
-        return b;
-      }));
-      this.setBack(null);
-    }
+    if (place === 'cabin') this.setView(this.view);
+    else this.setBack(null);
+    this.syncPlaceLabel();
     this.sync();
   }
 
-  /** The library's / outside's current station in the dock (null: none, the visitor wandered off). */
-  setStation(id: string | null) { for (const [k, b] of this.stationBtns) b.setAttribute('aria-current', String(k === id)); }
+  /** The current station in the library / chart room / outside (null: none, the visitor wandered off). */
+  setStation(id: string | null) { if (id !== this.station) { this.station = id; this.syncPlaceLabel(); } }
 
   /** The Back button: what it will do ("Close the book", "Back inside"…), or null to hide it. */
   setBack(label: string | null) {

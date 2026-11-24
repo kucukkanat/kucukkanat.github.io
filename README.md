@@ -25,14 +25,15 @@ bun run lan        # dev server at http://kucukkanat.local (Mac and phone)
 | Zoom | pinch | scroll, `+` / `-` |
 | Slide (indoors) | two-finger drag | right-drag, shift-drag, shift+arrows |
 | Back to the framing | double-tap | double-click, `0` |
-| Go somewhere | tap a glowing dot, or a name in the dock | click a dot or the dock, Tab to them |
-| Switch place | Cabin · Library · Outside in the dock | the dock, `1` `2` `3` |
+| Go somewhere | tap a glowing dot, or a spot in the ship's map | click a dot or the map, Tab to them |
+| Switch place | the place name in the pill opens the ship's map | the map (`M`), `1` `2` `3` `4` |
 | Back | the Back button (it says what it will do), flick down | Back, Esc |
 
 - `src/input.ts`: one gesture layer, used by all three places. The library and outside each run their own copy on their own layer; the cabin's copy passes the keys to them.
 - `src/stations.ts`: the glowing dots, like the cabin's hotspots. Library: the Librarian, bookcase, side shelves, reading table, porthole, and the ladder up. Outside: bow, port, starboard, above, and the stern windows back in.
-- `src/ui.ts`: the dock and the Back button, the same in every place. The middle row shows that place's viewpoints or stations.
-- `src/coach.ts`: a one-time hint with the same words in every place, shown above the dock (or the library's chat).
+- `src/ui.ts`: the pill at the bottom, the same in every place: Back (it says what it will do), the current place (opens the map) and search.
+- `src/shipmap.ts`: the ship's map, a cutaway of the airship with every room and its stations, plus the Ship's Index, the welcome letter, the plain version, the lantern and the sound. While the ship moves between places it can't start another move.
+- `src/coach.ts`: a one-time hint with the same words in every place, shown above the pill (or the library's chat).
 - **Address:** the station goes in it (`?deck=1&station=table`, `?outside=1&station=bow`), so the browser's Back and Forward walk through stations.
 - **Outside:** the ship sails on by herself while you look around. **Take the helm** (or `H`) brings up the stick, the speed slider and the flight keys (A/D or ←/→ turn, W/S or ↑/↓ climb, Q/E speed). Back or Esc leaves the helm before going inside.
 - **Reduced motion:** stations cut instead of gliding.
