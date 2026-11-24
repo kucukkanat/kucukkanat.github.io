@@ -19,8 +19,8 @@ export const ROOMS: MapRoom[] = [
   { p: 'cabin', label: 'Cabin', blurb: 'Projects, résumé and writing', stations: [
     { id: 'chest', label: 'Projects' }, { id: 'table', label: 'Voyage' }, { id: 'rack', label: 'Résumé' },
     { id: 'shelf', label: 'Blog' }, { id: 'handheld', label: 'Handheld' }] },
-  { p: 'chartroom', label: 'Chart room', blurb: 'Ugurcan, the navigator', stations: [
-    { id: 'ugurcan', label: 'Ugurcan' }, { id: 'table', label: 'Charts' }, { id: 'star', label: 'His star' }, { id: 'window', label: 'Windows' }] },
+  { p: 'chartroom', label: 'Chart room', blurb: 'Goof, the navigator', stations: [
+    { id: 'ugurcan', label: 'Goof' }, { id: 'table', label: 'Charts' }, { id: 'star', label: 'His star' }, { id: 'window', label: 'Windows' }] },
   { p: 'library', label: 'Library', blurb: 'Below deck, with the Librarian', stations: [
     { id: 'librarian', label: 'Librarian' }, { id: 'bookcase', label: 'Bookcase' }, { id: 'side', label: 'Shelves' }, { id: 'table', label: 'Catalogue' }] },
 ];

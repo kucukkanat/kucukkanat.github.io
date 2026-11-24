@@ -288,7 +288,7 @@ class World {
     const head = new V();
     const lift = new V(0, 0.42, 0);
     this.stationList = [
-      { id: 'ugurcan', label: 'Ugurcan — the ship’s navigator', spot: () => this.man.headPos(head).add(lift) },
+      { id: 'ugurcan', label: 'Goof — the ship’s navigator', spot: () => this.man.headPos(head).add(lift) },
       { id: 'table', label: 'Chart table — where he plots the course', spot: () => new V(0.45, 0.98, -0.5) },
       { id: 'star', label: 'Skylight — his star', spot: () => new V(0, 3.0, -0.75) },
       { id: 'window', label: 'Windows — the sky ahead', spot: () => new V(-1.05, 1.6, -2.3) },
@@ -301,14 +301,14 @@ class World {
 
   get stations() { return this.stationList.filter(s => s.id !== 'door').map(s => ({ id: s.id, label: DOCK_NAME[s.id] ?? s.label.split(' — ')[0] })); }
   get station() { return this.way.at; }
-  get backLabel() { return this.note.isOpen ? 'Close the note' : this.way.at !== 'ugurcan' ? 'Back to Ugurcan' : 'Back to the cabin'; }
+  get backLabel() { return this.note.isOpen ? 'Close the note' : this.way.at !== 'ugurcan' ? 'Back to Goof' : 'Back to the cabin'; }
 
   arrive(station?: string) {
     this.goHome(true);
     this.man.toHome();
     if (station && station !== 'ugurcan') this.goStation(station);
     this.man.play(this.greeted ? 'Wave_One_Hand' : 'Gentlemans_Bow');
-    if (!this.greeted) this.hooks.announce('In the chart room. Ugurcan, the ship’s navigator, is at his chart table.');
+    if (!this.greeted) this.hooks.announce('In the chart room. Goof, the ship’s navigator, is at his chart table.');
     this.greeted = true;
     setTimeout(() => coach('chartroom'), 1200);
   }
@@ -654,7 +654,7 @@ interface NoteText { title: string; subtitle: string; body: string[] }
 
 /** content/_ugurcan.md: "# Name", "## what he was", then paragraphs. */
 function parseNote(md: string): NoteText {
-  const out: NoteText = { title: 'Ugurcan', subtitle: '', body: [] };
+  const out: NoteText = { title: 'Goof', subtitle: '', body: [] };
   let para: string[] = [];
   const flush = () => { if (para.length) out.body.push(para.join(' ')); para = []; };
   for (const raw of md.replace(/<!--[\s\S]*?-->/g, '').split('\n')) {
@@ -772,7 +772,7 @@ function topName(o: THREE.Object3D): string {
   return o.name;
 }
 
-const DOCK_NAME: Record<string, string> = { ugurcan: 'Ugurcan', table: 'Charts', star: 'His star', window: 'Windows' };
+const DOCK_NAME: Record<string, string> = { ugurcan: 'Goof', table: 'Charts', star: 'His star', window: 'Windows' };
 const _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ');
 const _right = new THREE.Vector3(), _up = new THREE.Vector3();
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _r = new THREE.Vector3(), _size = new THREE.Vector3();

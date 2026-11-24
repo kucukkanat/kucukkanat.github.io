@@ -269,7 +269,7 @@ async function main() {
       act('library', 'Go down to the library', 'The captain’s library below deck, and his friend who keeps it', ['library', 'librarian', 'books', 'notes', 'below', 'kütüphane'], () => { void goDeck(); });
       for (const t of notesIndex.topics) if (t.notes.length) act(`ask-${t.id}`, `Ask the Librarian for ${t.title}`, 'He fetches the volume from the shelf below deck', ['library', 'librarian', t.title.toLowerCase()], () => { void goDeck(t.id); });
     }
-    act('chartroom', 'Visit Ugurcan in the chart room', 'The ship’s navigator, at his chart table under his star', ['ugurcan', 'navigator', 'chart room', 'star', 'friend', 'harita'], () => { void goChart(); });
+    act('chartroom', 'Visit Goof in the chart room', 'The ship’s navigator, at his chart table under his star', ['goof', 'ugurcan', 'navigator', 'chart room', 'star', 'friend', 'harita'], () => { void goChart(); });
     act('outside', 'Go outside', 'See the ship from the air and fly it', ['ship', 'galleon', 'fly', 'helm', 'dışarı', 'gemi'], () => goOutside());
     act('whales', 'Watch the sky whales', "Today's pod of whales carrying their own worlds, in the whale viewer", ['whale', 'whales', 'sky whales', 'balina'], () => { location.href = '/whales/'; });
     act('letter', 'Read the welcome letter', 'The letter on the chart table', ['welcome', 'hello', 'mektup'], () => { void openLetter(true); });
