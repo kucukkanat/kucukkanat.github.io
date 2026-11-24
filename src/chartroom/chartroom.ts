@@ -28,8 +28,11 @@ const FILES = {
   sunset: ['/assets/chartroom_lightmap_sunset.ktx2', '/assets/chartroom_lightmap_sunset_1k.ktx2'],
   night: ['/assets/chartroom_lightmap_night.ktx2', '/assets/chartroom_lightmap_night_1k.ktx2'],
 };
-/** His idle clips, played one after another (Meshy animation library names). */
-const IDLES = ['Long_Breathe_and_Look_Around', 'Idle_02', 'Happy_Sway_Standing', 'Idle_02'];
+/** His idle clips, played one after another (Meshy animation library names): relaxed, arms at his sides. */
+const IDLES = ['Idle_4', 'Long_Breathe_and_Look_Around', 'Idle_3', 'Idle_12', 'Idle_6', 'Idle_7'];
+/** Seconds of crossfade between clips. Each fade starts this long before the clip ends, so a finished clip never
+ *  leaves him without a pose (the mixer would show the bind pose, his T-pose, through the gap). */
+const FADE = 0.6;
 
 export interface ChartHooks {
   root: HTMLElement;
@@ -471,6 +474,8 @@ class Navigator {
   private wait = 25;
   private awayIndex = 0;
   private oneOff = false;
+  /** Seconds left of the clip he is standing in (idles and one-offs; the walks loop until he arrives). */
+  private left = Infinity;
   private then: (() => void) | null = null;
   /** No wandering while the visitor reads his note. */
   hold = false;
@@ -486,7 +491,6 @@ class Navigator {
     // the clips are in place (no root travel): the walks move him from here
     this.mixer = new THREE.AnimationMixer(gltf.scene);
     for (const c of gltf.animations) this.clips.set(c.name, this.mixer.clipAction(c));
-    this.mixer.addEventListener('finished', () => { this.oneOff = false; if (this.state === 'idle') this.nextIdle(); });
     this.nextIdle();
   }
 
@@ -512,19 +516,24 @@ class Navigator {
   play(name: string) {
     if (!this.atHome) { this.walkTo(this.home, WALKS.brisk, () => this.play(name)); return; }
     const a = this.clips.get(name);
-    if (!a) return;
-    a.reset().setLoop(THREE.LoopOnce, 1);
-    a.clampWhenFinished = false;
+    if (!a || (this.oneOff && this.current === a)) return;
     this.oneOff = true;
-    this.fadeTo(a);
+    this.once(a);
   }
 
   private nextIdle() {
-    const name = IDLES[this.idleIndex++ % IDLES.length];
-    const a = this.clips.get(name) ?? [...this.clips.values()][0];
-    if (!a) return;
-    a.reset().setLoop(THREE.LoopRepeat, name === 'Idle_02' ? 3 : 1);
+    let a: THREE.AnimationAction | undefined;
+    for (let i = 0; i < IDLES.length && (!a || a === this.current); i++) a = this.clips.get(IDLES[this.idleIndex++ % IDLES.length]);
+    a ??= [...this.clips.values()][0];
+    if (a) this.once(a);
+  }
+
+  /** A clip played through once, holding its last frame if nothing takes over (never a gap). */
+  private once(a: THREE.AnimationAction) {
+    a.reset().setLoop(THREE.LoopOnce, 1);
+    a.clampWhenFinished = true;
     this.fadeTo(a);
+    this.left = a.getClip().duration / Math.max(a.timeScale, 1e-3);
   }
 
   private walkTo(spot: Spot, pace: typeof WALKS.slow, then?: () => void) {
@@ -532,12 +541,14 @@ class Navigator {
     if (!a) { this.at = spot; this.toSpot(spot); then?.(); return; }
     this.target = spot; this.pace = pace; this.then = then ?? null; this.state = 'walk';
     a.reset().setLoop(THREE.LoopRepeat, Infinity);
+    a.clampWhenFinished = false;
     this.fadeTo(a, 0.4);
+    this.left = Infinity;
   }
 
   private toSpot(s: Spot) { this.root.position.set(s.x, this.root.position.y, s.z); this.yaw = s.yaw; this.root.rotation.set(0, s.yaw, 0); }
 
-  private fadeTo(a: THREE.AnimationAction, t = 0.5) {
+  private fadeTo(a: THREE.AnimationAction, t = FADE) {
     a.enabled = true;
     a.setEffectiveWeight(1);
     a.play();
@@ -595,6 +606,11 @@ class Navigator {
   }
 
   update(dt: number, eye: THREE.Vector3) {
+    // the next clip fades in while this one is still playing
+    if (this.state !== 'walk') {
+      this.left -= dt;
+      if (this.left <= FADE) { this.oneOff = false; this.nextIdle(); }
+    }
     this.wander(dt);
     this.move(dt);
     this.mixer.update(dt);
