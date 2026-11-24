@@ -35,42 +35,113 @@ export interface MapHandlers {
 
 const CLOSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
-// The cutaway: a side view, bow to the right. The balloon and the sails are "Outside", the stern cabin with its big
-// windows and the chart room forward share the main deck, the library sits below it.
+// The cutaway: the sky galleon side on, bow to the left. Everything above the deck (sails, masts, the open air) is
+// "Outside"; the hull is cut open to show the captain's cabin in the stern castle, the chart room forward of it, and
+// the library below deck.
+const HULL = 'M30 152 C60 160 70 166 90 166 L330 166 L330 138 L440 132 C446 160 440 190 420 206 C390 236 330 250 240 252 C150 252 80 236 52 200 C40 184 32 168 30 152 Z';
+const SAIL = (x1: number, y1: number, x2: number, y2: number, bulge: number) =>
+  `M${x1} ${y1} L${x2} ${y1} Q${x2 + bulge * .35} ${(y1 + y2) / 2} ${x2 + bulge * .1} ${y2} Q${(x1 + x2) / 2} ${y2 + bulge} ${x1 - bulge * .1} ${y2} Q${x1 - bulge * .35} ${(y1 + y2) / 2} ${x1} ${y1}Z`;
+/** A ribbed fan wing (the galleon's fins): panels from a pivot to each pair of rib tips, orange and cream in turn. */
+const FAN = (px: number, py: number, tips: number[][]) => {
+  let out = '<g class="fin">';
+  for (let i = 0; i < tips.length - 1; i++) {
+    const [ax, ay] = tips[i], [bx, by] = tips[i + 1];
+    const mx = (ax + bx) / 2, my = (ay + by) / 2, cx = mx + (mx - px) * -.12, cy = my + (my - py) * -.12;
+    out += `<path d="M${px} ${py} L${ax} ${ay} Q${cx} ${cy} ${bx} ${by} Z" fill="${i % 2 ? '#fbeedd' : '#f07a2a'}"/>`;
+  }
+  out += tips.map(([x, y]) => `<path d="M${px} ${py} L${x} ${y}" stroke="#6b3a22" stroke-width="1.6" stroke-linecap="round"/>`).join('');
+  return out + `<circle cx="${px}" cy="${py}" r="4" fill="#c99a4a"/></g>`;
+};
+const BOOKS = (() => {
+  const c = ['#b8432c', '#2f5d7c', '#d2a24c', '#4f7a3a', '#7a3550', '#c46a2c', '#e0c48a'];
+  let out = '', x = 166, i = 0;
+  for (const row of [221, 232]) {
+    x = 166;
+    while (x < 330) {
+      const w = 3 + ((i * 7) % 3), h = 8 + ((i * 5) % 3);
+      if (!(x > 236 && x < 262)) out += `<rect x="${x}" y="${row + 10 - h}" width="${w}" height="${h}" fill="${c[i % c.length]}"/>`;
+      x += w + 1; i++;
+    }
+  }
+  return out;
+})();
 const SHIP = `
-<svg class="ship-svg" viewBox="0 0 420 250" aria-hidden="false" role="group" aria-label="The airship, cut away">
+<svg class="ship-svg" viewBox="0 0 480 300" role="group" aria-label="The sky galleon, cut away">
   <defs>
-    <linearGradient id="sm-env" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3c98b"/><stop offset="1" stop-color="#c97a3c"/></linearGradient>
-    <linearGradient id="sm-hull" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a3f24"/><stop offset="1" stop-color="#4a2316"/></linearGradient>
+    <linearGradient id="sm-wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a4b2a"/><stop offset="1" stop-color="#4a2516"/></linearGradient>
+    <linearGradient id="sm-sail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e9d8b8"/><stop offset=".6" stop-color="#fbf0dc"/><stop offset="1" stop-color="#e2cfaa"/></linearGradient>
+    <linearGradient id="sm-in" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b2015"/><stop offset="1" stop-color="#24130c"/></linearGradient>
+    <radialGradient id="sm-glow"><stop offset="0" stop-color="#ffd58f" stop-opacity=".9"/><stop offset="1" stop-color="#ffb35c" stop-opacity="0"/></radialGradient>
+    <clipPath id="sm-hullclip"><path d="${HULL}"/></clipPath>
   </defs>
-  <g class="rig" stroke="#e2b468" stroke-opacity=".5" stroke-width="1.2" fill="none">
-    <path d="M110 92 L95 128 M170 98 L165 128 M250 98 L255 128 M310 92 L330 128"/>
+
+  <g class="room outside" data-place="outside" tabindex="0" role="button">
+    <rect class="hit" x="0" y="0" width="480" height="160" fill="transparent"/>
+    <g class="rigging" stroke="#5a3420" stroke-width=".9" fill="none" opacity=".75">
+      <path d="M150 22 L64 164 M150 22 L222 164 M255 14 L196 164 M255 14 L330 136 M255 14 L440 130 M150 22 L14 138"/>
+    </g>
+    <path d="M14 138 L58 152" stroke="#6b3a22" stroke-width="4" stroke-linecap="round"/>
+    <path class="sail" d="M18 136 L146 30 L146 140 Z" fill="url(#sm-sail)" opacity=".95"/>
+    <g class="mast" stroke="#6b3a22" stroke-linecap="round">
+      <path d="M150 18 V166" stroke-width="5"/><path d="M255 10 V166" stroke-width="6"/>
+      <path d="M116 54 H186 M106 92 H196 M214 38 H296 M204 84 H306" stroke-width="3"/>
+    </g>
+    <path class="sail" d="${SAIL(118, 56, 184, 88, 6)}" fill="url(#sm-sail)"/>
+    <path class="sail" d="${SAIL(108, 94, 194, 142, 9)}" fill="url(#sm-sail)"/>
+    <path class="sail" d="${SAIL(216, 40, 294, 80, 7)}" fill="url(#sm-sail)"/>
+    <path class="sail" d="${SAIL(206, 86, 304, 144, 10)}" fill="url(#sm-sail)"/>
+    <path d="M206 100 H304" stroke="#f07a2a" stroke-width="7" opacity=".9"/>
+    <path d="M118 66 H184" stroke="#f07a2a" stroke-width="5" opacity=".9"/>
+    <path d="M255 10 l24 5 -24 5z" fill="#f07a2a"/>
+    <path d="M150 18 l16 4 -16 4z" fill="#f07a2a"/>
+    <g class="label"><text x="392" y="56">Outside</text><text class="sub" x="392" y="72">on deck and aloft</text></g>
   </g>
-  <g class="room" data-place="outside" tabindex="0" role="button">
-    <ellipse class="shape" cx="210" cy="56" rx="178" ry="46" fill="url(#sm-env)"/>
-    <path d="M60 56 H360 M90 34 C150 22 270 22 330 34 M90 78 C150 90 270 90 330 78" stroke="#8a4a26" stroke-opacity=".35" fill="none"/>
-    <text x="210" y="52">Outside</text><text class="sub" x="210" y="70">the ship under sail</text>
+
+  ${FAN(120, 212, [[50, 226], [52, 246], [66, 262], [88, 270]])}
+  ${FAN(398, 210, [[458, 222], [462, 242], [452, 260], [432, 268]])}
+  <path d="M226 250 L252 286 L284 250 Z" fill="#4a2516" stroke="#2a140c"/>
+
+  <path class="hull" d="${HULL}" fill="url(#sm-wood)" stroke="#2a140c" stroke-width="1.5"/>
+  <g clip-path="url(#sm-hullclip)">
+    <path d="M0 192 H480 M0 202 H480 M0 212 H480 M0 222 H480 M0 232 H480 M0 242 H480" stroke="#2a140c" stroke-opacity=".35"/>
+    <rect x="0" y="171" width="480" height="11" fill="#efe0c2"/>
+    <rect x="0" y="182" width="480" height="3" fill="#f07a2a"/>
+    <rect x="320" y="140" width="130" height="8" fill="#efe0c2"/>
+    <circle cx="96" cy="200" r="3" fill="#ffd58f"/><circle cx="120" cy="200" r="3" fill="#ffd58f"/>
   </g>
-  <path class="hull" d="M28 128 H398 L384 150 C366 214 300 236 210 236 C120 236 58 216 38 176 Z" fill="url(#sm-hull)"/>
-  <g class="room" data-place="cabin" tabindex="0" role="button">
-    <rect class="shape" x="40" y="134" width="186" height="50" rx="6"/>
-    <path class="windows" d="M50 142 h24 v18 h-24z M80 142 h24 v18 h-24z M110 142 h24 v18 h-24z" />
-    <text x="160" y="157">Cabin</text><text class="sub" x="160" y="173">the captain’s</text>
+  <path d="M60 166 H330 V138 L440 132" fill="none" stroke="#e2b468" stroke-width="2.5"/>
+  <path d="M330 132 v-10 M352 131 v-10 M374 130 v-10 M396 130 v-10 M418 129 v-10 M330 122 L440 120" stroke="#c99a4a" stroke-width="1.5"/>
+  <circle cx="440" cy="114" r="4" fill="#ffd58f"/><circle cx="440" cy="114" r="12" fill="url(#sm-glow)"/>
+
+  <g class="room cut" data-place="cabin" tabindex="0" role="button">
+    <rect class="shape" x="332" y="146" width="96" height="62" rx="3" fill="url(#sm-in)"/>
+    <g fill="#ffcf86"><rect x="344" y="154" width="14" height="20" rx="7"/><rect x="368" y="154" width="14" height="20" rx="7"/><rect x="392" y="154" width="14" height="20" rx="7"/></g>
+    <path d="M351 154 v20 M375 154 v20 M399 154 v20 M344 166 h14 M368 166 h14 M392 166 h14" stroke="#3b2015" stroke-width="1.5"/>
+    <path d="M348 199 h52 M352 199 v8 M396 199 v8" stroke="#8a4b2a" stroke-width="3"/>
+    <rect x="364" y="194" width="12" height="5" rx="1" fill="#f07a2a"/>
+    <g class="label"><text x="380" y="191">Cabin</text></g>
   </g>
-  <g class="room" data-place="chartroom" tabindex="0" role="button">
-    <rect class="shape" x="232" y="134" width="140" height="50" rx="6"/>
-    <circle class="star" cx="356" cy="146" r="4"/>
-    <text x="302" y="157">Chart room</text><text class="sub" x="302" y="173">the navigator’s</text>
+
+  <g class="room cut" data-place="chartroom" tabindex="0" role="button">
+    <rect class="shape" x="214" y="170" width="112" height="40" rx="3" fill="url(#sm-in)"/>
+    <circle cx="270" cy="174" r="12" fill="url(#sm-glow)"/><path d="M270 168 l1.6 4 4 .4 -3 2.6 1 4 -3.6-2.2 -3.6 2.2 1-4 -3-2.6 4-.4z" fill="#fff3dc"/>
+    <path d="M238 202 h64 M242 202 v8 M298 202 v8" stroke="#8a4b2a" stroke-width="3"/>
+    <path d="M246 199 h48" stroke="#efe0c2" stroke-width="3"/>
+    <g class="label"><text x="270" y="194">Chart room</text></g>
   </g>
-  <g class="room" data-place="library" tabindex="0" role="button">
-    <rect class="shape" x="96" y="190" width="226" height="36" rx="6"/>
-    <text x="209" y="208">Library</text><text class="sub" x="209" y="221">below deck</text>
+
+  <g class="room cut" data-place="library" tabindex="0" role="button">
+    <rect class="shape" x="160" y="216" width="176" height="28" rx="3" fill="url(#sm-in)"/>
+    ${BOOKS}
+    <path d="M242 216 v28 M256 216 v28 M242 222 h14 M242 229 h14 M242 236 h14" stroke="#c99a4a" stroke-width="1.5"/>
+    <g class="label"><text x="249" y="235">Library</text></g>
   </g>
+
   <g class="pin" aria-hidden="true"><circle r="7"/><circle r="3" class="dot"/></g>
 </svg>`;
 
 /** Where the "you are here" pin sits on each room (in the drawing's units). */
-const PIN: Record<Place, [number, number]> = { outside: [64, 40], cabin: [52, 176], chartroom: [244, 176], library: [108, 206] };
+const PIN: Record<Place, [number, number]> = { outside: [352, 50], cabin: [338, 152], chartroom: [220, 176], library: [166, 222] };
 
 export class ShipMap {
   readonly el: HTMLElement;

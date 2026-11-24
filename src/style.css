@@ -395,7 +395,6 @@ a { color: inherit; }
 .pill-btn[hidden] { display: none; }
 .pill .back { color: var(--ink-dim); padding-left: 10px; }
 .pill .back:hover { color: var(--ink); }
-.pill .back:not([hidden]) + .place-btn { box-shadow: inset 1px 0 0 var(--line); border-radius: 0 999px 999px 0; }
 .pill .place-btn svg:first-child { width: 20px; height: 20px; color: var(--brass); }
 .pill .place-btn svg:last-child { opacity: .6; margin-left: -2px; }
 .pill .place-btn.busy { opacity: .55; }
@@ -406,6 +405,14 @@ a { color: inherit; }
 @keyframes pill-beckon { 0% { box-shadow: 0 0 0 0 rgba(226,180,104,.7); } 100% { box-shadow: 0 0 0 14px rgba(226,180,104,0); } }
 @media (pointer: coarse) { .pill-btn { min-height: 44px; } }
 @media (max-width: 420px) { .pill-btn { padding: 0 11px; } }
+/* one family of segments, split by hairlines */
+.pill > * + *:not([hidden]) { position: relative; }
+.pill > * + *::before { content: ""; position: absolute; left: -1px; top: 25%; bottom: 25%; width: 1px; background: var(--line); }
+.pill > .back[hidden] + *::before { display: none; }
+.pill .search { width: auto; height: auto; min-height: 38px; padding: 0 14px 0 12px; border-radius: 999px; color: var(--ink-dim); display: inline-flex; align-items: center; }
+.pill .search:hover { color: var(--ink); background: rgba(255,255,255,.08); }
+.pill .search svg { width: 19px; height: 19px; }
+@media (pointer: coarse) { .pill .search { min-height: 44px; } }
 /* notes ("Lighting the lamps below…") sit above the pill, never on it */
 .cam-hint.note { bottom: calc(var(--dock-h, 62px) + 12px); z-index: 33; }
 /* the phone's welcome letter leaves the top half of the cabin in view */
@@ -427,18 +434,16 @@ a { color: inherit; }
 .shipmap header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .shipmap h2 { margin: 0; font: 700 1.35rem/1.1 var(--display); outline: none; }
 .shipmap .ship-svg { display: block; width: 100%; height: auto; margin: 2px 0 10px; }
-.shipmap .ship-svg text { font: 700 15px var(--display); fill: #fbeedd; text-anchor: middle; pointer-events: none; }
-.shipmap .ship-svg text.sub { font: 500 10px var(--sans); fill: rgba(251,238,221,.7); }
-.shipmap .room[data-place="outside"] text { fill: #3a1a0c; }
-.shipmap .room[data-place="outside"] text.sub { fill: rgba(58,26,12,.7); }
+.shipmap .ship-svg text { font: 700 14px var(--display); fill: #fbeedd; text-anchor: middle; pointer-events: none;
+  paint-order: stroke; stroke: rgba(30, 14, 8, .85); stroke-width: 3.5px; stroke-linejoin: round; }
+.shipmap .ship-svg text.sub { font: 500 10px var(--sans); fill: rgba(251,238,221,.8); }
 .shipmap .room { cursor: pointer; outline: none; }
-.shipmap .room .shape { transition: filter .15s, stroke .15s; stroke: transparent; stroke-width: 2; }
-.shipmap .room rect.shape { fill: rgba(255, 214, 170, .1); }
-.shipmap .room .windows { fill: rgba(255, 200, 120, .35); }
-.shipmap .room .star { fill: #ffe2b0; }
-.shipmap .room.hot .shape, .shipmap .room:focus-visible .shape { stroke: var(--brass); filter: brightness(1.15); }
-.shipmap .room.here rect.shape { fill: rgba(226, 180, 104, .26); }
-.shipmap .room.here ellipse.shape { stroke: #fff3dc; }
+.shipmap .room .shape { stroke: #c98a55; stroke-width: 1.5; transition: stroke .15s, filter .15s; }
+.shipmap .room.cut.here .shape { stroke: var(--brass); stroke-width: 2.5; }
+.shipmap .room.cut.hot .shape, .shipmap .room.cut:focus-visible .shape { stroke: #fff3dc; stroke-width: 2.5; filter: brightness(1.35); }
+.shipmap .room.outside .sail { transition: filter .15s; }
+.shipmap .room.outside.hot .sail, .shipmap .room.outside:focus-visible .sail { filter: brightness(1.08) drop-shadow(0 0 4px rgba(255, 220, 160, .8)); }
+.shipmap .room.outside:focus-visible .label text:first-child, .shipmap .room.outside.hot .label text:first-child { fill: var(--brass); }
 .shipmap .pin circle { fill: var(--accent); stroke: #fff3dc; stroke-width: 2; }
 .shipmap .pin .dot { fill: #fff3dc; stroke: none; }
 .shipmap .rooms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -474,7 +479,7 @@ a { color: inherit; }
     transform: translateY(30px); }
   @supports (height: 1dvh) { .shipmap-card { max-height: 86dvh; } }
   .shipmap-card::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.25); margin: -4px auto 10px; }
-  .shipmap .ship-svg { max-height: 26vh; }
+  .shipmap .ship-svg { max-height: 32vh; }
   .shipmap .rooms li { grid-template-columns: 1fr; padding: 4px; }
   .shipmap .room-btn { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: 8px; }
 }
