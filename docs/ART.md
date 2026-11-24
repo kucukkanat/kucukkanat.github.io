@@ -32,9 +32,9 @@ Generated with OpenRouter through `scripts/gen-art.ts` (key in `~/.config/openro
 
 Made with the Meshy API (key on the cloud environment, never in the repo), from three photos of him (not committed):
 1. Image to image (`nano-banana-pro`, the photos as references): a full-body concept in the pirate navigator's outfit (red frock coat, tricorn, cutlass, spyglass), A-pose on white, then a second pass to bring the face closer to the photos → `art/chartroom/ugurcan_concept.png`.
-2. Image to 3D from the concept: `ai_model: latest` (Meshy 7.1), remeshed to 60k triangles, `texture_model: meshy-7`, `remove_lighting`, A-pose.
+2. Image to 3D from the concept: `ai_model: latest` (Meshy 7.1), remeshed to 60k triangles, `texture_model: meshy-7`, `remove_lighting`, **T-pose**. (An A-pose model rigged badly: his arms hang against the coat, so the auto-rig tied the coat side and the hip props to the arm bones and they stretched whenever he raised a hand. In a T-pose the arms stand clear of the body and the weights come out clean.)
 3. Rigging (biped, 1.78 m, fingers), then animations `[0, 11, 336, 290, 42, 415]` in one file → `art/chartroom/ugurcan.glb`.
-About 120 credits in all, with the drafts.
+About 160 credits in all, with the drafts.
 
 ## Style rules
 
